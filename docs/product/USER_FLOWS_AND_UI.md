@@ -1,0 +1,9 @@
+# UI Flows and Frontend Gates
+
+- **S1–S2 A local Admin UI:** HTTPS Admin, Create Course Content Shell only, source type/topic/version/licence, Upload/Preview/Search/Download/Archive, safe retries and provenance. A native Open Notebook management UI cannot be public; retain allowed reading/editing UX only behind Sunrise Vault Policy.
+- **S3 B local Admin UI:** Academic Year/Subject/Grade/Curriculum Course and TeachingGroup, explicit `CONTENT_UNLINKED`; no hidden call to A. **S4 I local Link Console:** explicit adoption/create, RUNTIME statuses, conflict/manual review and operations retry. **S5 U:** Sunrise Course/Content Portal with B+I APIs, Session and error gates.
+- **S6 B local Schema Editor:** Question type/rubric and PDF preview; **S7 B local AI Provider Settings:** input Secret once, test live Model, statuses READY/ERROR/REVOKED/UNKNOWN; **S8 B local generation UI** works without I; **S9 I context capability** API-only; **S10 U** adds unified Generation with evidence ON/OFF, provenance and human approval.
+- **S11–S14 B native paper workspaces:** four separately validated subjects, PDF/answer print flows. **S15–S20 B native Admin tools:** synthetic students, assessment, grades, marking and analytics. **S21 U** adds integrated teaching/assessment dashboard; don't imply S5 already exposes these.
+- **S22 B staff login** does not auto-unlock A; **S23 I** teacher-only read content after grant checks, **S24 U** Teacher Portal; **S25** approved real PII only. **S26–28** governance/alerts per owner.
+
+Every UI Stage requires session expiration/log out test, consistent Loading/Empty/Retry/Denied states, responsive devices and screenshot/render check; no direct DB SDK or service secrets in Browser. Future feature not in U must say `B Admin tool only` until explicit U Stage releases it.

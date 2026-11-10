@@ -1,8 +1,9 @@
-# QA Docker image; NOT automatically triggered by GitHub PRs
+# Deterministic interpreter/dependency versions for stage0 document QA.
+# Base tag is pinned to a Python patch version but is NOT an immutable digest.
 FROM python:3.11.11-slim-bookworm
 WORKDIR /work
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_DISABLE_PIP_VERSION_CHECK=1
-COPY requirements-qa.txt requirements-qa.txt
-RUN python -m pip install --no-cache-dir -r requirements-qa.txt
-COPY . .
-CMD ["python", "scripts/validate_stage0.py"]
+COPY requirements-qa.txt /work/requirements-qa.txt
+RUN python -m pip install --no-cache-dir -r /work/requirements-qa.txt
+COPY . /work
+ENTRYPOINT ["python", "scripts/run_qa_no_actions.py"]

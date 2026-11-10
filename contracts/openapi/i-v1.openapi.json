@@ -1,0 +1,7122 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Sunrise Link API (DESIGN CONTRACT, NOT IMPLEMENTED)",
+    "version": "0.7.2-candidate",
+    "description": "Typed proposal, not runtime validated or contract frozen. Stage owner must execute consumer and provider tests before implementing dependent Integration."
+  },
+  "servers": [
+    {
+      "url": "https://i-service.internal"
+    }
+  ],
+  "paths": {
+    "/link/v1/adoptions/commit": {
+      "post": {
+        "operationId": "commitAdoption",
+        "summary": "Non-destructive adoption API saga",
+        "tags": [
+          "S04",
+          "I"
+        ],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "x-contract-status": "TYPED_CANDIDATE_AWAITING_PROVIDER_TEST",
+        "x-auth-policy": {
+          "actor_class": "admin",
+          "deny_unscoped": true,
+          "required_service_scope": null,
+          "required_staff_scope": null,
+          "resource_ownership_check": true
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 12,
+              "maxLength": 128
+            },
+            "description": "Stable client retry key; same canonical request hash required"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Typed response envelope, validated at owner API boundary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "request_id",
+                    "data"
+                  ],
+                  "properties": {
+                    "request_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CourseOperation"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/commitAdoptionRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/link/v1/adoptions/dry-run": {
+      "post": {
+        "operationId": "dryRunAdoption",
+        "summary": "Explicit B Course + A Shell stable key preview",
+        "tags": [
+          "S04",
+          "I"
+        ],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "x-contract-status": "TYPED_CANDIDATE_AWAITING_PROVIDER_TEST",
+        "x-auth-policy": {
+          "actor_class": "admin",
+          "deny_unscoped": true,
+          "required_service_scope": null,
+          "required_staff_scope": null,
+          "resource_ownership_check": true
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Typed response envelope, validated at owner API boundary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "request_id",
+                    "data"
+                  ],
+                  "properties": {
+                    "request_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AdoptionPreview"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dryRunAdoptionRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/link/v1/course-provision": {
+      "post": {
+        "operationId": "createUnifiedCourse",
+        "summary": "Provision B course and A shell over existing APIs",
+        "tags": [
+          "S04",
+          "I"
+        ],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "x-contract-status": "TYPED_CANDIDATE_AWAITING_PROVIDER_TEST",
+        "x-auth-policy": {
+          "actor_class": "admin",
+          "deny_unscoped": true,
+          "required_service_scope": null,
+          "required_staff_scope": null,
+          "resource_ownership_check": true
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 12,
+              "maxLength": 128
+            },
+            "description": "Stable client retry key; same canonical request hash required"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Typed response envelope, validated at owner API boundary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "request_id",
+                    "data"
+                  ],
+                  "properties": {
+                    "request_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CourseOperation"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/createUnifiedCourseRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/link/v1/courses/{course_id}/content": {
+      "get": {
+        "operationId": "listLinkedCourseContent",
+        "summary": "Server resolved course binding and A source owner check",
+        "tags": [
+          "S04",
+          "I"
+        ],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "x-contract-status": "TYPED_CANDIDATE_AWAITING_PROVIDER_TEST",
+        "x-auth-policy": {
+          "actor_class": "admin",
+          "deny_unscoped": true,
+          "required_service_scope": null,
+          "required_staff_scope": null,
+          "resource_ownership_check": true
+        },
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Server verifies this identifier belongs to authorized resource scope"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Typed response envelope, validated at owner API boundary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "request_id",
+                    "data"
+                  ],
+                  "properties": {
+                    "request_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/LinkedContentSummary"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/link/v1/courses/{course_id}/materials": {
+      "get": {
+        "operationId": "listCourseMaterials",
+        "summary": "List materials after B binding and A owner verification",
+        "tags": [
+          "S04",
+          "I"
+        ],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "x-contract-status": "TYPED_CANDIDATE_AWAITING_PROVIDER_TEST",
+        "x-auth-policy": {
+          "actor_class": "admin",
+          "deny_unscoped": true,
+          "required_service_scope": null,
+          "required_staff_scope": null,
+          "resource_ownership_check": true
+        },
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Server verifies this identifier belongs to authorized resource scope"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Typed response envelope, validated at owner API boundary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "request_id",
+                    "data"
+                  ],
+                  "properties": {
+                    "request_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MaterialList"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "uploadCourseMaterial",
+        "summary": "Admin upload through controlled I to owner A API",
+        "tags": [
+          "S04",
+          "I"
+        ],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "x-contract-status": "TYPED_CANDIDATE_AWAITING_PROVIDER_TEST",
+        "x-auth-policy": {
+          "actor_class": "admin",
+          "deny_unscoped": true,
+          "required_service_scope": null,
+          "required_staff_scope": null,
+          "resource_ownership_check": true
+        },
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Server verifies this identifier belongs to authorized resource scope"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 12,
+              "maxLength": 128
+            },
+            "description": "Stable client retry key; same canonical request hash required"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Typed response envelope, validated at owner API boundary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "request_id",
+                    "data"
+                  ],
+                  "properties": {
+                    "request_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SourceMaterial"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/uploadCourseMaterialRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/link/v1/courses/{course_id}/materials/{material_id}/download": {
+      "get": {
+        "operationId": "downloadCourseMaterial",
+        "summary": "Download A material after B course + A source check",
+        "tags": [
+          "S04",
+          "I"
+        ],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "x-contract-status": "TYPED_CANDIDATE_AWAITING_PROVIDER_TEST",
+        "x-auth-policy": {
+          "actor_class": "admin",
+          "deny_unscoped": true,
+          "required_service_scope": null,
+          "required_staff_scope": null,
+          "resource_ownership_check": true
+        },
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Server verifies this identifier belongs to authorized resource scope"
+          },
+          {
+            "name": "material_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Server verifies this identifier belongs to authorized resource scope"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized binary file response, never exposes arbitrary filesystem paths",
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Content-SHA256": {
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/link/v1/courses/{course_id}/search": {
+      "post": {
+        "operationId": "searchCourseMaterials",
+        "summary": "Course-scoped A search via I verifying B binding",
+        "tags": [
+          "S04",
+          "I"
+        ],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "x-contract-status": "TYPED_CANDIDATE_AWAITING_PROVIDER_TEST",
+        "x-auth-policy": {
+          "actor_class": "admin",
+          "deny_unscoped": true,
+          "required_service_scope": null,
+          "required_staff_scope": null,
+          "resource_ownership_check": true
+        },
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Server verifies this identifier belongs to authorized resource scope"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Typed response envelope, validated at owner API boundary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "request_id",
+                    "data"
+                  ],
+                  "properties": {
+                    "request_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SearchResults"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/searchCourseMaterialsRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/link/v1/operations/{operation_id}": {
+      "get": {
+        "operationId": "getIntegrationOperation",
+        "summary": "Read B+A operation statuses via APIs",
+        "tags": [
+          "S04",
+          "I"
+        ],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "x-contract-status": "TYPED_CANDIDATE_AWAITING_PROVIDER_TEST",
+        "x-auth-policy": {
+          "actor_class": "admin",
+          "deny_unscoped": true,
+          "required_service_scope": null,
+          "required_staff_scope": null,
+          "resource_ownership_check": true
+        },
+        "parameters": [
+          {
+            "name": "operation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Server verifies this identifier belongs to authorized resource scope"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Typed response envelope, validated at owner API boundary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "request_id",
+                    "data"
+                  ],
+                  "properties": {
+                    "request_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CourseOperation"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/link/v1/operations/{operation_id}/retry": {
+      "post": {
+        "operationId": "retryIntegrationOperation",
+        "summary": "Idempotent retry after crash/timeout",
+        "tags": [
+          "S04",
+          "I"
+        ],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "x-contract-status": "TYPED_CANDIDATE_AWAITING_PROVIDER_TEST",
+        "x-auth-policy": {
+          "actor_class": "admin",
+          "deny_unscoped": true,
+          "required_service_scope": null,
+          "required_staff_scope": null,
+          "resource_ownership_check": true
+        },
+        "parameters": [
+          {
+            "name": "operation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Server verifies this identifier belongs to authorized resource scope"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 12,
+              "maxLength": 128
+            },
+            "description": "Stable client retry key; same canonical request hash required"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Typed response envelope, validated at owner API boundary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "request_id",
+                    "data"
+                  ],
+                  "properties": {
+                    "request_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CourseOperation"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/retryIntegrationOperationRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/link/v1/reconciliation": {
+      "get": {
+        "operationId": "getCoreReconciliation",
+        "summary": "S4 mandatory core repair/orphan/partial operations report",
+        "tags": [
+          "S04",
+          "I"
+        ],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "x-contract-status": "TYPED_CANDIDATE_AWAITING_PROVIDER_TEST",
+        "x-auth-policy": {
+          "actor_class": "admin",
+          "deny_unscoped": true,
+          "required_service_scope": null,
+          "required_staff_scope": null,
+          "resource_ownership_check": true
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Typed response envelope, validated at owner API boundary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "request_id",
+                    "data"
+                  ],
+                  "properties": {
+                    "request_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ReconciliationReport"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/link/v1/evidence-bundles": {
+      "post": {
+        "operationId": "createEvidenceBundle",
+        "summary": "Course-scoped version pinned signed and bounded evidence",
+        "tags": [
+          "S09",
+          "I"
+        ],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "x-contract-status": "TYPED_CANDIDATE_AWAITING_PROVIDER_TEST",
+        "x-auth-policy": {
+          "actor_class": "admin",
+          "deny_unscoped": true,
+          "required_service_scope": null,
+          "required_staff_scope": null,
+          "resource_ownership_check": true
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 12,
+              "maxLength": 128
+            },
+            "description": "Stable client retry key; same canonical request hash required"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Typed response envelope, validated at owner API boundary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "request_id",
+                    "data"
+                  ],
+                  "properties": {
+                    "request_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/EvidenceBundle"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/createEvidenceBundleRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/link/v1/evidence-bundles/{bundle_id}/validate": {
+      "post": {
+        "operationId": "validateEvidenceBundle",
+        "summary": "Pre-use revocation/TOCTOU revalidation from A+B",
+        "tags": [
+          "S09",
+          "I"
+        ],
+        "security": [
+          {
+            "ServiceToken": []
+          }
+        ],
+        "x-contract-status": "TYPED_CANDIDATE_AWAITING_PROVIDER_TEST",
+        "x-auth-policy": {
+          "actor_class": "service",
+          "deny_unscoped": true,
+          "required_service_scope": "link.evidence.validate",
+          "required_staff_scope": null,
+          "resource_ownership_check": true
+        },
+        "parameters": [
+          {
+            "name": "bundle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Server verifies this identifier belongs to authorized resource scope"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Typed response envelope, validated at owner API boundary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "request_id",
+                    "data"
+                  ],
+                  "properties": {
+                    "request_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/EvidenceBundleStatus"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/validateEvidenceBundleRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/link/v1/teacher/content": {
+      "get": {
+        "operationId": "getTeacherContent",
+        "summary": "Read-only A after live B Grant check",
+        "tags": [
+          "S23",
+          "I"
+        ],
+        "security": [
+          {
+            "StaffSession": []
+          }
+        ],
+        "x-contract-status": "TYPED_CANDIDATE_AWAITING_PROVIDER_TEST",
+        "x-auth-policy": {
+          "actor_class": "staff",
+          "deny_unscoped": true,
+          "required_service_scope": null,
+          "required_staff_scope": "staff.course.read",
+          "resource_ownership_check": true
+        },
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Typed response envelope, validated at owner API boundary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "request_id",
+                    "data"
+                  ],
+                  "properties": {
+                    "request_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/TeacherContent"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/link/v1/teacher/courses/{course_id}/materials/{material_id}/download": {
+      "get": {
+        "operationId": "downloadTeacherContent",
+        "summary": "Teacher read-only binary download with B grant epoch recheck",
+        "tags": [
+          "S23",
+          "I"
+        ],
+        "security": [
+          {
+            "StaffSession": []
+          }
+        ],
+        "x-contract-status": "TYPED_CANDIDATE_AWAITING_PROVIDER_TEST",
+        "x-auth-policy": {
+          "actor_class": "staff",
+          "deny_unscoped": true,
+          "required_service_scope": null,
+          "required_staff_scope": "staff.grants.self.read",
+          "resource_ownership_check": true
+        },
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Server verifies this identifier belongs to authorized resource scope"
+          },
+          {
+            "name": "material_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Server verifies this identifier belongs to authorized resource scope"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized binary file response, never exposes arbitrary filesystem paths",
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Content-SHA256": {
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/link/v1/teacher/courses/{course_id}/search": {
+      "post": {
+        "operationId": "searchTeacherContent",
+        "summary": "Teacher scoped Search requires B grant check and A owner-filtered service API",
+        "tags": [
+          "S23",
+          "I"
+        ],
+        "security": [
+          {
+            "StaffSession": []
+          }
+        ],
+        "x-contract-status": "TYPED_CANDIDATE_AWAITING_PROVIDER_TEST",
+        "x-auth-policy": {
+          "actor_class": "staff",
+          "deny_unscoped": true,
+          "required_service_scope": null,
+          "required_staff_scope": "staff.grants.self.read",
+          "resource_ownership_check": true
+        },
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "description": "Server verifies this identifier belongs to authorized resource scope"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 12,
+              "maxLength": 128
+            },
+            "description": "Stable client retry key; same canonical request hash required"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Typed response envelope, validated at owner API boundary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "request_id",
+                    "data"
+                  ],
+                  "properties": {
+                    "request_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SearchResults"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/searchTeacherContentRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/link/v1/reconciliation-dashboard": {
+      "get": {
+        "operationId": "getReconciliationDashboard",
+        "summary": "Additional health/history UI over S4 core recovery API",
+        "tags": [
+          "S28",
+          "I"
+        ],
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "x-contract-status": "TYPED_CANDIDATE_AWAITING_PROVIDER_TEST",
+        "x-auth-policy": {
+          "actor_class": "admin",
+          "deny_unscoped": true,
+          "required_service_scope": null,
+          "required_staff_scope": null,
+          "resource_ownership_check": true
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Typed response envelope, validated at owner API boundary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "request_id",
+                    "data"
+                  ],
+                  "properties": {
+                    "request_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ReconciliationReport"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Typed failure envelope; errors never contain private source excerpts or secret keys",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "AdminSession": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Authenticated Principal Admin session, never sent by integration service"
+      },
+      "ServiceToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Separate client credentials, aud to owner API, <=5m lifetime, jti replay protection, route-specific x-auth-policy required scope"
+      },
+      "StaffSession": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Staff subject/role/course grants with epoch; not an AdminSession nor ServiceToken"
+      }
+    },
+    "schemas": {
+      "ContentShell": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "shell_id",
+          "external_course_key",
+          "notebook_id",
+          "display_title",
+          "status",
+          "created_at",
+          "school_id"
+        ],
+        "properties": {
+          "shell_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "external_course_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "notebook_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "display_title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "academic_year_label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "subject_label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "CREATING",
+              "READY",
+              "FAILED",
+              "ARCHIVED"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "school_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "SourceMaterial": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "material_id",
+          "shell_id",
+          "source_id",
+          "version_id",
+          "material_type",
+          "content_sha256",
+          "publication"
+        ],
+        "properties": {
+          "material_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "shell_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "version_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "material_type": {
+            "type": "string",
+            "enum": [
+              "TEXTBOOK",
+              "NOTE",
+              "PAST_PAPER"
+            ]
+          },
+          "original_filename": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "publication": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "ARCHIVED",
+              "REVOKED"
+            ]
+          },
+          "uploaded_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SourceManifest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "shell_id",
+          "notebook_id",
+          "external_course_key",
+          "manifest_version",
+          "sources",
+          "generated_at"
+        ],
+        "properties": {
+          "shell_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "notebook_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "external_course_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "manifest_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceMaterial"
+            }
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "VaultOperation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation_id",
+          "state",
+          "idempotency_key",
+          "attempts"
+        ],
+        "properties": {
+          "operation_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "shell_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "CREATING",
+              "READY",
+              "FAILED",
+              "RETRYABLE",
+              "QUARANTINED"
+            ]
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "notebook_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SearchHit": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "material_id",
+          "source_id",
+          "version_id",
+          "locator",
+          "excerpt",
+          "content_sha256",
+          "score"
+        ],
+        "properties": {
+          "material_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "version_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "locator": {
+            "type": "string",
+            "minLength": 1
+          },
+          "excerpt": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      },
+      "SearchResults": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "shell_id",
+          "query",
+          "results",
+          "total",
+          "scoped"
+        ],
+        "properties": {
+          "shell_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "query": {
+            "type": "string",
+            "minLength": 1
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchHit"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "scoped": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CutoverPolicy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mode",
+          "revision",
+          "changed_at"
+        ],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "STANDALONE",
+              "FREEZE",
+              "MANAGED"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "changed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SourceAttestation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_id",
+          "version_id",
+          "content_sha256",
+          "publish_state",
+          "usage_allowed",
+          "reason"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "version_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "content_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "publish_state": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "ARCHIVED",
+              "REVOKED"
+            ]
+          },
+          "usage_allowed": {
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "AcademicCourse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "academic_year_id",
+          "school_id",
+          "subject_id",
+          "title",
+          "content_state",
+          "revision",
+          "grade",
+          "curriculum_stream"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "academic_year_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "school_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "subject_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content_state": {
+            "type": "string",
+            "enum": [
+              "CONTENT_UNLINKED",
+              "PROVISIONING",
+              "ACTIVE",
+              "QUARANTINED",
+              "ARCHIVED"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "grade": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 13
+          },
+          "curriculum_stream": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "CourseOperation": {
+        "title": "Course Binding Operation v1 B owner",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation_id",
+          "mode",
+          "link_key",
+          "idempotency_key",
+          "request_hash",
+          "state",
+          "course_id",
+          "actor_id",
+          "binding_version"
+        ],
+        "properties": {
+          "operation_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mode": {
+            "enum": [
+              "CREATE_NEW",
+              "ADOPT_EXISTING"
+            ]
+          },
+          "link_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "request_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "state": {
+            "enum": [
+              "UNLINKED",
+              "RESERVED",
+              "PROVISIONING",
+              "VERIFYING",
+              "ACTIVE",
+              "RETRYABLE",
+              "CONFLICT",
+              "QUARANTINED",
+              "ARCHIVED"
+            ]
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "a_shell_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "a_notebook_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actor_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "binding_version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "last_error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CourseBinding": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "binding_version",
+          "state"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "shell_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notebook_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "binding_version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "CONTENT_UNLINKED",
+              "RESERVED",
+              "ACTIVE",
+              "RETRYABLE",
+              "QUARANTINED"
+            ]
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "AdoptionPreview": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "shell_id",
+          "proposed_binding",
+          "conflicts",
+          "safe_to_commit"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "shell_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "proposed_binding": {
+            "$ref": "#/components/schemas/CourseBinding"
+          },
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "safe_to_commit": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ReconciliationReport": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "checked_at",
+          "checked",
+          "active",
+          "mismatches",
+          "quarantined_ids"
+        ],
+        "properties": {
+          "checked_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "checked": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "active": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mismatches": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "quarantined_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        }
+      },
+      "LinkedContentSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "binding",
+          "materials",
+          "source_count"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "binding": {
+            "$ref": "#/components/schemas/CourseBinding"
+          },
+          "materials": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceMaterial"
+            }
+          },
+          "source_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "QuestionTemplate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "template_id",
+          "subject",
+          "schema_version",
+          "rubric_version",
+          "name",
+          "status"
+        ],
+        "properties": {
+          "template_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "subject": {
+            "type": "string",
+            "enum": [
+              "math",
+              "chinese",
+              "english",
+              "general_studies"
+            ]
+          },
+          "schema_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rubric_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "ARCHIVED"
+            ]
+          }
+        }
+      },
+      "ValidationReport": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "valid",
+          "errors",
+          "validated_schema_version"
+        ],
+        "properties": {
+          "valid": {
+            "type": "boolean"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "validated_schema_version": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "AiProvider": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider_id",
+          "kind",
+          "secret_ref",
+          "model_id",
+          "status"
+        ],
+        "properties": {
+          "provider_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "gemini",
+              "openai",
+              "other"
+            ]
+          },
+          "secret_ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "DISABLED",
+              "REVOKED",
+              "TEST_FAILED"
+            ]
+          },
+          "last_checked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "ProviderTest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider_id",
+          "ok",
+          "model_id"
+        ],
+        "properties": {
+          "provider_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "model_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "GenerationJob": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "job_id",
+          "course_id",
+          "state",
+          "prompt_version",
+          "model_version",
+          "blueprint_id",
+          "blueprint_version"
+        ],
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "QUEUED",
+              "RUNNING",
+              "VALIDATING",
+              "REVIEW",
+              "APPROVED",
+              "FAILED",
+              "RETRYABLE"
+            ]
+          },
+          "prompt_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "draft_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "blueprint_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "blueprint_version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "EvidenceBundleStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bundle_id",
+          "status",
+          "course_id",
+          "checked_at"
+        ],
+        "properties": {
+          "bundle_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "RECEIVED",
+              "VALIDATED",
+              "REJECTED",
+              "EXPIRED",
+              "REVOKED"
+            ]
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "job_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "validation_phase": {
+            "enum": [
+              "MODEL_PRE_EXECUTION",
+              "PAPER_PRE_APPROVAL"
+            ]
+          }
+        }
+      },
+      "Paper": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "paper_id",
+          "course_id",
+          "subject",
+          "version",
+          "state",
+          "question_count",
+          "total_score"
+        ],
+        "properties": {
+          "paper_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "subject": {
+            "type": "string",
+            "enum": [
+              "math",
+              "chinese",
+              "english",
+              "general_studies"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "REVIEW",
+              "APPROVED",
+              "EXPORTED"
+            ]
+          },
+          "question_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "total_score": {
+            "type": "number",
+            "minimum": 0
+          },
+          "artifact_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "Student": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "student_id",
+          "pseudonym",
+          "data_class",
+          "created_at"
+        ],
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "pseudonym": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data_class": {
+            "type": "string",
+            "enum": [
+              "SYNTHETIC",
+              "REAL_APPROVED"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Enrollment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "enrollment_id",
+          "student_id",
+          "course_id",
+          "status",
+          "teaching_group_id"
+        ],
+        "properties": {
+          "enrollment_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "student_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ]
+          },
+          "teaching_group_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "Assessment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "assessment_id",
+          "course_id",
+          "title",
+          "maximum_score",
+          "state"
+        ],
+        "properties": {
+          "assessment_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "maximum_score": {
+            "type": "number",
+            "minimum": 0
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "CLOSED"
+            ]
+          }
+        }
+      },
+      "ScoreDraft": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "draft_id",
+          "assessment_id",
+          "student_id",
+          "score",
+          "revision",
+          "validated"
+        ],
+        "properties": {
+          "draft_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "assessment_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "student_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "validated": {
+            "type": "boolean"
+          }
+        }
+      },
+      "GradeEvent": {
+        "title": "Grade Event v1 B owner",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "event_id",
+          "grade_key",
+          "event_type",
+          "revision",
+          "score",
+          "actor_id",
+          "created_at",
+          "operation_id",
+          "canonical_request_hash"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "grade_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "event_type": {
+            "enum": [
+              "SUBMIT",
+              "CORRECT"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0
+          },
+          "actor_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "operation_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3
+          },
+          "corrects_event_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expected_prior_revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "canonical_request_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "event_type": {
+                  "const": "CORRECT"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "reason",
+                "corrects_event_id",
+                "expected_prior_revision"
+              ]
+            }
+          }
+        ]
+      },
+      "Submission": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "submission_id",
+          "assessment_id",
+          "student_id",
+          "artifact_id",
+          "state"
+        ],
+        "properties": {
+          "submission_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "assessment_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "student_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "artifact_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "UPLOADED",
+              "REVIEW",
+              "MARKED",
+              "REJECTED"
+            ]
+          },
+          "submitted_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MarkingDecision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "decision_id",
+          "submission_id",
+          "reviewer_id",
+          "score",
+          "state"
+        ],
+        "properties": {
+          "decision_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "submission_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "reviewer_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "APPROVED",
+              "REJECTED"
+            ]
+          },
+          "rubric_version": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "MarkingJob": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "job_id",
+          "submission_id",
+          "state",
+          "model_version",
+          "rubric_version"
+        ],
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "submission_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "QUEUED",
+              "RUNNING",
+              "REVIEW",
+              "FAILED"
+            ]
+          },
+          "model_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rubric_version": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "AnalyticsRun": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "run_id",
+          "course_id",
+          "source_revision",
+          "state"
+        ],
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "source_revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "READY",
+              "STALE",
+              "FAILED"
+            ]
+          },
+          "metrics_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "WeaknessSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "snapshot_id",
+          "course_id",
+          "target_id",
+          "source_grade_revision",
+          "state",
+          "created_at"
+        ],
+        "properties": {
+          "snapshot_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "target_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "source_grade_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "CANDIDATE",
+              "VALID_ACTIVE",
+              "RETIRED",
+              "STALE"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "StaffGrant": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "staff_id",
+          "course_id",
+          "permission",
+          "grant_epoch",
+          "active"
+        ],
+        "properties": {
+          "staff_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "permission": {
+            "type": "string",
+            "enum": [
+              "COURSE_READ",
+              "ASSESSMENT_READ",
+              "GRADE_READ",
+              "GRADE_SUBMIT",
+              "SYNTHETIC_ROSTER_READ",
+              "SUBMISSION_READ",
+              "MANUAL_MARK",
+              "MATERIAL_READ",
+              "STAFF_ADMIN"
+            ]
+          },
+          "grant_epoch": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PermissionSet": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "staff_id",
+          "grant_epoch",
+          "grants",
+          "checked_at"
+        ],
+        "properties": {
+          "staff_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "grant_epoch": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "grants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffGrant"
+            }
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ImportReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "batch_id",
+          "records_accepted",
+          "records_rejected",
+          "approval_id",
+          "state"
+        ],
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "records_accepted": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "records_rejected": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "approval_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "QUEUED",
+              "IMPORTED",
+              "REJECTED"
+            ]
+          }
+        }
+      },
+      "RetentionReport": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "job_id",
+          "owner",
+          "year_id",
+          "affected_records",
+          "state",
+          "deletions_performed"
+        ],
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "owner": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ]
+          },
+          "year_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "affected_records": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "DRY_RUN",
+              "APPROVED",
+              "ARCHIVED",
+              "FAILED"
+            ]
+          },
+          "deletions_performed": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "TeacherContent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "grant_epoch",
+          "materials",
+          "read_only"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "grant_epoch": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "materials": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceMaterial"
+            }
+          },
+          "read_only": {
+            "const": true
+          }
+        }
+      },
+      "GenericOperationAck": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operation_id",
+          "state"
+        ],
+        "properties": {
+          "operation_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "ACCEPTED",
+              "READY",
+              "REJECTED",
+              "FAILED"
+            ]
+          },
+          "resource_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "request_id",
+          "error"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message",
+              "retryable"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "minLength": 1
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1
+              },
+              "retryable": {
+                "type": "boolean"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "field",
+                    "reason"
+                  ],
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "ContentShellList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContentShell"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "MaterialList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceMaterial"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "CourseList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AcademicCourse"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "CourseOperationList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CourseOperation"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "SyntheticStudent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "student_id",
+          "pseudonym",
+          "data_class",
+          "created_at"
+        ],
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "pseudonym": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data_class": {
+            "const": "SYNTHETIC"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "StudentList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SyntheticStudent"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "GradeHistory": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "grade_key",
+          "events",
+          "current_revision"
+        ],
+        "properties": {
+          "grade_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GradeEvent"
+            }
+          },
+          "current_revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "WeaknessList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "snapshots",
+          "active_count"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "snapshots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeaknessSnapshot"
+            }
+          },
+          "active_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "Question": {
+        "title": "Sunrise Question v1 — B owner",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "question_id",
+          "schema_version",
+          "subject",
+          "question_type",
+          "stem",
+          "max_score",
+          "answer_spec",
+          "rubric_version"
+        ],
+        "properties": {
+          "question_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "schema_version": {
+            "type": "string",
+            "const": "1.0"
+          },
+          "subject": {
+            "enum": [
+              "math",
+              "chinese",
+              "english",
+              "general_studies"
+            ]
+          },
+          "question_type": {
+            "enum": [
+              "numeric",
+              "fraction",
+              "multiple_choice",
+              "text",
+              "extended_response"
+            ]
+          },
+          "stem": {
+            "type": "string",
+            "minLength": 1
+          },
+          "max_score": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "rubric_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "answer_spec": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "value"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "numeric"
+                  },
+                  "value": {
+                    "type": "number"
+                  },
+                  "tolerance": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "numerator",
+                  "denominator"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "fraction"
+                  },
+                  "numerator": {
+                    "type": "integer"
+                  },
+                  "denominator": {
+                    "type": "integer",
+                    "not": {
+                      "const": 0
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "correct_option",
+                  "options"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "multiple_choice"
+                  },
+                  "correct_option": {
+                    "type": "string"
+                  },
+                  "options": {
+                    "type": "array",
+                    "minItems": 2,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "accepted_values"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "text"
+                  },
+                  "accepted_values": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "requires_human_review"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "extended_response"
+                  },
+                  "requires_human_review": {
+                    "const": true
+                  }
+                }
+              }
+            ]
+          },
+          "diagram": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "enum": [
+                  "bar",
+                  "line",
+                  "geometry",
+                  "table"
+                ]
+              },
+              "data": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "type",
+              "data"
+            ]
+          },
+          "learning_objectives": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pdf_render_contract_version": {
+            "type": "string"
+          }
+        }
+      },
+      "EvidenceBundle": {
+        "title": "Signed Evidence Bundle v1 — I issues, B consumes",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bundle_id",
+          "course_id",
+          "binding_version",
+          "issuer",
+          "audience",
+          "kid",
+          "jti",
+          "issued_at",
+          "expires_at",
+          "allowed_purpose",
+          "authorization_version",
+          "sources",
+          "signature"
+        ],
+        "properties": {
+          "bundle_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "binding_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "issuer": {
+            "const": "sunrise-integration"
+          },
+          "audience": {
+            "const": "sunrise-operations"
+          },
+          "kid": {
+            "type": "string",
+            "minLength": 1
+          },
+          "jti": {
+            "type": "string",
+            "minLength": 1
+          },
+          "issued_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "allowed_purpose": {
+            "enum": [
+              "paper_draft",
+              "lesson_draft"
+            ]
+          },
+          "authorization_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "signature": {
+            "type": "string",
+            "minLength": 16
+          },
+          "sources": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "source_id",
+                "source_version_id",
+                "content_sha256",
+                "locator",
+                "excerpt",
+                "retrieved_at",
+                "publish_state",
+                "usage_policy_ref"
+              ],
+              "properties": {
+                "source_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "source_version_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "content_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "locator": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "excerpt": {
+                  "type": "string",
+                  "maxLength": 1200,
+                  "minLength": 1
+                },
+                "retrieved_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "publish_state": {
+                  "const": "PUBLISHED"
+                },
+                "usage_policy_ref": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "createContentShellRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "display_title",
+          "academic_year_label",
+          "subject_label",
+          "grade_label",
+          "school_id"
+        ],
+        "properties": {
+          "display_title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "academic_year_label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "subject_label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "grade_label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "external_course_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "school_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "uploadVaultMaterialRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "file",
+          "material_type",
+          "filename"
+        ],
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary"
+          },
+          "material_type": {
+            "type": "string",
+            "enum": [
+              "TEXTBOOK",
+              "NOTE",
+              "PAST_PAPER"
+            ]
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "filename": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "searchContentShellRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "published_only": {
+            "type": "boolean"
+          }
+        }
+      },
+      "archiveContentShellRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reason"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expected_revision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "provisionVaultShellRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "external_course_key",
+          "idempotency_key",
+          "request_hash",
+          "display_title",
+          "academic_year_label",
+          "subject_label",
+          "actor_id"
+        ],
+        "properties": {
+          "external_course_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "request_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "display_title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "academic_year_label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "subject_label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "actor_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "setVaultCutoverPolicyRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mode",
+          "expected_revision",
+          "approval_id"
+        ],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "STANDALONE",
+              "FREEZE",
+              "MANAGED"
+            ]
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "approval_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "attestVaultVersionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_id",
+          "course_id",
+          "binding_version",
+          "usage_purpose",
+          "expected_sha256"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "binding_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "usage_purpose": {
+            "type": "string",
+            "enum": [
+              "paper_draft",
+              "lesson_draft"
+            ]
+          },
+          "expected_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      },
+      "createAcademicCourseRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "school_id",
+          "academic_year_id",
+          "subject_id",
+          "title",
+          "external_course_key",
+          "grade",
+          "curriculum_stream"
+        ],
+        "properties": {
+          "school_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "academic_year_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "subject_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "external_course_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "grade": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 13
+          },
+          "curriculum_stream": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "reserveCourseOperationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mode",
+          "idempotency_key",
+          "request_hash",
+          "link_key",
+          "school_id",
+          "actor_id",
+          "expected_binding_version"
+        ],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "CREATE_NEW",
+              "ADOPT_EXISTING"
+            ]
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "request_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "link_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "course_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "school_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "actor_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expected_binding_version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "mode": {
+                  "const": "ADOPT_EXISTING"
+                }
+              },
+              "required": [
+                "mode"
+              ]
+            },
+            "then": {
+              "properties": {
+                "course_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                }
+              },
+              "required": [
+                "course_id"
+              ]
+            }
+          }
+        ]
+      },
+      "finalizeCourseOperationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "shell_id",
+          "notebook_id",
+          "source_manifest_sha256",
+          "expected_binding_version",
+          "source_owner_verified"
+        ],
+        "properties": {
+          "shell_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "notebook_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "source_manifest_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "expected_binding_version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "source_owner_verified": {
+            "const": true
+          }
+        }
+      },
+      "quarantineCourseOperationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reason",
+          "expected_binding_version"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expected_binding_version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "dryRunAdoptionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "shell_id",
+          "expected_external_course_key"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "shell_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expected_external_course_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "commitAdoptionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "shell_id",
+          "approval_id",
+          "expected_binding_version",
+          "idempotency_key"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "shell_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "approval_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expected_binding_version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "createUnifiedCourseRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "school_id",
+          "academic_year_id",
+          "subject_id",
+          "course_title",
+          "shell_title",
+          "idempotency_key",
+          "actor_id"
+        ],
+        "properties": {
+          "school_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "academic_year_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "subject_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "course_title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "shell_title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "actor_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "retryIntegrationOperationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reason",
+          "expected_revision"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "uploadCourseMaterialRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "file",
+          "material_type",
+          "filename"
+        ],
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary"
+          },
+          "material_type": {
+            "type": "string",
+            "enum": [
+              "TEXTBOOK",
+              "NOTE",
+              "PAST_PAPER"
+            ]
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "filename": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "searchCourseMaterialsRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "published_only": {
+            "type": "boolean"
+          }
+        }
+      },
+      "searchTeacherContentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "published_only": {
+            "type": "boolean"
+          }
+        }
+      },
+      "createQuestionTemplateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "subject",
+          "rubric_version",
+          "schema_version"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "subject": {
+            "type": "string",
+            "enum": [
+              "math",
+              "chinese",
+              "english",
+              "general_studies"
+            ]
+          },
+          "rubric_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "schema_version": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "validateQuestionSchemaRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "question"
+        ],
+        "properties": {
+          "question": {
+            "$ref": "#/components/schemas/Question"
+          }
+        }
+      },
+      "saveAiProviderRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "secret_value",
+          "model_id",
+          "key_label"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "gemini",
+              "openai",
+              "other"
+            ]
+          },
+          "secret_value": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "key_label": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "testAiProviderRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider_id"
+        ],
+        "properties": {
+          "provider_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "revokeAiProviderRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider_id",
+          "reason"
+        ],
+        "properties": {
+          "provider_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "enqueueGenerationJobRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "blueprint_id",
+          "prompt_version",
+          "model_version",
+          "idempotency_key",
+          "blueprint_version"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "blueprint_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "prompt_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence_bundle_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "blueprint_version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "approveGenerationJobRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reviewer_id",
+          "expected_job_state",
+          "expected_revision"
+        ],
+        "properties": {
+          "reviewer_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expected_job_state": {
+            "type": "string",
+            "enum": [
+              "REVIEW"
+            ]
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "ingestEvidenceBundleRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bundle"
+        ],
+        "properties": {
+          "bundle": {
+            "$ref": "#/components/schemas/EvidenceBundle"
+          }
+        }
+      },
+      "createEvidenceBundleRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "source_version_ids",
+          "purpose",
+          "requested_by"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "source_version_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "paper_draft",
+              "lesson_draft"
+            ]
+          },
+          "requested_by": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "validateEvidenceBundleRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expected_course_id",
+          "binding_version",
+          "purpose",
+          "job_id",
+          "validation_phase"
+        ],
+        "properties": {
+          "expected_course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "binding_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "paper_draft",
+              "lesson_draft"
+            ]
+          },
+          "job_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "validation_phase": {
+            "enum": [
+              "MODEL_PRE_EXECUTION",
+              "PAPER_PRE_APPROVAL"
+            ]
+          }
+        }
+      },
+      "createMathPaperRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "blueprint_id",
+          "generation_job_id",
+          "rubric_version"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "blueprint_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "generation_job_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "rubric_version": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "createChinesePaperRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "blueprint_id",
+          "generation_job_id",
+          "rubric_version"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "blueprint_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "generation_job_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "rubric_version": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "createEnglishPaperRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "blueprint_id",
+          "generation_job_id",
+          "rubric_version"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "blueprint_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "generation_job_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "rubric_version": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "createGeneralStudiesPaperRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "blueprint_id",
+          "generation_job_id",
+          "rubric_version"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "blueprint_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "generation_job_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "rubric_version": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "createSyntheticStudentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "pseudonym",
+          "synthetic_marker"
+        ],
+        "properties": {
+          "pseudonym": {
+            "type": "string",
+            "minLength": 1
+          },
+          "synthetic_marker": {
+            "const": true
+          }
+        }
+      },
+      "assignSyntheticStudentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "student_id",
+          "course_id",
+          "teaching_group_id"
+        ],
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "teaching_group_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "createAssessmentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "title",
+          "maximum_score",
+          "rubric_version"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "maximum_score": {
+            "type": "number",
+            "minimum": 0
+          },
+          "rubric_version": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "createScoreDraftRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "assessment_id",
+          "student_id",
+          "score",
+          "expected_revision"
+        ],
+        "properties": {
+          "assessment_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "student_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "submitGradeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "draft_id",
+          "expected_revision",
+          "idempotency_key",
+          "canonical_request_hash"
+        ],
+        "properties": {
+          "draft_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "canonical_request_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      },
+      "correctGradeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "grade_key",
+          "corrects_event_id",
+          "expected_prior_revision",
+          "new_score",
+          "reason",
+          "idempotency_key"
+        ],
+        "properties": {
+          "grade_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "corrects_event_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expected_prior_revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "new_score": {
+            "type": "number",
+            "minimum": 0
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "createSubmissionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "assessment_id",
+          "student_id",
+          "private_artifact_id"
+        ],
+        "properties": {
+          "assessment_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "student_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "private_artifact_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "approveManualMarkingRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "submission_id",
+          "rubric_version",
+          "score",
+          "reviewer_id",
+          "expected_revision"
+        ],
+        "properties": {
+          "submission_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "rubric_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0
+          },
+          "reviewer_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "createAiMarkingJobRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "submission_id",
+          "rubric_version",
+          "model_version"
+        ],
+        "properties": {
+          "submission_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "rubric_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model_version": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "reviewAiMarkingJobRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "job_id",
+          "reviewer_id",
+          "decision",
+          "score",
+          "reason"
+        ],
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "reviewer_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "APPROVE",
+              "REJECT",
+              "EDIT"
+            ]
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "runDeterministicAnalyticsRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "source_revision",
+          "metric_set"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "source_revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "metric_set": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "keepWeaknessMemoryRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "snapshot_id",
+          "course_id",
+          "target_id",
+          "expected_revision"
+        ],
+        "properties": {
+          "snapshot_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "target_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "grantStaffCourseRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "staff_id",
+          "course_id",
+          "permission",
+          "expected_epoch"
+        ],
+        "properties": {
+          "staff_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "permission": {
+            "type": "string",
+            "enum": [
+              "COURSE_READ",
+              "ASSESSMENT_READ",
+              "GRADE_READ",
+              "GRADE_SUBMIT",
+              "SYNTHETIC_ROSTER_READ",
+              "SUBMISSION_READ",
+              "MANUAL_MARK",
+              "MATERIAL_READ",
+              "STAFF_ADMIN"
+            ]
+          },
+          "expected_epoch": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "revokeStaffGrantRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "staff_id",
+          "course_id",
+          "permission",
+          "expected_epoch"
+        ],
+        "properties": {
+          "staff_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "permission": {
+            "type": "string",
+            "enum": [
+              "COURSE_READ",
+              "MATERIAL_READ",
+              "GRADE_SUBMIT",
+              "STAFF_ADMIN"
+            ]
+          },
+          "expected_epoch": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "importRealStudentsRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "approval_id",
+          "batch_id",
+          "private_file_ref",
+          "purpose"
+        ],
+        "properties": {
+          "approval_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "batch_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "private_file_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "reviewVaultRetentionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "academic_year_id",
+          "mode",
+          "policy_version"
+        ],
+        "properties": {
+          "academic_year_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "DRY_RUN",
+              "APPROVE_ARCHIVE"
+            ]
+          },
+          "policy_version": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "closeAcademicYearRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "academic_year_id",
+          "expected_revision",
+          "approval_id",
+          "reason"
+        ],
+        "properties": {
+          "academic_year_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "approval_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "TeachingGroup": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "teaching_group_id",
+          "course_id",
+          "school_id",
+          "display_name",
+          "status",
+          "group_key"
+        ],
+        "properties": {
+          "teaching_group_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "school_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "display_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "ACTIVE",
+              "ARCHIVED"
+            ]
+          },
+          "group_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "TeachingGroupList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "items"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeachingGroup"
+            }
+          }
+        }
+      },
+      "Blueprint": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "blueprint_id",
+          "course_id",
+          "version",
+          "status",
+          "question_template_ids",
+          "rubric_version_ids",
+          "question_count",
+          "total_marks",
+          "revision"
+        ],
+        "properties": {
+          "blueprint_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "ARCHIVED"
+            ]
+          },
+          "question_template_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "rubric_version_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "question_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "total_marks": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "BlueprintVersionList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "blueprint_id",
+          "versions"
+        ],
+        "properties": {
+          "blueprint_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Blueprint"
+            }
+          }
+        }
+      },
+      "RubricVersion": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rubric_id",
+          "version",
+          "subject_id",
+          "status",
+          "criteria"
+        ],
+        "properties": {
+          "rubric_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "subject_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "status": {
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "ARCHIVED"
+            ]
+          },
+          "criteria": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "criterion_id",
+                "max_marks"
+              ],
+              "properties": {
+                "criterion_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "max_marks": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      },
+      "SubmissionList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "items"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Submission"
+            }
+          }
+        }
+      },
+      "VaultHealth": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "service",
+          "state",
+          "as_of",
+          "api_version"
+        ],
+        "properties": {
+          "service": {
+            "const": "vault"
+          },
+          "state": {
+            "enum": [
+              "HEALTHY",
+              "DEGRADED",
+              "DOWN"
+            ]
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "api_version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "VaultBackupState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "snapshot_id",
+          "snapshot_at",
+          "db_included",
+          "original_files_included",
+          "manifest_sha256",
+          "restore_last_tested_at"
+        ],
+        "properties": {
+          "snapshot_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "snapshot_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "db_included": {
+            "const": true
+          },
+          "original_files_included": {
+            "const": true
+          },
+          "manifest_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "restore_last_tested_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "CoreHealth": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "service",
+          "state",
+          "as_of",
+          "api_version"
+        ],
+        "properties": {
+          "service": {
+            "const": "operations"
+          },
+          "state": {
+            "enum": [
+              "HEALTHY",
+              "DEGRADED",
+              "DOWN"
+            ]
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "api_version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "CoreBackupState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "snapshot_id",
+          "snapshot_at",
+          "migration_hash",
+          "restore_last_tested_at"
+        ],
+        "properties": {
+          "snapshot_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "snapshot_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "migration_hash": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "restore_last_tested_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "createTeachingGroupRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "display_name",
+          "group_key"
+        ],
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "group_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "createBlueprintRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "course_id",
+          "question_template_ids",
+          "rubric_version_ids",
+          "question_count",
+          "total_marks"
+        ],
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "question_template_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "rubric_version_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "question_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "total_marks": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        }
+      },
+      "updateBlueprintDraftRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expected_revision",
+          "question_template_ids",
+          "rubric_version_ids",
+          "total_marks"
+        ],
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "question_template_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "rubric_version_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "total_marks": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        }
+      },
+      "publishBlueprintRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expected_revision"
+        ],
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "createRubricVersionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "subject_id",
+          "criteria"
+        ],
+        "properties": {
+          "subject_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "criteria": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "criterion_id",
+                "max_marks"
+              ],
+              "properties": {
+                "criterion_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "max_marks": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      },
+      "discardWeaknessSnapshotRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expected_revision",
+          "reason"
+        ],
+        "properties": {
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "ItemMarkingDecision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "decision_id",
+          "submission_id",
+          "question_item_id",
+          "rubric_version_id",
+          "score",
+          "max_score",
+          "actor_id",
+          "revision",
+          "state"
+        ],
+        "properties": {
+          "decision_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "submission_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "question_item_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "rubric_version_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0
+          },
+          "max_score": {
+            "type": "number",
+            "minimum": 0
+          },
+          "actor_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "state": {
+            "enum": [
+              "DRAFT",
+              "REVIEWED",
+              "CONFIRMED"
+            ]
+          }
+        }
+      },
+      "ItemMarkingDecisionList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "submission_id",
+          "items"
+        ],
+        "properties": {
+          "submission_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemMarkingDecision"
+            }
+          }
+        }
+      },
+      "markItemSubmissionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "question_item_id",
+          "rubric_version_id",
+          "score",
+          "max_score",
+          "expected_revision",
+          "idempotency_key"
+        ],
+        "properties": {
+          "question_item_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "rubric_version_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0
+          },
+          "max_score": {
+            "type": "number",
+            "minimum": 0
+          },
+          "expected_revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "idempotency_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      }
+    }
+  }
+}

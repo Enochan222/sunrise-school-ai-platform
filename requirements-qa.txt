@@ -1,3 +1,4 @@
+# Pinned test dependencies for Python 3.11.11; no cloud CI used.
 attrs==25.1.0
 jsonschema==4.23.0
 jsonschema-specifications==2024.10.1

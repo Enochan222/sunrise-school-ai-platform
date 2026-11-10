@@ -1,14 +1,16 @@
-# Stage 0 — current acceptance state (no GitHub Actions)
+# Stage 0 — Acceptance Checklist (Current Repo)
 
-- [x] Private fresh `Enochan222/sunrise-school-ai-platform`; old history not copied.
-- [x] `Protect main` Active: PR-only/squash, no bypass, block deletion and force push.
-- [x] Required GitHub Actions status check disabled per Owner decision; no GitHub Copilot.
-- [x] Prior PR #1 passed actual historical GitHub Actions tests; prior deliberate negative PR #2 failed and was closed. **These are historic bootstrap observations, not a current automated gate.**
-- [x] Exact original v0.7.5 archive verified locally; No-Actions adaptation built and local static QA passed.
-- [ ] Entire adapted Master Kit actually imported into GitHub preserving paths and hashes.
-- [ ] Full GitHub imported source verified again independently and 16 static test groups rerun against the exact PR commit.
-- [ ] Pinned Docker QA container actually built and executed (not possible in current GPT sandbox without Docker).
-- [ ] Owner confirms Course/TeachingGroup, A school ownership, S1 Gemini optional vs B S7, S4 Cutover, security/privacy, and cost boundaries.
-- [ ] Stage0 product acceptance recorded with real evidence in Issue. **Stage 1 NOT STARTED.**
+This is the new Enochan222 Stage0 record; see also `docs/stages/STAGE_00.md` acceptance IDs S0-AT01..S0-AT10.
 
-**Limit:** With no GitHub Actions or external CI, no server-enforced PR tests or automatic GPT trigger exist. Never claim a passing GPT comment automatically protects merges.
+- [x] New private GitHub Repo initialized; old commits/PRs/Issue/ADR history NOT imported.
+- [x] Current `Protect main` Ruleset uses PR-only, squash, no-bypass, force-push/delete blocked (actual enforcement requires testing against plan).
+- [x] Owner decided no GitHub Copilot / no GitHub Actions. Required Checks disabled.
+- [x] Original v0.7.5 ZIP safe-extracted, SHA verified, 149 entries, 148 original digest entries; migrated local package complete.
+- [x] 29 Stage specs, 100 proposed APIs, 310 designed acceptance IDs included in local candidate.
+- [x] Original source QA and new No-Actions local tests run; evidence is **local** only, no GitHub CI or real runtime.
+- [ ] Import fully prepared local candidate into `Enochan222` via docs-only PR; compare remote branch/tree and inspect Merge state. Existing GitHub connector cannot upload a local folder/ZIP directly.
+- [ ] Ensure all source/manifests, 13 QA scripts and zero Actions workflows are present in final merged GitHub `main`.
+- [ ] Owner explicitly approves required Course/TeachingGroup, school ownership, S1 Gemini option, S4 Cutover, hosting/privacy/cost decisions.
+- [ ] Stage0 approval with actual GitHub docs PR and evidence. S1 stays NOT IMPLEMENTED until its own real A tests pass.
+
+**No independent merge gate:** GitHub cannot automatically block untested PRs without an external service. Avoid unattended PR auto-merge. GPT's local QA output is evidence, not independently-enforced status.

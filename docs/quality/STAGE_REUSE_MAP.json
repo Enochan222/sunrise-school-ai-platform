@@ -1,0 +1,402 @@
+[
+  {
+    "stage": 0,
+    "owner": "P",
+    "reuse_existing_or_reference": "Open Notebook upstream knowledge/credentials/worker/REST；本 Repo 採獨立本地測試、不用 GitHub Actions",
+    "do_not_rebuild": "Stage 0 不部署任何 A/B/I/U Runtime 或雙庫 PoC，也不能把文檔批准當產品驗收",
+    "sunrise_owner_gap": "批准 reuse-first A/B/I/U、Course 粒度、A-only S1 搜尋及 Provider Optional、S4 受控 Cutover、新 Enochan222 Repo v0.7.5 docs-only PR",
+    "critical_risk": "不得將上游「單使用者 Notebook」推定為學校 RBAC；來源 ZIP 的 git SHA 未核實",
+    "impact_on_next": "S1 A、S3 B 都依本次 Owner 批准；Release 先後與技術依賴分開",
+    "trial_surface": "Owner 審批文件、GitHub Issue 與設計決策紀錄；沒有 Staging 部署",
+    "depends_on": []
+  },
+  {
+    "stage": 1,
+    "owner": "A",
+    "reuse_existing_or_reference": "ON notebooks CRUD, existing Next.js components, Sources upload, Text Search, async job status, notes and archive",
+    "do_not_rebuild": "Notebook 引擎、來源上載管線、全文抽取及原生 UI 組件",
+    "sunrise_owner_gap": "A Policy Gateway + ContentShell→Notebook 映射、Session、密碼 fail-start、原生 API 不暴露、Source 單一擁有者、A Restore",
+    "critical_risk": "原生 Notebook POST/DELETE、Source 多 Notebook reference、無 scope 全庫搜尋及來源列舉；`delete_source` 不能誤刪原檔",
+    "impact_on_next": "S2 Version/Source Manifest 依賴穩定 ID；S4 依賴可靠 A 服務操作；S23 不可使用原生 Admin Password",
+    "trial_surface": "A-owned受保護教學內容頁（可重用 ON UI 組件，必須換 API Client）",
+    "depends_on": [
+      0
+    ]
+  },
+  {
+    "stage": 2,
+    "owner": "A",
+    "reuse_existing_or_reference": "ON Source topics, timestamps, source list/filter/search, embeddings, text/vector search, ingestion status",
+    "do_not_rebuild": "第二套 PDF 抽取器、Embedding Store、搜尋引擎或一般來源列表 UI",
+    "sunrise_owner_gap": "版本化內容 Catalog、School/Source 權屬、發布狀態、原檔 Hash、權利政策、A versioned scoped service APIs、Consumer Fixtures",
+    "critical_risk": "上游 updated_at 不等同不可變 SourceVersion；Search results 為動態 Dict，引用 Locator 不保證長期穩定",
+    "impact_on_next": "S4 I Create/Adopt、S5 I Proxy、S9 Evidence、S23 Teacher Read 用同一 A Manifest/Scope；不直接連 B DB",
+    "trial_surface": "A-local source metadata editor + 同 Scope 結果／版本查詢",
+    "depends_on": [
+      1
+    ]
+  },
+  {
+    "stage": 3,
+    "owner": "B",
+    "reuse_existing_or_reference": "PostgreSQL/Supabase 原生 database/Auth capabilities（非 Open Notebook）",
+    "do_not_rebuild": "透過 SurrealDB 模擬校務 SQL／以 ON notebook 當 School Course",
+    "sunrise_owner_gap": "B School/Subject/Year/Course/TeachingGroup、UNLINKED 狀態、原子 Reserve/Finalize/operation log、B-only Restore、服務端 Admin Session Issuer",
+    "critical_risk": "Course 不等於 Class；一個 Course 多 TeachingGroups；即使尚未安裝 A 也可用 B Admin CRUD",
+    "impact_on_next": "S4 不得依賴新 B API；S6/15/22 永遠保留 Course grain",
+    "trial_surface": "B 本地受保護的 Course / TeachingGroup CRUD 管理頁與恢復報告",
+    "depends_on": [
+      0
+    ]
+  },
+  {
+    "stage": 4,
+    "owner": "I",
+    "reuse_existing_or_reference": "S2 A service API + S3 B service API only",
+    "do_not_rebuild": "自行建第二套 Notebook／從 I 直連兩個 DB／將 ON raw Secret 放 I",
+    "sunrise_owner_gap": "I Create/Adopt Saga、A/B immutable IDs、冪等、故障查詢/重試/隔離、跨服務讀回與最小 restore reconciliation",
+    "critical_risk": "S3 B Reserve/Course 原子操作；A Create ACK loss；S4 Cutover 半完成；不能自動 Delete 已建 Notebook",
+    "impact_on_next": "S5 U 與 S9/S23 檢索均靠 ACTIVE Binding；不以同名 Course 自動配對",
+    "trial_surface": "I-only Link Console + 兩邊既存 API 操作紀錄",
+    "depends_on": [
+      2,
+      3
+    ]
+  },
+  {
+    "stage": 5,
+    "owner": "U",
+    "reuse_existing_or_reference": "ON Next.js UI 的檔案表格/搜尋/Notebook context UI pattern；S4 API facades",
+    "do_not_rebuild": "另寫整套 A Source 搜尋或暴露 ON 全功能原生 UI",
+    "sunrise_owner_gap": "Sunrise U Course / Materials / Upload / Search / Download／link-state／Session UX",
+    "critical_risk": "重用元件不能重用直接呼叫原生 ON API 的 Client；不預先顯示 Assessment / Grades",
+    "impact_on_next": "S10 U 生成、S21 U 成績、S24 U 教師分別另出前端版本",
+    "trial_surface": "Sunrise U 真正可登入 Course / Content 入口",
+    "depends_on": [
+      4
+    ]
+  },
+  {
+    "stage": 6,
+    "owner": "B",
+    "reuse_existing_or_reference": "ON custom Transformations/Prompt 管線只作參考；Math-paper Question Schema 想法",
+    "do_not_rebuild": "在 A Transformations 儲存正式 Question/Blueprint/Rubric、複製整個 Math-paper App",
+    "sunrise_owner_gap": "B Blueprint / Question / Answer / Rubric 的版本化 CRUD、Validators 及學科擴展接口",
+    "critical_risk": "ON Transforms 不支援正式 item score/answer rubric version；不能把 Markdown 當正式 Question contract",
+    "impact_on_next": "S8 Queue 只引用已 Published blueprint_version；S11–14 逐科穩定擴充",
+    "trial_surface": "B-local question/blueprint editor + validation",
+    "depends_on": [
+      3
+    ]
+  },
+  {
+    "stage": 7,
+    "owner": "B",
+    "reuse_existing_or_reference": "ON 已有 Gemini 等 Provider Key/Models Connection Test/Encryption Code 供設計參考",
+    "do_not_rebuild": "第二套 A Gemini Key 管理頁或把 Open Notebook Key 直接交 B",
+    "sunrise_owner_gap": "B 獨立 Generation Provider Secret 設定、Test、Revocation、Model Readiness、成本/配額狀態",
+    "critical_risk": "A Key 與 B Key 係兩個憑證域；同一 Admin 輸入未代表兩服務可共享；不得直接查 SurrealDB Key",
+    "impact_on_next": "S8 B generation uses B provider; S19 marking uses provider policy",
+    "trial_surface": "B-local Provider Settings + 試用結果",
+    "depends_on": [
+      3
+    ]
+  },
+  {
+    "stage": 8,
+    "owner": "B",
+    "reuse_existing_or_reference": "ON 內部 surreal-commands 僅用於 A 文件處理；可借鑑任務狀態 UI",
+    "do_not_rebuild": "將 A Worker Queue 直接當 B durable paper/marking queue；聲稱 upstream job cancel 完整可用",
+    "sunrise_owner_gap": "B durable Queue + idempotent jobs/attempts + Prompt Model audit + Draft validators + Human approval",
+    "critical_risk": "ON `CommandService.list_command_jobs()` 仍返回空列表，`cancel_command_job()` 只 log/return True；與 B 完整 job lifecycle 不等價",
+    "impact_on_next": "S9 I 可選 Evidence；S11–14 用既有 Job 基礎；S19 Marking 借用 B Queue",
+    "trial_surface": "B-local job console，真實 draft 可批准保存",
+    "depends_on": [
+      6,
+      7
+    ]
+  },
+  {
+    "stage": 9,
+    "owner": "I",
+    "reuse_existing_or_reference": "ON `POST /search` text/vector/Ask, Source provenance; S4 I binding",
+    "do_not_rebuild": "重建 RAG Retriever/Embedding Engine；把 ON Ask 原文當作正式引用正確性證明",
+    "sunrise_owner_gap": "I server-side Course authorization、綁定版本、Evidence bundle、簽名／revalidation／撤銷／注入防護",
+    "critical_risk": "ON scope 省略即全庫；SearchResponse results 為 Dict 而非凍結 Citations；相同 Job 可以再驗證不可當 replay",
+    "impact_on_next": "S10 U 用 I Evidence；S11–14 B Paper 仍需 Domain/Human proof",
+    "trial_surface": "I-only Evidence contract + service-to-service 測試 console",
+    "depends_on": [
+      4,
+      8
+    ]
+  },
+  {
+    "stage": 10,
+    "owner": "U",
+    "reuse_existing_or_reference": "ON Chat/context/Ask UI 可作交互模式參考；S8/B S9/I APIs",
+    "do_not_rebuild": "把 A Chat workflow 當 B 出卷儲存或在 U 寫生成業務規則",
+    "sunrise_owner_gap": "Sunrise U Task/Blueprint/Evidence/Approval 純展示/操作入口",
+    "critical_risk": "U 不持 provider secret；S9 A 斷線要明確提示，而非假成功或全庫 fallback",
+    "impact_on_next": "後續四科試卷 UI 只可在各自 B-local Console 或另開 U-only stage 呈現",
+    "trial_surface": "Sunrise U 可提交任務、檢視 Draft 及引用",
+    "depends_on": [
+      5,
+      9
+    ]
+  },
+  {
+    "stage": 11,
+    "owner": "B",
+    "reuse_existing_or_reference": "ON 可渲染 KaTeX、來源文字；Math-paper 題目/答案/圖像 schema 作設計參考",
+    "do_not_rebuild": "以 ON note/Transformation 冒充正式數學卷或將 Math-paper 前端整包移植",
+    "sunrise_owner_gap": "B Math question renderer、確定性答案檢查、Fullmark constraint、PDF export、Answer key",
+    "critical_risk": "S8 模型答覆可能錯；圖表、分數、引用、PDF 裁切均需實測，不改 A",
+    "impact_on_next": "S18 Submission 引用不可變 Paper/Item Version；U 要有獨立呈現安排",
+    "trial_surface": "B local paper preview / PDF download",
+    "depends_on": [
+      6,
+      8
+    ]
+  },
+  {
+    "stage": 12,
+    "owner": "B",
+    "reuse_existing_or_reference": "S6 Question Contract + B Maths PDF pipeline",
+    "do_not_rebuild": "複製一份中文專屬 Queue、重寫數學共用 PDF 引擎",
+    "sunrise_owner_gap": "B 中文 Question Type、繁體字版面、閱讀理解、寫作 Rubric、人審 Gold Cases",
+    "critical_risk": "不能只修改 Prompt 就聲稱中文科可用；閱讀理解及主觀作文答案需要專科人工覆核，不能默認唯一答案",
+    "impact_on_next": "S18/S19 Marking 支援中文作文／人工驗收",
+    "trial_surface": "B local Chinese paper preview/PDF",
+    "depends_on": [
+      11
+    ]
+  },
+  {
+    "stage": 13,
+    "owner": "B",
+    "reuse_existing_or_reference": "S6 Contract + S11 B PDF service; Math-paper 某些答題形式可作類型參考",
+    "do_not_rebuild": "不複製一份英文專用資料庫／Queue，也不直接以其他科的答案判分器當成英文題目真值",
+    "sunrise_owner_gap": "B 英文 Grammar/Reading/Writing validators、rubric、PDF",
+    "critical_risk": "英文寫作及閱讀理解可能有多個合理答案，須經獨立 Gold Dataset 與人工覆核，不能只憑 LLM 同意",
+    "impact_on_next": "S19 英文 AI marking benchmark 題目對齊",
+    "trial_surface": "B local English paper preview/PDF",
+    "depends_on": [
+      11
+    ]
+  },
+  {
+    "stage": 14,
+    "owner": "B",
+    "reuse_existing_or_reference": "S11 產卷基礎 + S9 已核實 Evidence 片段（可選）",
+    "do_not_rebuild": "不能讓 A 原生問答直接承擔正式常識題目的正確性、引用有效性或評分責任",
+    "sunrise_owner_gap": "B 常識科 Topic/fact-date/provenance/多答案 Rubric、人工查證",
+    "critical_risk": "有 Source citation 不代表當期事實正確；不同教材版本和地區課綱需標明",
+    "impact_on_next": "S19 判分與 S20 Analytics topic grouping",
+    "trial_surface": "B local General Studies paper preview/PDF",
+    "depends_on": [
+      11
+    ]
+  },
+  {
+    "stage": 15,
+    "owner": "B",
+    "reuse_existing_or_reference": "B S3 TeachingGroup/Course IDs；原生 Supabase DB/RLS 可作工具",
+    "do_not_rebuild": "將學生個資寫入 A/Notebook；過早上線實名學生",
+    "sunrise_owner_gap": "B synthetic Student/Enrollment with exact TeachingGroup, import idempotency and full school scope",
+    "critical_risk": "Demo data 必須確認合成、班級不等 Course；重新匯入不可重複",
+    "impact_on_next": "S16 Assessment S17 Grades S18 Submission 全部引用穩定合成 Student ID",
+    "trial_surface": "B 本地受保護的虛構學生名冊與 TeachingGroup 選課操作頁",
+    "depends_on": [
+      3
+    ]
+  },
+  {
+    "stage": 16,
+    "owner": "B",
+    "reuse_existing_or_reference": "B S6 Question/Blueprint/Rubric、S15 Synthetic Students",
+    "do_not_rebuild": "重新開一套成績 DB 或讓 ON notes 保存草稿",
+    "sunrise_owner_gap": "B Assessment versions、Score Draft CRUD、分數校驗與歷史",
+    "critical_risk": "Draft 可改但未正式提交，不能對後續 ledger 構成權威 grade",
+    "impact_on_next": "S17 Grade immutable submit，S18 manual marking",
+    "trial_surface": "B local assessment / draft editor",
+    "depends_on": [
+      6,
+      15
+    ]
+  },
+  {
+    "stage": 17,
+    "owner": "B",
+    "reuse_existing_or_reference": "Postgres constraints/transactions/RLS + S16 Draft",
+    "do_not_rebuild": "用 ON Source、一般可覆寫 row、前端限制代替 immutable score",
+    "sunrise_owner_gap": "B append-only Grade Event + correction with canonical_request_hash + CAS revision + replay projection",
+    "critical_risk": "同 key 不同 payload 應 409；DB 超級用戶無法被一般 append-only 保證約束",
+    "impact_on_next": "S18 manual grading / S20 analytics／S27 retention 視 Grade ledger 為真值",
+    "trial_surface": "B local ledger submit/history/correction UI",
+    "depends_on": [
+      16
+    ]
+  },
+  {
+    "stage": 18,
+    "owner": "B",
+    "reuse_existing_or_reference": "S11 B Paper Item IDs + S17 Grade Ledger; PTH_Homework 流程可作研究",
+    "do_not_rebuild": "把 PTH_Homework 原來 public CORS / BYOK API 搬到生產當安全邊界",
+    "sunrise_owner_gap": "B synthetic submissions、逐題 Rubric version／manual marking／human approval",
+    "critical_risk": "答卷重試不覆寫原文件、課程/student/item 不可錯配；不得直寫 current_grade",
+    "impact_on_next": "S19 AI Suggestions ground truth；S21 U 顯示改卷結果",
+    "trial_surface": "B local submission/marking console",
+    "depends_on": [
+      11,
+      17
+    ]
+  },
+  {
+    "stage": 19,
+    "owner": "B",
+    "reuse_existing_or_reference": "PTH_Homework multi-pass candidate reasoning，人工誤差比較概念",
+    "do_not_rebuild": "用兩／三次 LLM 一致當正確；直接採用其 HTTP API / BYOK/CORS",
+    "sunrise_owner_gap": "B AI Suggest, alignment/partial-credit benchmark, confidence, human acceptance + ledger API",
+    "critical_risk": "人工 Gold Set 覆核，OCR/抽取錯即使多模型一致也可能錯",
+    "impact_on_next": "S21 U 讀標記結果／S22 Staff grant 功能",
+    "trial_surface": "B local AI marking review console",
+    "depends_on": [
+      18,
+      8
+    ]
+  },
+  {
+    "stage": 20,
+    "owner": "B",
+    "reuse_existing_or_reference": "B S17 ledger immutable event + S6 Topic metadata; no A data",
+    "do_not_rebuild": "讓 ON RAG Score 或模型猜測取代 deterministic SQL analytics",
+    "sunrise_owner_gap": "B metrics Snapshot/Candidate/Keep2/Discard/STALE/RETIRED and watermark",
+    "critical_risk": "Weakness Keep2 只限 ACTIVE 記憶，不可刪真正的 Grades／統計",
+    "impact_on_next": "S21 UI 要候選／Discard／Stale 讀寫，S27 Closing 要能 Retire",
+    "trial_surface": "B local Analytics/Weakness Console",
+    "depends_on": [
+      17
+    ]
+  },
+  {
+    "stage": 21,
+    "owner": "U",
+    "reuse_existing_or_reference": "S10 U Generation + S15–20 B Existing APIs",
+    "do_not_rebuild": "U 直接 SQL；為了 UI 方便偷開新 B endpoints",
+    "sunrise_owner_gap": "Sunrise U Roster/Assessment/Grade History/manual+AI Marking/Weakness Dashboard",
+    "critical_risk": "S18 S19 要成為明確 Technical prerequisites；不能用未發布的 B Marking read APIs",
+    "impact_on_next": "S24 Teacher-specific extension 重用此 UI 頁與針對 Staff scope 逐項禁權",
+    "trial_surface": "Sunrise U 合成學生成績、改卷結果及弱項分析完整工作台",
+    "depends_on": [
+      10,
+      17,
+      18,
+      19,
+      20
+    ]
+  },
+  {
+    "stage": 22,
+    "owner": "B",
+    "reuse_existing_or_reference": "B existing Supabase Auth/RLS patterns + early school/course/group model",
+    "do_not_rebuild": "重造 A multi-user ACL 或讓教師共用 ON admin key",
+    "sunrise_owner_gap": "B StaffSession/MFA(按政策)/invitation/grants + backend resource checks, revoke epoch",
+    "critical_risk": "教師需有真實可用 B operations，不只查自身 Grant；不能自動授權 A",
+    "impact_on_next": "S23 I Staff course-level read；S24 U staff portal；S25 real PII gate",
+    "trial_surface": "B teacher sign-in + authorized course/grade/marking actions",
+    "depends_on": [
+      3,
+      17,
+      18,
+      20
+    ]
+  },
+  {
+    "stage": 23,
+    "owner": "I",
+    "reuse_existing_or_reference": "S4 I Binding, S22 B grants, S2 A search/download API",
+    "do_not_rebuild": "在 A 原生 API 開 teacher password 或在 I 直接查 B 資料庫",
+    "sunrise_owner_gap": "I StaffSession→B service Grant lookup→A scoped read only（含 search/download）",
+    "critical_risk": "舊 token/cache 撤銷失效；Cross School/Course/Group 需要負面測試",
+    "impact_on_next": "S24 U teacher content UI/S25 real PII preconditions",
+    "trial_surface": "I read-only teacher API console",
+    "depends_on": [
+      4,
+      22
+    ]
+  },
+  {
+    "stage": 24,
+    "owner": "U",
+    "reuse_existing_or_reference": "S5 U Course, S21 U Assessment workspace + S23 I teacher read",
+    "do_not_rebuild": "重寫 A Notebook page，或在 U 幫 B 補角色授權",
+    "sunrise_owner_gap": "U Teacher dashboard/read-only materials＋B permitted assignment/marking UI",
+    "critical_risk": "客戶端隱藏按鈕不構成安全控制，B/I server-side 仍須授權；無權時不能誤顯資料",
+    "impact_on_next": "S25 real student readiness / staff onboarding workflow",
+    "trial_surface": "Sunrise U 教師課程／教材／被授權 B 學務功能操作入口",
+    "depends_on": [
+      5,
+      21,
+      23
+    ]
+  },
+  {
+    "stage": 25,
+    "owner": "B",
+    "reuse_existing_or_reference": "S22 B staff grants, S24 U existing UI",
+    "do_not_rebuild": "不把 A 的來源 Notebook 當作真實學生及正式成績資料庫，亦不繞過校方隱私批准程序",
+    "sunrise_owner_gap": "B real student/PII input behind school policy consent & provider terms, mandatory isolation/retention",
+    "critical_risk": "未經校方批准仍需 Fail Closed；由 synthetic 切 real 需完整授權／刪改稽核",
+    "impact_on_next": "S27 B year closure/retention supports legal holds; A materials never affected",
+    "trial_surface": "B approved school environment, real-data UAT only after approval",
+    "depends_on": [
+      22,
+      23,
+      24
+    ]
+  },
+  {
+    "stage": 26,
+    "owner": "A",
+    "reuse_existing_or_reference": "ON notebook archived field / Source updated/topics + A source files",
+    "do_not_rebuild": "自行重建整個 ON notebook 檔案存儲/備份引擎，或藉 archive 直接 hard-delete",
+    "sunrise_owner_gap": "A retention policies, source version retention, hash/backup-status read APIs and archive UI",
+    "critical_risk": "S1 已需最小 backup+restore；來源版權政策先定，不能等到 S26",
+    "impact_on_next": "S28 I health/backup view only through API; no DB access",
+    "trial_surface": "A local source-year archive & recovery report",
+    "depends_on": [
+      2
+    ]
+  },
+  {
+    "stage": 27,
+    "owner": "B",
+    "reuse_existing_or_reference": "B grade ledger/projections/assessment state, Postgres backup tools",
+    "do_not_rebuild": "從 B 發命令刪 A notebook / 藉 closing 清除 Grade Events",
+    "sunrise_owner_gap": "B year-close transition, pending assessment checks, grade audit/retention, health/backup service status",
+    "critical_risk": "S18 pending marking/S20 weakness stale scope 需進入 Closing Gate；不同 A 年度封存互不觸發",
+    "impact_on_next": "S28 I dashboard consumes owner-only read status",
+    "trial_surface": "B local year-close and retention admin console",
+    "depends_on": [
+      17,
+      18,
+      20,
+      25
+    ]
+  },
+  {
+    "stage": 28,
+    "owner": "I",
+    "reuse_existing_or_reference": "S4 I core reconcile + S26 A and S27 B health/backups APIs",
+    "do_not_rebuild": "新增 I 管理 DB 用於跨服務 SQL、代替 A/B 自己 Restore",
+    "sunrise_owner_gap": "I read-only health/version/backup manifest dashboards and mismatch/quarantine alerts",
+    "critical_risk": "A/B 各自 restore+cross snapshot discrepancy impossible to hide, I no DB credentials",
+    "impact_on_next": "運維後續以此基線做事件響應/告警，不改兩邊 backup",
+    "trial_surface": "I 唯讀管理員健康狀態、備份狀態及跨服務異常對帳 Dashboard",
+    "depends_on": [
+      4,
+      26,
+      27
+    ]
+  }
+]

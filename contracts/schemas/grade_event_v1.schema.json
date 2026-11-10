@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Grade Event v1 B owner",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "grade_key",
+    "event_type",
+    "revision",
+    "score",
+    "actor_id",
+    "created_at",
+    "operation_id",
+    "canonical_request_hash"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "grade_key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "event_type": {
+      "enum": [
+        "SUBMIT",
+        "CORRECT"
+      ]
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "score": {
+      "type": "number",
+      "minimum": 0
+    },
+    "actor_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "operation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 3
+    },
+    "corrects_event_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expected_prior_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "canonical_request_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "CORRECT"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "reason",
+          "corrects_event_id",
+          "expected_prior_revision"
+        ]
+      }
+    }
+  ]
+}

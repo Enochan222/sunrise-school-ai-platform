@@ -1,0 +1,683 @@
+[
+  {
+    "stage": 0,
+    "track": "P",
+    "name": "Planning Baseline & Security Decisions",
+    "release": "—",
+    "depends_on": [],
+    "old_stage": 0,
+    "acceptance_ids": [
+      "S0-AT01",
+      "S0-AT02",
+      "S0-AT03",
+      "S0-AT04",
+      "S0-AT05",
+      "S0-AT06",
+      "S0-AT07",
+      "S0-AT08",
+      "S0-AT09",
+      "S0-AT10"
+    ]
+  },
+  {
+    "stage": 1,
+    "track": "A",
+    "name": "Secure Open Notebook Vault",
+    "release": "R01",
+    "depends_on": [
+      0
+    ],
+    "old_stage": 1,
+    "acceptance_ids": [
+      "S1-AT01",
+      "S1-AT02",
+      "S1-AT03",
+      "S1-AT04",
+      "S1-AT05",
+      "S1-AT06",
+      "S1-AT07",
+      "S1-AT08",
+      "S1-AT09",
+      "S1-AT10",
+      "S1-AT11",
+      "S1-AT12",
+      "S1-AT13",
+      "S1-AT14",
+      "S1-AT15"
+    ]
+  },
+  {
+    "stage": 2,
+    "track": "A",
+    "name": "Versioned Content Catalog & A Contract Freeze",
+    "release": "R02",
+    "depends_on": [
+      1
+    ],
+    "old_stage": 2,
+    "acceptance_ids": [
+      "S2-AT01",
+      "S2-AT02",
+      "S2-AT03",
+      "S2-AT04",
+      "S2-AT05",
+      "S2-AT06",
+      "S2-AT07",
+      "S2-AT08",
+      "S2-AT09",
+      "S2-AT10",
+      "S2-AT11",
+      "S2-AT12",
+      "S2-AT13",
+      "S2-AT14",
+      "S2-AT15"
+    ]
+  },
+  {
+    "stage": 3,
+    "track": "B",
+    "name": "Independent Academic Course & B Contract Freeze",
+    "release": "R03",
+    "depends_on": [
+      0
+    ],
+    "old_stage": 3,
+    "acceptance_ids": [
+      "S3-AT01",
+      "S3-AT02",
+      "S3-AT03",
+      "S3-AT04",
+      "S3-AT05",
+      "S3-AT06",
+      "S3-AT07",
+      "S3-AT08",
+      "S3-AT09",
+      "S3-AT10",
+      "S3-AT11",
+      "S3-AT12",
+      "S3-AT13",
+      "S3-AT14",
+      "S3-AT15",
+      "S3-AT16",
+      "S3-AT17"
+    ]
+  },
+  {
+    "stage": 4,
+    "track": "I",
+    "name": "Course–Content Linking & Core Recovery",
+    "release": "R04",
+    "depends_on": [
+      2,
+      3
+    ],
+    "old_stage": 7,
+    "acceptance_ids": [
+      "S4-AT01",
+      "S4-AT02",
+      "S4-AT03",
+      "S4-AT04",
+      "S4-AT05",
+      "S4-AT06",
+      "S4-AT07",
+      "S4-AT08",
+      "S4-AT09",
+      "S4-AT10",
+      "S4-AT11",
+      "S4-AT12",
+      "S4-AT13",
+      "S4-AT14",
+      "S4-AT15",
+      "S4-AT16",
+      "S4-AT17",
+      "S4-AT18",
+      "S4-AT19",
+      "S4-AT20",
+      "S4-AT21"
+    ]
+  },
+  {
+    "stage": 5,
+    "track": "U",
+    "name": "Sunrise Course & Content Admin Portal",
+    "release": "R05",
+    "depends_on": [
+      4
+    ],
+    "old_stage": 8,
+    "acceptance_ids": [
+      "S5-AT01",
+      "S5-AT02",
+      "S5-AT03",
+      "S5-AT04",
+      "S5-AT05",
+      "S5-AT06",
+      "S5-AT07",
+      "S5-AT08",
+      "S5-AT09",
+      "S5-AT10",
+      "S5-AT11",
+      "S5-AT12"
+    ]
+  },
+  {
+    "stage": 6,
+    "track": "B",
+    "name": "Question/Answer/Rubric Schema Studio",
+    "release": "R06",
+    "depends_on": [
+      3
+    ],
+    "old_stage": null,
+    "acceptance_ids": [
+      "S6-AT01",
+      "S6-AT02",
+      "S6-AT03",
+      "S6-AT04",
+      "S6-AT05",
+      "S6-AT06",
+      "S6-AT07",
+      "S6-AT08",
+      "S6-AT09"
+    ]
+  },
+  {
+    "stage": 7,
+    "track": "B",
+    "name": "AI Provider Key & Capability Settings",
+    "release": "R07",
+    "depends_on": [
+      3
+    ],
+    "old_stage": null,
+    "acceptance_ids": [
+      "S7-AT01",
+      "S7-AT02",
+      "S7-AT03",
+      "S7-AT04",
+      "S7-AT05",
+      "S7-AT06",
+      "S7-AT07"
+    ]
+  },
+  {
+    "stage": 8,
+    "track": "B",
+    "name": "Durable Generation Queue & Draft Review",
+    "release": "R08",
+    "depends_on": [
+      6,
+      7
+    ],
+    "old_stage": 9,
+    "acceptance_ids": [
+      "S8-AT01",
+      "S8-AT02",
+      "S8-AT03",
+      "S8-AT04",
+      "S8-AT05",
+      "S8-AT06",
+      "S8-AT07",
+      "S8-AT08",
+      "S8-AT09",
+      "S8-AT10",
+      "S8-AT11",
+      "S8-AT12",
+      "S8-AT13"
+    ]
+  },
+  {
+    "stage": 9,
+    "track": "I",
+    "name": "Version-pinned Notebook Evidence Bridge",
+    "release": "R09",
+    "depends_on": [
+      4,
+      8
+    ],
+    "old_stage": 10,
+    "acceptance_ids": [
+      "S9-AT01",
+      "S9-AT02",
+      "S9-AT03",
+      "S9-AT04",
+      "S9-AT05",
+      "S9-AT06",
+      "S9-AT07",
+      "S9-AT08",
+      "S9-AT09",
+      "S9-AT10",
+      "S9-AT11",
+      "S9-AT12",
+      "S9-AT13",
+      "S9-AT14",
+      "S9-AT15"
+    ]
+  },
+  {
+    "stage": 10,
+    "track": "U",
+    "name": "Sunrise Generation & Evidence Workspace",
+    "release": "R10",
+    "depends_on": [
+      5,
+      9
+    ],
+    "old_stage": null,
+    "acceptance_ids": [
+      "S10-AT01",
+      "S10-AT02",
+      "S10-AT03",
+      "S10-AT04",
+      "S10-AT05",
+      "S10-AT06",
+      "S10-AT07"
+    ]
+  },
+  {
+    "stage": 11,
+    "track": "B",
+    "name": "Mathematics Paper Builder & PDF",
+    "release": "R11",
+    "depends_on": [
+      6,
+      8
+    ],
+    "old_stage": 12,
+    "acceptance_ids": [
+      "S11-AT01",
+      "S11-AT02",
+      "S11-AT03",
+      "S11-AT04",
+      "S11-AT05",
+      "S11-AT06",
+      "S11-AT07",
+      "S11-AT08",
+      "S11-AT09",
+      "S11-AT10"
+    ]
+  },
+  {
+    "stage": 12,
+    "track": "B",
+    "name": "Chinese Language Paper Adapter",
+    "release": "R12",
+    "depends_on": [
+      11
+    ],
+    "old_stage": 15,
+    "acceptance_ids": [
+      "S12-AT01",
+      "S12-AT02",
+      "S12-AT03",
+      "S12-AT04",
+      "S12-AT05",
+      "S12-AT06",
+      "S12-AT07",
+      "S12-AT08"
+    ]
+  },
+  {
+    "stage": 13,
+    "track": "B",
+    "name": "English Language Paper Adapter",
+    "release": "R13",
+    "depends_on": [
+      11
+    ],
+    "old_stage": 22,
+    "acceptance_ids": [
+      "S13-AT01",
+      "S13-AT02",
+      "S13-AT03",
+      "S13-AT04",
+      "S13-AT05",
+      "S13-AT06",
+      "S13-AT07",
+      "S13-AT08"
+    ]
+  },
+  {
+    "stage": 14,
+    "track": "B",
+    "name": "General Studies Paper Adapter",
+    "release": "R14",
+    "depends_on": [
+      11
+    ],
+    "old_stage": 23,
+    "acceptance_ids": [
+      "S14-AT01",
+      "S14-AT02",
+      "S14-AT03",
+      "S14-AT04",
+      "S14-AT05",
+      "S14-AT06",
+      "S14-AT07",
+      "S14-AT08"
+    ]
+  },
+  {
+    "stage": 15,
+    "track": "B",
+    "name": "Synthetic Student Roster",
+    "release": "R15",
+    "depends_on": [
+      3
+    ],
+    "old_stage": 4,
+    "acceptance_ids": [
+      "S15-AT01",
+      "S15-AT02",
+      "S15-AT03",
+      "S15-AT04",
+      "S15-AT05",
+      "S15-AT06",
+      "S15-AT07",
+      "S15-AT08",
+      "S15-AT09",
+      "S15-AT10"
+    ]
+  },
+  {
+    "stage": 16,
+    "track": "B",
+    "name": "Assessment & Score Drafts",
+    "release": "R16",
+    "depends_on": [
+      6,
+      15
+    ],
+    "old_stage": 5,
+    "acceptance_ids": [
+      "S16-AT01",
+      "S16-AT02",
+      "S16-AT03",
+      "S16-AT04",
+      "S16-AT05",
+      "S16-AT06",
+      "S16-AT07",
+      "S16-AT08",
+      "S16-AT09"
+    ]
+  },
+  {
+    "stage": 17,
+    "track": "B",
+    "name": "Append-only Grade Events & Corrections",
+    "release": "R17",
+    "depends_on": [
+      16
+    ],
+    "old_stage": 6,
+    "acceptance_ids": [
+      "S17-AT01",
+      "S17-AT02",
+      "S17-AT03",
+      "S17-AT04",
+      "S17-AT05",
+      "S17-AT06",
+      "S17-AT07",
+      "S17-AT08",
+      "S17-AT09",
+      "S17-AT10",
+      "S17-AT11",
+      "S17-AT12"
+    ]
+  },
+  {
+    "stage": 18,
+    "track": "B",
+    "name": "Submissions & Manual Marking",
+    "release": "R18",
+    "depends_on": [
+      11,
+      17
+    ],
+    "old_stage": 13,
+    "acceptance_ids": [
+      "S18-AT01",
+      "S18-AT02",
+      "S18-AT03",
+      "S18-AT04",
+      "S18-AT05",
+      "S18-AT06",
+      "S18-AT07",
+      "S18-AT08",
+      "S18-AT09",
+      "S18-AT10",
+      "S18-AT11"
+    ]
+  },
+  {
+    "stage": 19,
+    "track": "B",
+    "name": "AI-assisted Marking Benchmark & Review",
+    "release": "R19",
+    "depends_on": [
+      18,
+      8
+    ],
+    "old_stage": 14,
+    "acceptance_ids": [
+      "S19-AT01",
+      "S19-AT02",
+      "S19-AT03",
+      "S19-AT04",
+      "S19-AT05",
+      "S19-AT06",
+      "S19-AT07",
+      "S19-AT08",
+      "S19-AT09"
+    ]
+  },
+  {
+    "stage": 20,
+    "track": "B",
+    "name": "Deterministic Analytics & Weakness Keep-two",
+    "release": "R20",
+    "depends_on": [
+      17
+    ],
+    "old_stage": 11,
+    "acceptance_ids": [
+      "S20-AT01",
+      "S20-AT02",
+      "S20-AT03",
+      "S20-AT04",
+      "S20-AT05",
+      "S20-AT06",
+      "S20-AT07",
+      "S20-AT08",
+      "S20-AT09",
+      "S20-AT10",
+      "S20-AT11"
+    ]
+  },
+  {
+    "stage": 21,
+    "track": "U",
+    "name": "Sunrise Assessment/Analytics Workspace",
+    "release": "R21",
+    "depends_on": [
+      10,
+      17,
+      18,
+      19,
+      20
+    ],
+    "old_stage": null,
+    "acceptance_ids": [
+      "S21-AT01",
+      "S21-AT02",
+      "S21-AT03",
+      "S21-AT04",
+      "S21-AT05",
+      "S21-AT06",
+      "S21-AT07"
+    ]
+  },
+  {
+    "stage": 22,
+    "track": "B",
+    "name": "Staff IAM, Grants & B Authorization",
+    "release": "R22",
+    "depends_on": [
+      3,
+      17,
+      18,
+      20
+    ],
+    "old_stage": 16,
+    "acceptance_ids": [
+      "S22-AT01",
+      "S22-AT02",
+      "S22-AT03",
+      "S22-AT04",
+      "S22-AT05",
+      "S22-AT06",
+      "S22-AT07",
+      "S22-AT08",
+      "S22-AT09",
+      "S22-AT10",
+      "S22-AT11",
+      "S22-AT12"
+    ]
+  },
+  {
+    "stage": 23,
+    "track": "I",
+    "name": "Teacher Read-only Course Content",
+    "release": "R23",
+    "depends_on": [
+      4,
+      22
+    ],
+    "old_stage": 17,
+    "acceptance_ids": [
+      "S23-AT01",
+      "S23-AT02",
+      "S23-AT03",
+      "S23-AT04",
+      "S23-AT05",
+      "S23-AT06",
+      "S23-AT07",
+      "S23-AT08",
+      "S23-AT09",
+      "S23-AT10",
+      "S23-AT11",
+      "S23-AT12",
+      "S23-AT13"
+    ]
+  },
+  {
+    "stage": 24,
+    "track": "U",
+    "name": "Sunrise Teacher Portal UI",
+    "release": "R24",
+    "depends_on": [
+      5,
+      21,
+      23
+    ],
+    "old_stage": null,
+    "acceptance_ids": [
+      "S24-AT01",
+      "S24-AT02",
+      "S24-AT03",
+      "S24-AT04",
+      "S24-AT05",
+      "S24-AT06"
+    ]
+  },
+  {
+    "stage": 25,
+    "track": "B",
+    "name": "Approved Real Student Data Gate",
+    "release": "R25",
+    "depends_on": [
+      22,
+      23,
+      24
+    ],
+    "old_stage": 18,
+    "acceptance_ids": [
+      "S25-AT01",
+      "S25-AT02",
+      "S25-AT03",
+      "S25-AT04",
+      "S25-AT05",
+      "S25-AT06",
+      "S25-AT07",
+      "S25-AT08"
+    ]
+  },
+  {
+    "stage": 26,
+    "track": "A",
+    "name": "Content Retention & Annual Archive Tools",
+    "release": "R26",
+    "depends_on": [
+      2
+    ],
+    "old_stage": 19,
+    "acceptance_ids": [
+      "S26-AT01",
+      "S26-AT02",
+      "S26-AT03",
+      "S26-AT04",
+      "S26-AT05",
+      "S26-AT06",
+      "S26-AT07",
+      "S26-AT08",
+      "S26-AT09"
+    ]
+  },
+  {
+    "stage": 27,
+    "track": "B",
+    "name": "Academic Year Closing & Grade Retention",
+    "release": "R27",
+    "depends_on": [
+      17,
+      18,
+      20,
+      25
+    ],
+    "old_stage": 20,
+    "acceptance_ids": [
+      "S27-AT01",
+      "S27-AT02",
+      "S27-AT03",
+      "S27-AT04",
+      "S27-AT05",
+      "S27-AT06",
+      "S27-AT07",
+      "S27-AT08",
+      "S27-AT09"
+    ]
+  },
+  {
+    "stage": 28,
+    "track": "I",
+    "name": "Cross-service Health/Restore Dashboard",
+    "release": "R28",
+    "depends_on": [
+      4,
+      26,
+      27
+    ],
+    "old_stage": 21,
+    "acceptance_ids": [
+      "S28-AT01",
+      "S28-AT02",
+      "S28-AT03",
+      "S28-AT04",
+      "S28-AT05",
+      "S28-AT06",
+      "S28-AT07",
+      "S28-AT08",
+      "S28-AT09"
+    ]
+  }
+]

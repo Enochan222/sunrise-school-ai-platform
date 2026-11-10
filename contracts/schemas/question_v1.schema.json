@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sunrise Question v1 — B owner",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "question_id",
+    "schema_version",
+    "subject",
+    "question_type",
+    "stem",
+    "max_score",
+    "answer_spec",
+    "rubric_version"
+  ],
+  "properties": {
+    "question_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "subject": {
+      "enum": [
+        "math",
+        "chinese",
+        "english",
+        "general_studies"
+      ]
+    },
+    "question_type": {
+      "enum": [
+        "numeric",
+        "fraction",
+        "multiple_choice",
+        "text",
+        "extended_response"
+      ]
+    },
+    "stem": {
+      "type": "string",
+      "minLength": 1
+    },
+    "max_score": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "rubric_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "answer_spec": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "numeric"
+            },
+            "value": {
+              "type": "number"
+            },
+            "tolerance": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "numerator",
+            "denominator"
+          ],
+          "properties": {
+            "kind": {
+              "const": "fraction"
+            },
+            "numerator": {
+              "type": "integer"
+            },
+            "denominator": {
+              "type": "integer",
+              "not": {
+                "const": 0
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "correct_option",
+            "options"
+          ],
+          "properties": {
+            "kind": {
+              "const": "multiple_choice"
+            },
+            "correct_option": {
+              "type": "string"
+            },
+            "options": {
+              "type": "array",
+              "minItems": 2,
+              "uniqueItems": true,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "accepted_values"
+          ],
+          "properties": {
+            "kind": {
+              "const": "text"
+            },
+            "accepted_values": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "requires_human_review"
+          ],
+          "properties": {
+            "kind": {
+              "const": "extended_response"
+            },
+            "requires_human_review": {
+              "const": true
+            }
+          }
+        }
+      ]
+    },
+    "diagram": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "bar",
+            "line",
+            "geometry",
+            "table"
+          ]
+        },
+        "data": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "type",
+        "data"
+      ]
+    },
+    "learning_objectives": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "pdf_render_contract_version": {
+      "type": "string"
+    }
+  }
+}

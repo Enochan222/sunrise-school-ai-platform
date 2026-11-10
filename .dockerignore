@@ -5,8 +5,10 @@
 .env.*
 !.env.example
 **/*.pem
+**/*.p12
 **/*.pfx
 **/*.key
 **/node_modules
 **/.next
+**/*.bak
 **/*.sql.dump

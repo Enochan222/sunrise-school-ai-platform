@@ -1,17 +1,23 @@
 ---
-name: Sunrise AI Stage Work
-about: One Stage, one Owner, measurable acceptance
+name: Sunrise Stage Work
+about: AI-operable task with explicit acceptance and source evidence
 ---
 
-## Outcome in everyday language
+## Goal
 
-## Stage / Owner
+Explain in normal language what should work for users.
 
-## Acceptance checks
+## Stage and owner
 
-- [ ] Feature actually usable, not mocked
-- [ ] Negative permission/error tests
-- [ ] No previous Stage regression
-- [ ] Actual test links and evidence
+S__ ; owner P/A/B/I/U (one runtime owner only).
 
-## Blockers, cost, privacy and Owner decisions
+## Acceptance
+
+- [ ] Real happy path demonstrated (not mock)
+- [ ] Permissions / negative test
+- [ ] Previous Release regression
+- [ ] Evidence links to CI, commit and provider tests
+
+## Blockers / decisions
+
+If product privacy, billing or irreversible actions are involved, escalate for Owner decision; don't assume human code review expertise.
