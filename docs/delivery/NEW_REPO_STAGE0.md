@@ -4,6 +4,8 @@
 
 **No GitHub Copilot or GitHub Actions.** The owner explicitly elected not to use either. Do not reintroduce `.github/workflows/docs-check.yml`, `.github/workflows/validate-docs.yml`, or a required status check on a disabled workflow. The local test runner does not automatically run when PRs are opened. Do not enable unconditional auto-merge or describe absence of status checks as equivalent security.
 
+**2026-11-10 verified import update:** complete 164-file reviewed kit has been merged by [PR #8](https://github.com/Enochan222/sunrise-school-ai-platform/pull/8); `main` at that merge `5506c5b9487563cf23cebcc1785061f09c12b50a`. See [live S0 evidence](STAGE0_EVIDENCE_2026-11-10.md). This is an import and static-document gate, **not** Owner product signoff.
+
 **Current decision:** 29 Stage planning specs, 100 candidate operations, 310 designed ATs; stages S1–S28 are NOT IMPLEMENTED. Stage 0 product approval is `PENDING`; no runtime testing, SQL/SurrealDB deployment, school-data import, backup/restore or AI provider spending took place.
 
 **Repository control:** active `Protect main` Ruleset should demand pull requests with 0 code approvals, squash-only, no bypass, force-push and deletion prohibited, and required status checks OFF until an independent supported CI provider is adopted. Verify current settings before every merge.

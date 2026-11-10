@@ -1,0 +1,11 @@
+# Stage 1 [A] — handoff and start criteria (planning only)
+
+**S1 STATUS: NOT STARTED / NOT DEPLOYED.** See [S1 spec](../stages/STAGE_01.md), [Stage0 evidence](STAGE0_EVIDENCE_2026-11-10.md), [Owner decisions](../decisions/STAGE0_APPROVAL_DECISIONS.md), and [Open Notebook reuse audit](../architecture/OPEN_NOTEBOOK_REUSE_AUDIT.md).
+
+Start S1 only after Stage0 Owner explicitly approves the S0 decision packet and baseline records `APPROVED`. Then use a separate A-owned branch and PR. Do not introduce B Course DB, I integration, U portal or S4 cutover into S1.
+
+Required before A trial: pin upstream **Open Notebook v1.15.1**, commit `5e285b7a2e435895c4ee99ad7e4b8d2af64c3239`, source Git tree `2d101001de594c7d6a0e4aaeb8e85ac4c52980af` (local original ZIP exact tree match), MIT license plus third-party asset terms; do not use moving latest main. Document REUSE/WRAP/BUILD components and upstream patch changes.
+
+Stage1 actual acceptance (NOT RUN): A school/shell source ownership persists; unique Shell↔Notebook link; protected Admin HTTPS; any missing required password/secret blocks startup; deny raw native global list/search routes and unrelated school/source reads **before and after** search, previews, downloads and SSE streams; upload/index/search/download/Archive preserve original file and version; A-only backup/Restore covers original files, SurrealDB data, encryption keys and indexes with real recovery evidence. Test negative auth, mixed-source search, two-school/one-admin scenario, malformed files, fail-start secrets, and restoring a stopped service. Do not claim an AI/OCR/embedding option if not actually tested and approved.
+
+The S1 implementation decision must include hosting location, network/firewall/secret store, measured cost ceiling, school content rights/retention and school data handling approval. **Until these are approved, only offline/local synthetic experiments are allowed; no public service, paid provider or real school/student content ingestion.**

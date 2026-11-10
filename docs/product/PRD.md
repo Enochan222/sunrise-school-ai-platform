@@ -1,6 +1,6 @@
 # Sunrise Education AI Platform — Master PRD v0.7 Reviewed
 
-**Status:** Architecture proposal revised using uploaded v0.7 ZIP and critical review; **NO product deployed / NO GitHub PR created**. 2026-11-08. This document is the proposed master plan, subject to Owner approval and subsequent actual PoC/contract gates.
+**Status:** Architecture proposal revised using uploaded v0.7 ZIP and critical review; **NO product deployed; complete v0.7.5 planning kit was merged via GitHub PR #8 on 2026-11-10**. Original draft 2026-11-08. This document is the proposed master plan, subject to Owner approval and subsequent actual PoC/contract gates.
 
 ## 本次修訂的產品決策層次
 
