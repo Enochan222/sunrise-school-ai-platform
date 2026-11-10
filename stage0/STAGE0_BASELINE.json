@@ -7,6 +7,28 @@
   "stage_count_if_imported": 29,
   "candidate_api_operations_if_imported": 100,
   "planned_acceptance_cases_if_imported": 310,
-  "stage0_product_approval": "PENDING",
-  "runtime_tests": "NOT_RUN"
+  "stage0_product_approval": "APPROVED",
+  "runtime_tests": "NOT_RUN",
+  "stage0_status": "COMPLETE",
+  "stage0_approved_decisions": [
+    "D01",
+    "D02",
+    "D03",
+    "D04",
+    "D05",
+    "D06",
+    "D07",
+    "D08"
+  ],
+  "stage0_approval_evidence": {
+    "date": "2026-11-10",
+    "scope": "BOUNDED_PLANNING_ARCHITECTURE_SECURITY_ONLY",
+    "source": "OWNER_EXPLICIT_CHAT_APPROVAL_RECORDED_BY_ASSISTANT",
+    "github_issue": 10,
+    "github_issue_comment_id": 6762722630
+  },
+  "stage1_status": "NOT_STARTED",
+  "paid_services_authorized": false,
+  "runtime_deployment_authorized": false,
+  "real_student_data_authorized": false
 }

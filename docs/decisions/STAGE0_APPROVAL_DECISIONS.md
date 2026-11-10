@@ -1,8 +1,8 @@
 # Stage 0 — Owner product / security / budget decision packet
 
-**Decision state: PROPOSED; OWNER NOT YET SIGNED.** Prepared 2026-11-10 from reviewed v0.7.5 and [S0 acceptance evidence](../delivery/STAGE0_EVIDENCE_2026-11-10.md). Technical documentation PASS does **not** authorize paid services, school data or runtime deployment. Explicit Owner confirmation of this entire package is required before status changes from PENDING.
+**Decision state: APPROVED — D01–D08 BOUNDED PLANNING ONLY (2026-11-10).** The Owner explicitly approved this exact eight-item architecture, product and security packet in the conversation; the assistant transcribed that approval into [GitHub Issue #10](https://github.com/Enochan222/sunrise-school-ai-platform/issues/10) (comment `6762722630`). The GitHub comment is **assistant-recorded**, not a separate Owner GitHub signature. Approval authorizes **NO** paid service, Runtime deployment, outside model activation, real student data or school content ingestion. Stage1-specific vendor, region, privacy and cost values remain unresolved blockers prior to deployment.
 
-## Exact recommendations for Owner approval
+## Owner-approved bounded architecture decisions
 
 | ID | Proposed binding S0 decision | Deliberately postponed boundary |
 |---|---|---|
@@ -19,10 +19,13 @@
 
 The Owner should confirm **all D01–D08 as one bounded Stage 0 architecture package**, or request edits to named IDs. Approval affirms this **planning design only**; it does not authorize deploying S1, spending money, using licensed content or processing actual student data. In particular, D07's specific region and budget remain **S1 predeployment blockers**, not falsely 'approved' numeric values.
 
-**Signoff record (currently blank, do not fabricate):**
-- Owner approval: **PENDING**
-- Confirmed decision IDs: **NONE**
-- Confirmation date / Issue or chat evidence: **NOT RECORDED**
-- Production / student-data permission: **NOT GRANTED**
+**Stage 0 formal signoff record:**
+- Owner approval: **APPROVED, bounded to D01–D08 planning/architecture/security decisions**
+- Confirmed decision IDs: **D01, D02, D03, D04, D05, D06, D07, D08**
+- Confirmation date: **2026-11-10** (Asia/Taipei)
+- Evidence: Owner statement in this ChatGPT conversation; recorded by assistant at [GitHub Issue #10](https://github.com/Enochan222/sunrise-school-ai-platform/issues/10), comment `6762722630`. The Issue comment is **not** an Owner-authored GitHub signature.
+- Exact scope of Owner message: **「我正式批准 Stage 0 決策 D01–D08，僅限已列明的規劃、架構與安全邊界，不授權付費、正式部署或處理真實學生資料。」**
+- Paid services / production deployment / student PII: **NOT AUTHORIZED**
+- Individual ADR-011–022 implementation-specific details: **still PROPOSED unless separately approved**; the eight bounded decisions take precedence if a candidate ADR is inconsistent.
 
-Once explicit approval is given, document the exact approval reference, update Stage0 baseline and its static gate together, rerun all 16 QA groups and negative tests, and merge via a **separate Stage0 approval PR**. Only then mark S0 COMPLETE and open S1 implementation work.
+This packet is the Owner's product authorization for **Stage0 planning completion only**. The [Stage1 start gate](../delivery/STAGE1_START_CRITERIA.md) and separate deployment/data approvals remain in force. The Stage0 completion PR must show local test evidence and remote GitHub verification.

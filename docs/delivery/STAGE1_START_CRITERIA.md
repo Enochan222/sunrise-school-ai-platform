@@ -2,7 +2,7 @@
 
 **S1 STATUS: NOT STARTED / NOT DEPLOYED.** See [S1 spec](../stages/STAGE_01.md), [Stage0 evidence](STAGE0_EVIDENCE_2026-11-10.md), [Owner decisions](../decisions/STAGE0_APPROVAL_DECISIONS.md), and [Open Notebook reuse audit](../architecture/OPEN_NOTEBOOK_REUSE_AUDIT.md).
 
-Start S1 only after Stage0 Owner explicitly approves the S0 decision packet and baseline records `APPROVED`. Then use a separate A-owned branch and PR. Do not introduce B Course DB, I integration, U portal or S4 cutover into S1.
+Stage0 Owner explicitly approved bounded D01–D08 on 2026-11-10, and the signed Stage0 baseline records `APPROVED` / `COMPLETE`. This satisfies the **planning prerequisite only**, not a deployment permission. S1 remains **NOT STARTED**. New work must use a separate A-owned branch and PR; until hosting, cost, privacy and rights choices receive separate approval, restrict work to **offline/local synthetic-data experiments**. Do not introduce B Course DB, I integration, U portal or S4 cutover into S1.
 
 Required before A trial: pin upstream **Open Notebook v1.15.1**, commit `5e285b7a2e435895c4ee99ad7e4b8d2af64c3239`, source Git tree `2d101001de594c7d6a0e4aaeb8e85ac4c52980af` (local original ZIP exact tree match), MIT license plus third-party asset terms; do not use moving latest main. Document REUSE/WRAP/BUILD components and upstream patch changes.
 
