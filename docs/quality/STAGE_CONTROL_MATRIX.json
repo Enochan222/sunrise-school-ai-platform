@@ -1,0 +1,1423 @@
+[
+  {
+    "goal": "批准唯一現行路線：A 教材、B 教學營運、I API 整合、U 介面；建立可交接的規格與 GitHub 文件審批基線。",
+    "demo": "Owner 可按文件回答誰負責每項功能、目前做到哪一版、下一個 Stage 可否開始；不要求部署產品。",
+    "gates": [
+      "PRD、S0–S28 Roadmap、ADR-011 起、Owner／依賴矩陣互相一致且簽名批准。",
+      "核對全新 Enochan222 GitHub main、PR、Ruleset、當前 No-Actions 測試證據及 CODEOWNERS；v0.7.5 僅以 docs-only PR 匯入，不搬舊 Repo 歷史。",
+      "有明確 S1 試用與安全驗收、未批准事項和人員責任表；真實部署一律 NOT RUN。",
+      "批准 Course 一個學年/級別/科目/stream 可多 Group，A Shell 有 school_id；Gemini S1 可選，S4 Cutover Owner 及 API 不混合"
+    ],
+    "watch": [
+      "現有 main 與 ZIP 未必一致，確認實際 Repo 狀態後才決定是否合併。",
+      "架構批准不等於 A/B API 或硬件配置已可實作。"
+    ],
+    "prior": [
+      "舊 v0.5 的共用 SurrealDB/Core 方案不能同新 A/B 實體隔離並存為兩套權威。",
+      "新 Repo 未完成之驗收、Issue 與候選 ADR 不可寫成已批准或已部署。"
+    ],
+    "future": [
+      "S1 只限 A；S2/S3 各自發布 API 後 S4 才可連接。",
+      "如改動 S0 的 Owner／Stage 定義，必須全面重審其後 Release/AT/版本映射。"
+    ],
+    "open": [
+      "確實的 Repo settings／審批人／Hosting Region／成本由 Owner 核准，不在本文視為已決。"
+    ],
+    "stage": 0,
+    "owner": "P",
+    "release": "—",
+    "depends_on": [],
+    "downstream": [
+      1,
+      3
+    ],
+    "stage_filename": "STAGE_00.md",
+    "acceptance_ids": [
+      "S0-AT01",
+      "S0-AT02",
+      "S0-AT03",
+      "S0-AT04",
+      "S0-AT05",
+      "S0-AT06",
+      "S0-AT07",
+      "S0-AT08",
+      "S0-AT09",
+      "S0-AT10"
+    ]
+  },
+  {
+    "goal": "交付真正可登入、可上載、可搜尋／下載、可恢復的 A-only Open Notebook 教材庫。",
+    "demo": "唯一 Admin 建立課程教材容器，系統生成專用 Notebook；放入校方教材後能重新登入、查詢、下載及封存。",
+    "gates": [
+      "完整 Course Shell→Notebook→Upload→Search／Download 可在受保護環境運作，資料重啟後存在。",
+      "直接呼叫原生 Notebook Create／Delete／Link、空範圍搜尋、猜 Source ID、串流與下載均不能繞過防線。",
+      "故障重送不產生第二個 Notebook；A DB＋原檔恢復後 ID／檔案 Hash 可核對。",
+      "兩個 School 的 Shell／Source / Scope 即使 ID 可猜到，A Gateway 仍拒絕跨校讀取"
+    ],
+    "watch": [
+      "Open Notebook 原生 Shared Password 不是教師權限系統；未設 Secrets 或示例密碼必須阻止啟動。",
+      "內容來源和學生個資要分清；教材與已生成學生試卷／成績不能混存。"
+    ],
+    "prior": [
+      "S0 只是文件審批，S1 不可說雙庫已完成。",
+      "不用另開一般 Notebook 新增／刪除入口；課程教材容器是唯一正規建立入口。"
+    ],
+    "future": [
+      "S2 要沿用 Shell／Notebook／Source ID 與版本關係，不能改成依標題配對。",
+      "S4 需要 A 的可靠 Scope/Actor/Idempotency；S23 需要安全唯讀途徑；本期不開教師。"
+    ],
+    "open": [
+      "A 的精確部署方式、模型供應商與 Gemini Embedding 是否啟用都屬待測方案；S1 不依賴 B BYOK。"
+    ],
+    "stage": 1,
+    "owner": "A",
+    "release": "R01",
+    "depends_on": [
+      0
+    ],
+    "downstream": [
+      2
+    ],
+    "stage_filename": "STAGE_01.md",
+    "acceptance_ids": [
+      "S1-AT01",
+      "S1-AT02",
+      "S1-AT03",
+      "S1-AT04",
+      "S1-AT05",
+      "S1-AT06",
+      "S1-AT07",
+      "S1-AT08",
+      "S1-AT09",
+      "S1-AT10",
+      "S1-AT11",
+      "S1-AT12",
+      "S1-AT13",
+      "S1-AT14",
+      "S1-AT15"
+    ]
+  },
+  {
+    "goal": "在 A 完成教材分類、版本／發布與可用的穩定 API，為日後整合預留安全邊界。",
+    "demo": "Admin 修改教材分類與版本，舊版本仍可追查；以受控 API 查單一 Content Shell 已發布的教材及來源。",
+    "gates": [
+      "Textbook／Note／Past Paper 類型、Topic、版本和發布／封存狀態能儲存及查詢。",
+      "同一 Source 不會同時屬於兩個 Shell；版本變動不令引用失效或指錯原檔。",
+      "S4 所需 A API 由 A 自己提供 Provider／Consumer 合約測試；確認 Service Token 範圍及錯誤回應。",
+      "A 已具獨立 Service scope、唯一 Create/Managed-mode 封鎖及 Manifest/Health 前置契約，I 不需改 A"
+    ],
+    "watch": [
+      "「Contract Freeze」係本 Stage 實際通過測試後的結果，唔係現有 JSON 文件寫好就等於已 Freeze。",
+      "避免原生 Open Notebook 搜尋的 Empty Scope 回退全庫；索引遷移需可恢復。"
+    ],
+    "prior": [
+      "保留 S1 Notebook 唯一、原檔 Hash、Archive 不 Delete 及 A-only Restore。",
+      "不得將生成試卷、學生、成績或 B Course Business Record 搬入 A。"
+    ],
+    "future": [
+      "S4 的 Adopt/Create、S5 材料列表／上載／下載、S9 Evidence、S23 Teacher Read 都依賴受控 A 契約。",
+      "如 S4 提出新 A API，應開獨立 A Owner 變更版本，不能在 I Stage 偷改 A。"
+    ],
+    "open": [
+      "欄位名稱、API 分頁方式、檔案上限和內容版本策略只是參考，實測與 Owner 決策後才鎖定。"
+    ],
+    "stage": 2,
+    "owner": "A",
+    "release": "R02",
+    "depends_on": [
+      1
+    ],
+    "downstream": [
+      4,
+      26
+    ],
+    "stage_filename": "STAGE_02.md",
+    "acceptance_ids": [
+      "S2-AT01",
+      "S2-AT02",
+      "S2-AT03",
+      "S2-AT04",
+      "S2-AT05",
+      "S2-AT06",
+      "S2-AT07",
+      "S2-AT08",
+      "S2-AT09",
+      "S2-AT10",
+      "S2-AT11",
+      "S2-AT12",
+      "S2-AT13",
+      "S2-AT14",
+      "S2-AT15"
+    ]
+  },
+  {
+    "goal": "交付可獨立運行的 B Course Registry，包含 School／Academic Year／Subject／Grade／Teaching Group 及可測的 Binding／Operation 合約。",
+    "demo": "Admin 只用 B 就能建立、檢視、封存正式課程；未接 A 的課程清楚顯示 CONTENT_UNLINKED。",
+    "gates": [
+      "B PostgreSQL／Supabase 與 A 使用不同帳密、網絡、備份；B 單獨完成課程 CRUD／Restore。",
+      "Course／Teaching Group/Academic Year 的唯一性和基本關係可核查；未連結亦能正常使用。",
+      "Reserve／Finalize／Operation 狀態 API 有真交易、冪等與唯一約束的 Provider Test；不實際調 A。",
+      "Course 保持 grade+curriculum_stream，不設 class_id；同 Course 多 TeachingGroup 皆由 B API 可建立及查詢",
+      "School/Course/TeachingGroup/Actor 欄位及 B 權限界面預留，S22 不需改 Course 身份"
+    ],
+    "watch": [
+      "Binding Reservation 不可在一半成功時宣稱 ACTIVE；要預留 Crash／Retry 狀態。",
+      "S4 會呼叫 B API，但 B Service Token 不可等同 root 或前端 Admin 權限。"
+    ],
+    "prior": [
+      "B Course 是正式學校業務物件，不能把 S1 A 的 Content Shell 當成同一資料表。",
+      "不部署 I、不自動新增 A Notebook；保持 CONTENT_UNLINKED 直至 S4。"
+    ],
+    "future": [
+      "S4 直接依賴 B Reserve／Finalize／Read-back 與 Operation log，S22 未來 IAM 要有 Actor/Scope 預留。",
+      "S15 Student 及 S16 Assessment 會引用 Course/Teaching Group，後期改主鍵成本很高。"
+    ],
+    "open": [
+      "Supabase 方案、B 的細分 Schema／交易流程與 Course 粒度先以候選合約表示，實測前不能宣稱正式凍結。"
+    ],
+    "stage": 3,
+    "owner": "B",
+    "release": "R03",
+    "depends_on": [
+      0
+    ],
+    "downstream": [
+      4,
+      6,
+      7,
+      15,
+      22
+    ],
+    "stage_filename": "STAGE_03.md",
+    "acceptance_ids": [
+      "S3-AT01",
+      "S3-AT02",
+      "S3-AT03",
+      "S3-AT04",
+      "S3-AT05",
+      "S3-AT06",
+      "S3-AT07",
+      "S3-AT08",
+      "S3-AT09",
+      "S3-AT10",
+      "S3-AT11",
+      "S3-AT12",
+      "S3-AT13",
+      "S3-AT14",
+      "S3-AT15",
+      "S3-AT16",
+      "S3-AT17"
+    ]
+  },
+  {
+    "goal": "由獨立 I 服務透過 A/B 已發布 API 完成舊教材接管、新課程建立及可恢復的課程綁定。",
+    "demo": "Admin 由 I 明確選 B Course 與 A Shell：預覽、接管、建立／查驗 Notebook；故障重試後連結仍唯一且可查。",
+    "gates": [
+      "ADOPT_EXISTING 不創建第二本 Notebook；CREATE_NEW 先 B Reserve、再 A Create、最後 B Finalize/Read-back。",
+      "對 ACK 遺失、重試、撞 Key、孤兒資料、Scope 漏洞及兩邊不同時間 Restore 可以偵測／隔離，不靜默刪資料。",
+      "I 部署沒有 A/B Database DSN，也不修改 A/B Schema/Code；全程只用已驗收的 Service API。",
+      "S5 所需 Course Materials List/Upload/Search/Download 代理在授權與來源檢查下實際可用。",
+      "I Adopt/Create 核對 School ID 與 Course Key，跨校／模糊 Group 不可錯綁；Cutover 後不能由 A raw Create 旁路"
+    ],
+    "watch": [
+      "I API 呼叫兩邊是正常業務操作，與「單 Stage 改兩套 DB 程式／Schema」不同，必須在 PR 中分清。",
+      "Cutover 中斷需保留唯讀與人工修復方法；不能以自動刪 Notebook 作 Saga 補償。"
+    ],
+    "prior": [
+      "不得在 I 內重寫 S2 A / S3 B 合約；缺 API 必須回到該 Owner 另出版本。",
+      "保留已存 A 原檔/Hash、B Course ID／CONTENT_UNLINKED 史，無憑名字猜測配對。"
+    ],
+    "future": [
+      "S5 U、S9 I Evidence、S23 教師讀取均依賴 Course→Shell 的完整可信 Binding。",
+      "S28 只是後期監控 Dashboard，S4 的核心對帳／恢復不能推遲。"
+    ],
+    "open": [
+      "Saga 補償、重試間隔、Queue 技術及 API 欄位細節是實作選項；唯一性、失敗封閉及保留資料是必守結果。"
+    ],
+    "stage": 4,
+    "owner": "I",
+    "release": "R04",
+    "depends_on": [
+      2,
+      3
+    ],
+    "downstream": [
+      5,
+      9,
+      23,
+      28
+    ],
+    "stage_filename": "STAGE_04.md",
+    "acceptance_ids": [
+      "S4-AT01",
+      "S4-AT02",
+      "S4-AT03",
+      "S4-AT04",
+      "S4-AT05",
+      "S4-AT06",
+      "S4-AT07",
+      "S4-AT08",
+      "S4-AT09",
+      "S4-AT10",
+      "S4-AT11",
+      "S4-AT12",
+      "S4-AT13",
+      "S4-AT14",
+      "S4-AT15",
+      "S4-AT16",
+      "S4-AT17",
+      "S4-AT18",
+      "S4-AT19",
+      "S4-AT20",
+      "S4-AT21"
+    ]
+  },
+  {
+    "goal": "交付初版 Sunrise Portal，只呈現已實作的 Course 與教材操作，所有資料仍在 A／B。",
+    "demo": "Admin 從單一 Sunrise 入口進入 Course、教材列表、上載、搜尋、下載及 Link Status，錯誤有可理解的提示。",
+    "gates": [
+      "Course/Content UI 真正呼叫 S4/B/A 受控 API，資料刷新後仍可見，無前端直接 DB 連線。",
+      "未推出的學生、Assessment、Grades、生成等功能不偽裝可用；空值／未連結／失敗可分辨。",
+      "實際登入／登出、響應式主要路徑、上載失敗、過期 Session 與 U-only 回退測試通過。"
+    ],
+    "watch": [
+      "不可只改 Open Notebook CSS 當權限控制；後端政策仍由 A/B/I 負責。",
+      "不要在 U 內保存 ServiceToken、Gemini Key、任何 DB Root 憑證。"
+    ],
+    "prior": [
+      "S4 已完成 API Link/代理，U 不可為了畫面方便直接讀 SurrealDB／Postgres。",
+      "B 未有 Assessment/Grade，不能提前宣稱相關 Dashboard 可用。"
+    ],
+    "future": [
+      "S10 才加入 Generation Evidence UI；S21 才加入成績／分析；S24 才加入教師版面。",
+      "UI 顯示的 Course ID、A Shell ID 和 Link Status 必須與 API 一致，避免使用者誤認資料已連結。"
+    ],
+    "open": [
+      "框架、顏色、版面細節可先做 Prototype；但可用流程、資料來源與權限不可留作 Mock。"
+    ],
+    "stage": 5,
+    "owner": "U",
+    "release": "R05",
+    "depends_on": [
+      4
+    ],
+    "downstream": [
+      10,
+      24
+    ],
+    "stage_filename": "STAGE_05.md",
+    "acceptance_ids": [
+      "S5-AT01",
+      "S5-AT02",
+      "S5-AT03",
+      "S5-AT04",
+      "S5-AT05",
+      "S5-AT06",
+      "S5-AT07",
+      "S5-AT08",
+      "S5-AT09",
+      "S5-AT10",
+      "S5-AT11",
+      "S5-AT12"
+    ]
+  },
+  {
+    "goal": "在 B 建立跨學科共用的題目、答案與 Rubric Schema／版本工作室，不實際產生 AI 試卷。",
+    "demo": "Admin 建 Blueprint、題型、答案約束和評分規則草稿，保存後可預覽並檢查有效性。",
+    "gates": [
+      "各類 Question/Answer/Rubric 可建立、保存版本、回讀及拒絕非法配置。",
+      "已發布的 Schema/Rubric 不會被新修改靜默覆寫，舊草稿仍有引用版本。",
+      "S8 Generation、S11–S14 四科可引用明確版本的通用合約，且 B-only 可試用。",
+      "建立／草稿編輯／發布／查詢 Blueprint 及 Versions；Question／Rubric 有穩定版本 ID",
+      "S8 只引用已發布 blueprint_id+version，變更 Draft 不改舊 Job 結果"
+    ],
+    "watch": [
+      "Schema 要兼容數學題、作文與解釋題，不能假設只有選擇題或固定答案。",
+      "PDF 的完整渲染及 AI Provider 不是本期工作。"
+    ],
+    "prior": [
+      "沿用 S3 正式 B Course ID；不得借 A Note 保存 Blueprint 或題目。",
+      "此 Stage 不能順便整合外部 Math-paper 整套應用／其資料庫。"
+    ],
+    "future": [
+      "S8 Queue 會引用版本，S11–S14 各科擴充要可加欄位而不破壞已批准題型。",
+      "S16 Assessment 會引用 Rubric；變更分值規則需留 Migration/Compatibility 策略。"
+    ],
+    "open": [
+      "JSON Schema 精確欄位與 PDF layout contract 先作參考，直到本期真 fixture 與 Provider 測試通過才 Freeze。"
+    ],
+    "stage": 6,
+    "owner": "B",
+    "release": "R06",
+    "depends_on": [
+      3
+    ],
+    "downstream": [
+      8,
+      11,
+      16
+    ],
+    "stage_filename": "STAGE_06.md",
+    "acceptance_ids": [
+      "S6-AT01",
+      "S6-AT02",
+      "S6-AT03",
+      "S6-AT04",
+      "S6-AT05",
+      "S6-AT06",
+      "S6-AT07",
+      "S6-AT08",
+      "S6-AT09"
+    ]
+  },
+  {
+    "goal": "在 B 建立安全的 Gemini／模型供應商 BYOK 與可用狀態管理，供未來生成使用。",
+    "demo": "Admin 輸入 Key→服務端驗證→選 Model→發起測試請求→清楚看到 READY/ERROR／撤銷狀態。",
+    "gates": [
+      "Key 可加／換／撤銷，保密儲存且不會出現在前端、本地儲存、日誌或 API 回應。",
+      "真正 Provider Test 能區分 Key 無效、模型不可用、額度／網絡／權限錯誤，而不是只有格式驗證。",
+      "不影響 A 模型憑證；B 只讀自己的 Key／Provider 設定，失效後 S8 Job 必須可拒絕。"
+    ],
+    "watch": [
+      "Gemini Key「通過」不代表所有模型能力／Quota 都可用；應有可檢驗的能力狀態。",
+      "避免將 A Embedding Key 和 B Generation Key 當成共享 secret。"
+    ],
+    "prior": [
+      "B Course 已 S3 建立，但本期不做 S8 Queue、不碰 A 的 AI 搜尋。",
+      "不能把憑證寫入 Git、URL、job payload 或 UI。"
+    ],
+    "future": [
+      "S8 Queue 在送出任務時檢查 Provider 狀態與成本限制；S19 Marking 會重用能力設定。",
+      "供應商變更、可用模型名稱與收費不確定，必須保持可替換。"
+    ],
+    "open": [
+      "Gemini 只是第一候選 Provider；SDK/Model ID/Key 加密方案、預算上限在本期實測決定。"
+    ],
+    "stage": 7,
+    "owner": "B",
+    "release": "R07",
+    "depends_on": [
+      3
+    ],
+    "downstream": [
+      8
+    ],
+    "stage_filename": "STAGE_07.md",
+    "acceptance_ids": [
+      "S7-AT01",
+      "S7-AT02",
+      "S7-AT03",
+      "S7-AT04",
+      "S7-AT05",
+      "S7-AT06",
+      "S7-AT07"
+    ]
+  },
+  {
+    "goal": "在 B 完成不用 Notebook 也能工作的 Queue→Prompt→Schema Validation→Draft→人工批准。",
+    "demo": "Admin 在 B 測試入口輸入 Course/Blueprint，建立生成任務、查看 Queue/Retry/失敗、批准草稿，產物留 B。",
+    "gates": [
+      "有真實持久化 Queue、任務狀態與重試；重送不產生兩份正式已批准 Artifact。",
+      "Prompt/Model/Blueprint/Rubric Version 可追溯，格式／題數／分值錯誤不能發布。",
+      "沒有 A Service／Notebook 時仍能 B-only 生成；人工批准前產物只是草稿。",
+      "B Worker 具獨立 ServiceToken 及 Source/Job Context，S9 上線前 Evidence OFF；上線後同 Job 可重新驗證"
+    ],
+    "watch": [
+      "AI 生成可錯；必須保留人工審核與成本／失敗可見性，不可直接當試卷發布。",
+      "Queue 不保證 exactly-once 模型執行，需防重複提交與資料污染。"
+    ],
+    "prior": [
+      "依賴 S6 Schema、S7 Provider Key；不得在此期改 I 或偷偷使用 A RAG。",
+      "B 原有 Course 及 Assessment 草稿概念不能被 AI Job 偷換主鍵／狀態。"
+    ],
+    "future": [
+      "S9 的可選 Evidence Bundle 要接入已定義的受限入口；若 B 缺失要在 B Owner 版本補齊，不能 S9 偷改。",
+      "S10 UI、S11–S14 學科出卷與 S19 Marking 會沿用 Job／Model／Draft 版本。"
+    ],
+    "open": [
+      "具體 Queue／Worker、Prompt 模板、LLM SDK、成本控制策略屬實測選型；最低可試用能力和資料歸屬不可改。"
+    ],
+    "stage": 8,
+    "owner": "B",
+    "release": "R08",
+    "depends_on": [
+      6,
+      7
+    ],
+    "downstream": [
+      9,
+      11,
+      19
+    ],
+    "stage_filename": "STAGE_08.md",
+    "acceptance_ids": [
+      "S8-AT01",
+      "S8-AT02",
+      "S8-AT03",
+      "S8-AT04",
+      "S8-AT05",
+      "S8-AT06",
+      "S8-AT07",
+      "S8-AT08",
+      "S8-AT09",
+      "S8-AT10",
+      "S8-AT11",
+      "S8-AT12",
+      "S8-AT13"
+    ]
+  },
+  {
+    "goal": "I 以權限／版本控制，將本課程已授權 A 教材轉成可選的、可失效的 B Generation Evidence。",
+    "demo": "Admin 在生成流程選「使用本課程教材」，可看到引用來源，過期或撤銷時任務安全失敗而非讀全庫。",
+    "gates": [
+      "關閉 Evidence 時不需 A；開啟時只讀該 Course 的已發布來源，無法偽造 Notebook/Source ID。",
+      "Evidence Bundle 含來源版本、Hash、作用域、過期／撤銷識別；B 真正使用前再次驗證。",
+      "Prompt Injection、已失效來源、授權撤銷及 A 離線測試均不造成越權或假引用。",
+      "B Worker 只能使用 ServiceToken+link.evidence.validate；AdminSession 不可冒用",
+      "同 job 的 MODEL_PRE_EXECUTION／PAPER_PRE_APPROVAL 可驗；另一 job 重用 jti 拒絕，過期/撤銷每次重新檢查"
+    ],
+    "watch": [
+      "文件內容屬不可信輸入；不能升格為 System Prompt 或影響權限。",
+      "時間差問題：生成等待 Queue 期間教材可能更新／撤回；需二次核驗。"
+    ],
+    "prior": [
+      "只能使用 S2 A 及 S8 B 已發布的 API，不可在 I Stage 修改兩邊 Credential／DB。",
+      "S4 Binding 是唯一 Course 參照；不能直接從 UI 傳 Notebook ID 作權限。"
+    ],
+    "future": [
+      "S10 必須顯示引用／失效與可選狀態，S11–S14 可使用 Evidence 但仍要逐科 Validation。",
+      "S23 教師版權限另行定義，不能自 S9 Admin Evidence 自動推導教師可讀教材。"
+    ],
+    "open": [
+      "簽章方法、Bundle 長度、TTL、引用資料格式與撤銷查詢屬參考；安全不變條件須真測才放行。"
+    ],
+    "stage": 9,
+    "owner": "I",
+    "release": "R09",
+    "depends_on": [
+      4,
+      8
+    ],
+    "downstream": [
+      10
+    ],
+    "stage_filename": "STAGE_09.md",
+    "acceptance_ids": [
+      "S9-AT01",
+      "S9-AT02",
+      "S9-AT03",
+      "S9-AT04",
+      "S9-AT05",
+      "S9-AT06",
+      "S9-AT07",
+      "S9-AT08",
+      "S9-AT09",
+      "S9-AT10",
+      "S9-AT11",
+      "S9-AT12",
+      "S9-AT13",
+      "S9-AT14",
+      "S9-AT15"
+    ]
+  },
+  {
+    "goal": "U 顯示完整出卷任務與 Evidence 操作流程，不改生成或檢索後端。",
+    "demo": "Admin 在 Sunrise 選 Blueprint、生成、勾選或取消教材 Evidence、查看 Queue 狀態、引用和人工批准。",
+    "gates": [
+      "U 按 S8/S9 API 顯示 Job／Draft／Evidence 狀態，不使用假進度。",
+      "ON／OFF 切換正確影響送出請求，Evidence 失效與 Provider 錯誤清楚可讀。",
+      "U-only 更新，既有 S5 Course/Materials 仍可用；無 Key／Token／DB 直接曝光。"
+    ],
+    "watch": [
+      "不能為了 UI 方便將敏感教材片段永久寫入 LocalStorage／客戶端 log。",
+      "不能將 AI Draft 顯示成正式已批准 Paper。"
+    ],
+    "prior": [
+      "S5 Portal、S8 Queue、S9 Evidence 已可用，U 不可重寫其邏輯。",
+      "B-only 不用 A 的出卷能力仍要保留。"
+    ],
+    "future": [
+      "S11–S14 紙本 PDF 及四科細節會增加 UI，但要按獨立 U Stage/Owner 安排，不能在 B Stage 偷改 U。",
+      "S21 將擴充成績分析 UI，不應提前塞入本版。"
+    ],
+    "open": [
+      "頁面佈局、進度視覺化、模型選擇控件形式可後定；資料與狀態真實性是硬要求。"
+    ],
+    "stage": 10,
+    "owner": "U",
+    "release": "R10",
+    "depends_on": [
+      5,
+      9
+    ],
+    "downstream": [
+      21
+    ],
+    "stage_filename": "STAGE_10.md",
+    "acceptance_ids": [
+      "S10-AT01",
+      "S10-AT02",
+      "S10-AT03",
+      "S10-AT04",
+      "S10-AT05",
+      "S10-AT06",
+      "S10-AT07"
+    ]
+  },
+  {
+    "goal": "B 交付可試用數學卷：題目、可核答案、分數約束、人工批准及 PDF。",
+    "demo": "Admin 用既有 Blueprint 產生一份數學試卷並匯出可閱覽 PDF／答案卷。",
+    "gates": [
+      "數學題型與 Rubric/分數總和一致，客觀題答案可由確定性方法驗證。",
+      "PDF 含數學式／圖表／頁面，實際渲染檢查排版、截斷和答案版本。",
+      "未經人工批准不能標正式；B 存 Artifact，A 保持教材專用。"
+    ],
+    "watch": [
+      "圖形題、幾何及多解題型應有人工覆核，不可以用 LLM 自信度當正確證明。",
+      "PDF 字型／版面測試係正式驗收，不可單靠 API 成功回傳。"
+    ],
+    "prior": [
+      "只能使用 B Question Schema/S8 Queue，不能修改 A Notebook 或 I Evidence 模組。",
+      "S6 既有題目／Rubric 版本不得因數學擴展變成失效。"
+    ],
+    "future": [
+      "S12–S14 會共用基礎卷引擎但各科獨立驗收；S18 Submission 需要有穩定試卷／題目 ID。",
+      "數學卷 PDF 版本一旦學生提交答卷就不能無痕覆蓋。"
+    ],
+    "open": [
+      "採用哪個 PDF 引擎、幾何繪圖及題庫插件屬後續工程評估。"
+    ],
+    "stage": 11,
+    "owner": "B",
+    "release": "R11",
+    "depends_on": [
+      6,
+      8
+    ],
+    "downstream": [
+      12,
+      13,
+      14,
+      18
+    ],
+    "stage_filename": "STAGE_11.md",
+    "acceptance_ids": [
+      "S11-AT01",
+      "S11-AT02",
+      "S11-AT03",
+      "S11-AT04",
+      "S11-AT05",
+      "S11-AT06",
+      "S11-AT07",
+      "S11-AT08",
+      "S11-AT09",
+      "S11-AT10"
+    ]
+  },
+  {
+    "goal": "B 單獨交付中文卷題型及繁體中文 PDF，作文／理解題保留人工覆核。",
+    "demo": "Admin 可獨立設定中文科 Blueprint、生成試卷、預覽並批准 PDF。",
+    "gates": [
+      "中文閱讀／語文／作文題型可生成、分值及 Rubric 版本可查。",
+      "繁體中文、標點、字體、分頁等 PDF 實際可讀；人工覆核主觀題。",
+      "中文科固定測試集獨立通過，不能以數學測試當作中文驗收。"
+    ],
+    "watch": [
+      "作文不存在唯一標準答案；評分規則不能被固定答案 Schema 限死。",
+      "版權教材只可由 S9 Evidence 按授權引用，不能自行全庫掃描。"
+    ],
+    "prior": [
+      "不可修改 S11 數學既有驗證結果或 S6 Rubric 原始版本。",
+      "單 Owner B，不順便改英文、常識、I 或 U。"
+    ],
+    "future": [
+      "S18／S19 人工及 AI 建議改卷需要中文主觀題評分模型；本期先留下題目與 Rubric 引用。",
+      "中文作文 Benchmark 不能日後直接沿用選擇題 Accuracy 指標。"
+    ],
+    "open": [
+      "各年級題型細節、校本 Rubric、文字排版方案待教師試用後確定。"
+    ],
+    "stage": 12,
+    "owner": "B",
+    "release": "R12",
+    "depends_on": [
+      11
+    ],
+    "downstream": [],
+    "stage_filename": "STAGE_12.md",
+    "acceptance_ids": [
+      "S12-AT01",
+      "S12-AT02",
+      "S12-AT03",
+      "S12-AT04",
+      "S12-AT05",
+      "S12-AT06",
+      "S12-AT07",
+      "S12-AT08"
+    ]
+  },
+  {
+    "goal": "B 單獨交付英文 Grammar/Reading/Writing 試卷與答案／寫作 Rubric。",
+    "demo": "Admin 能從英文 Blueprint 建卷、預覽 PDF 與答案／Rubric，人工審核 Writing。",
+    "gates": [
+      "英文三類題型有可用範本與輸出 Schema；客觀題答案及分數可核。",
+      "Writing 只能有候選評語與人工覆核，不能作無審核自動評分。",
+      "英文科獨立 Fixture 與 PDF 實際驗證通過，既有數學／中文功能回歸。"
+    ],
+    "watch": [
+      "英文可接受多種表達；不要把標準答案單一字串當全部正確答案。",
+      "Rubric Version／本地化語言處理需保留。"
+    ],
+    "prior": [
+      "不覆蓋 S12 中文的專用配置或 S11 數學答案計算規則。",
+      "不在同一 B Stage 偷做常識科／A 搜尋／U UI。"
+    ],
+    "future": [
+      "S19 AI Marking 對 Writing 需有分級人手 Gold Set；S18 會引用題目 ID。",
+      "英文卷與成績欄位要兼容 B 原有 Assessment/Grade Contract。"
+    ],
+    "open": [
+      "接受答案邊界、語法檢查工具及閱讀理解模板待樣本集決定。"
+    ],
+    "stage": 13,
+    "owner": "B",
+    "release": "R13",
+    "depends_on": [
+      11
+    ],
+    "downstream": [],
+    "stage_filename": "STAGE_13.md",
+    "acceptance_ids": [
+      "S13-AT01",
+      "S13-AT02",
+      "S13-AT03",
+      "S13-AT04",
+      "S13-AT05",
+      "S13-AT06",
+      "S13-AT07",
+      "S13-AT08"
+    ]
+  },
+  {
+    "goal": "B 單獨交付常識科卷，要求可核對題目事實與日期，解釋題人工確認。",
+    "demo": "Admin 建常識科 Topic 試卷，看到待核的事實與來源標記，審核後生成 PDF。",
+    "gates": [
+      "常識科題型、Rubric、版本及分值可用並生成 PDF。",
+      "時效性知識有出題日期／來源審核提示，無可靠資料不可自動宣稱事實正確。",
+      "常識科獨立 Sample/Negative Test，並保留其他三科流程。"
+    ],
+    "watch": [
+      "時事、地理、政策等內容會過期；教材引用不保證最新世界事實。",
+      "Explanation／開放題不能用單一 LLM 判斷直接發布分數。"
+    ],
+    "prior": [
+      "不能從 A Notebook 原文直接推斷已過事實查核；S9 Evidence 只證明來源，不等於真偽。",
+      "不在本期修改其他三科或 I 的檢索。"
+    ],
+    "future": [
+      "S19 AI 改卷要有常識科特定 Benchmark，S20 Analytics 保留 Topic／Learning Objective。",
+      "日後教材更新需能標記舊試卷引用的知識時間。"
+    ],
+    "open": [
+      "題型校本標準、外部權威查核方式待獨立審查。"
+    ],
+    "stage": 14,
+    "owner": "B",
+    "release": "R14",
+    "depends_on": [
+      11
+    ],
+    "downstream": [],
+    "stage_filename": "STAGE_14.md",
+    "acceptance_ids": [
+      "S14-AT01",
+      "S14-AT02",
+      "S14-AT03",
+      "S14-AT04",
+      "S14-AT05",
+      "S14-AT06",
+      "S14-AT07",
+      "S14-AT08"
+    ]
+  },
+  {
+    "goal": "B 開始管理完全合成的 Student/Enrollment，供後續成績測試。",
+    "demo": "Admin 匯入或建立虛構學生，查名冊及所屬 Course／Class，重試匯入不重複。",
+    "gates": [
+      "模擬名冊新增、列出、Enrollment 及匯入重試都可運作。",
+      "資料明確標 SYNTHETIC，拒絕當期真實學生個資輸入。",
+      "學生／Course FK 有效，B-only Restore 後名冊一致。",
+      "S15 Enrollment 必須含 teaching_group_id，且 Group/Student/Course/School 一致；錯班或跨校拒絕"
+    ],
+    "watch": [
+      "姓名像真不等於匿名資料；必須使用真正合成的身份值。",
+      "Class/TeachingGroup 由 S3 定義，不要於學生 Stage 建第二套課程結構。"
+    ],
+    "prior": [
+      "不得把學生放 A 或令 S4 Course Binding 變為 Student Binding。",
+      "S5/S10 不得提前顯示已有真實學生／分數。"
+    ],
+    "future": [
+      "S16 Assessment、S17 Grade、S18 Submission 將引用 Student ID；建立穩定鍵與資料型別。",
+      "S25 真實學生 Import 必須另有批准和資料類型隔離，不可簡單把 Synthetic 改旗標。"
+    ],
+    "open": [
+      "Roster 欄位與校本匯入格式只作參考，正式 PII 接入規則留 S25。"
+    ],
+    "stage": 15,
+    "owner": "B",
+    "release": "R15",
+    "depends_on": [
+      3
+    ],
+    "downstream": [
+      16
+    ],
+    "stage_filename": "STAGE_15.md",
+    "acceptance_ids": [
+      "S15-AT01",
+      "S15-AT02",
+      "S15-AT03",
+      "S15-AT04",
+      "S15-AT05",
+      "S15-AT06",
+      "S15-AT07",
+      "S15-AT08",
+      "S15-AT09",
+      "S15-AT10"
+    ]
+  },
+  {
+    "goal": "B 讓 Admin 建 Assessment 與可編輯分數草稿，確認總分／缺漏，但尚未提交正式成績。",
+    "demo": "Admin 為虛構學生建立 Assessment、逐題草稿分數、檢查後保存，刷新仍可改。",
+    "gates": [
+      "Assessment 與 Question/Rubric 版本可追蹤，Draft 可保存／查詢。",
+      "分數過大、缺題、Rubric 錯配或非有效 Enrollment 必須拒絕。",
+      "本期不產生正式 Grade Event；B-only Restore 後 Draft 不丟失。"
+    ],
+    "watch": [
+      "Draft 是可改資料，與 S17 正式已提交事件的不可改規則不同。",
+      "題目分數及 Assessment Full Mark 需確定性計算，不交給 AI 決定。"
+    ],
+    "prior": [
+      "引用 S6 Schema／S15 合成名冊，不能重新定義學科題目或 Course ID。",
+      "不以更新草稿方式修改任何既有正式 Grade Event。"
+    ],
+    "future": [
+      "S17 需要不可重覆的 Submit／Correction 邊界、同一 Assessment/Student/Item Version。",
+      "S18 Manual Marking 會由提交／答卷轉為草稿／正式分數，資料血緣要清楚。"
+    ],
+    "open": [
+      "草稿修改紀錄詳細度、UI 表格格式和匯入欄位待現場試用確認。"
+    ],
+    "stage": 16,
+    "owner": "B",
+    "release": "R16",
+    "depends_on": [
+      6,
+      15
+    ],
+    "downstream": [
+      17
+    ],
+    "stage_filename": "STAGE_16.md",
+    "acceptance_ids": [
+      "S16-AT01",
+      "S16-AT02",
+      "S16-AT03",
+      "S16-AT04",
+      "S16-AT05",
+      "S16-AT06",
+      "S16-AT07",
+      "S16-AT08",
+      "S16-AT09"
+    ]
+  },
+  {
+    "goal": "B 將 Draft 正式提交為不可覆寫 Grade Event，唯一 Admin 只能追加可稽核更正。",
+    "demo": "Admin 提交一次模擬分數後，舊紀錄鎖定；用更正原因建立第二筆事件，歷史與最新成績都可查。",
+    "gates": [
+      "同請求重試不能重覆提交；正常 DB/API UPDATE/DELETE 既有 Grade Event 必須拒絕。",
+      "更正包含 Actor、Reason、Expected Revision；並發修改時拒絕衝突。",
+      "Current Projection 由 Event Replay 可獨立重算，還原後歷史事件完整。",
+      "同 idempotency_key+相同 canonical_request_hash 返回同一 Event；同 key 不同 Payload 明確 409，不可默默忽略"
+    ],
+    "watch": [
+      "「不可修改」是有權限的產品／DB 操作限制，不可宣稱物理上無人能更改 DB Root。",
+      "避免把分析 Snapshot 當成正式分數或錯把 CAS 同 Idempotency 混用。"
+    ],
+    "prior": [
+      "S16 Draft 仍可編輯，但提交後不能以 Draft UI 覆蓋 Ledger。",
+      "沒有真實學生資料；不能修改 A、I、U。"
+    ],
+    "future": [
+      "S18 Manual Marking、S19 AI Suggest 只能經 Ledger API 發分；S20 Weakness 必須隨更正失效。",
+      "S22 多帳戶來到時，舊 Admin 事件要有足夠 Actor/Role 來源以便遷移。"
+    ],
+    "open": [
+      "DB 觸發器／稽核簽章／保留政策實作細節待正式 B DB 權限測試確認。"
+    ],
+    "stage": 17,
+    "owner": "B",
+    "release": "R17",
+    "depends_on": [
+      16
+    ],
+    "downstream": [
+      18,
+      20,
+      21,
+      22,
+      27
+    ],
+    "stage_filename": "STAGE_17.md",
+    "acceptance_ids": [
+      "S17-AT01",
+      "S17-AT02",
+      "S17-AT03",
+      "S17-AT04",
+      "S17-AT05",
+      "S17-AT06",
+      "S17-AT07",
+      "S17-AT08",
+      "S17-AT09",
+      "S17-AT10",
+      "S17-AT11",
+      "S17-AT12"
+    ]
+  },
+  {
+    "goal": "B 支援合成學生收卷、人工逐題批改及提交 Grade Ledger。",
+    "demo": "Admin 上載或建立模擬答卷，按 Rubric 人工評分、覆核，再正式提交。",
+    "gates": [
+      "答卷與 Student／Assessment／Question Version 對應，重送不會覆蓋原答卷。",
+      "人工逐題分數符合 Rubric／總分，缺頁和無法對應的答案走人工 Review。",
+      "批准評分後經 S17 append-only API 入賬；答卷 Artifact 只存 B。",
+      "B 可查選定 Course 的 Submission，S22 後授權教師可讀獲授權 Group/學生；當期仍 Admin",
+      "B 逐題決定含 question_item_id、rubric_version、score、max_score、revision；人工覆核才可提交正式 Grade Event，不能直接覆寫正式分數"
+    ],
+    "watch": [
+      "先取得可靠 Submitted Paper／Rubric Version，不能把答卷內容放 A Vault。",
+      "批改 UI 暫用 B 原生試用流程，U 正式整合預定 S21。"
+    ],
+    "prior": [
+      "不能繞過 S17 直接 INSERT Current Grade；亦不覆寫 S16 Draft 歷史。",
+      "只用 S15 合成學生，未有 S25 實名資料批准。"
+    ],
+    "future": [
+      "S19 AI Marking 需保留人工正確答案與例外狀況作 Gold Set。",
+      "S21 Sunrise 成績工作台會讀本期的答卷／評分 API。"
+    ],
+    "open": [
+      "支援的答卷格式、OCR 與題目對位工具先列候選，先保證人工流程可用。"
+    ],
+    "stage": 18,
+    "owner": "B",
+    "release": "R18",
+    "depends_on": [
+      11,
+      17
+    ],
+    "downstream": [
+      19,
+      21,
+      22,
+      27
+    ],
+    "stage_filename": "STAGE_18.md",
+    "acceptance_ids": [
+      "S18-AT01",
+      "S18-AT02",
+      "S18-AT03",
+      "S18-AT04",
+      "S18-AT05",
+      "S18-AT06",
+      "S18-AT07",
+      "S18-AT08",
+      "S18-AT09",
+      "S18-AT10",
+      "S18-AT11"
+    ]
+  },
+  {
+    "goal": "B 對答卷產生 AI 批改建議並用人手 Gold Standard 衡量誤差，最終仍須人工確認。",
+    "demo": "Admin 看到每題 AI Suggest／理由／置信與人工差異，能更正／拒絕並批准最終分數。",
+    "gates": [
+      "AI 建議有 Rubric/Prompt/Model/Question/Submission Version 血緣，無法直接發正式分數。",
+      "至少用固定、教師核准 Gold Samples 分析抽取／題目對位／部分給分／誤差，保留失敗例子。",
+      "人工決定後仍走 S17 Ledger，錯誤和低信心提交人工處理。"
+    ],
+    "watch": [
+      "AI 與自己多次輸出一致不等於正確；不可用模型互評取代 Gold Standard。",
+      "客觀題與作文／開放題要分別衡量，不能用一個總 Accuracy 掩蓋高風險錯誤。"
+    ],
+    "prior": [
+      "S18 手動改卷正常路徑必須保留作 fallback；AI 不能覆寫已提交 Grade。",
+      "不存學生作答在 A；不得把 RAG 教材 Context 當作學生答案。"
+    ],
+    "future": [
+      "S20 Analytics 只能使用人工確認後的有效 Grade Event，不能直接用 AI Suggest。",
+      "S22 教師權限需決定誰可批核／覆核／提出更正，不能提前假裝有 Teacher Grant。"
+    ],
+    "open": [
+      "Benchmark 指標、最低可接受品質和模型方案需與學校／教師共同定義；目前不能保證準確率。"
+    ],
+    "stage": 19,
+    "owner": "B",
+    "release": "R19",
+    "depends_on": [
+      18,
+      8
+    ],
+    "downstream": [
+      21
+    ],
+    "stage_filename": "STAGE_19.md",
+    "acceptance_ids": [
+      "S19-AT01",
+      "S19-AT02",
+      "S19-AT03",
+      "S19-AT04",
+      "S19-AT05",
+      "S19-AT06",
+      "S19-AT07",
+      "S19-AT08",
+      "S19-AT09"
+    ]
+  },
+  {
+    "goal": "B 由有效 Grade Event 計算 Analytics，讓 Admin 預覽、選擇／丟棄最多兩份有效 Weakness Memory。",
+    "demo": "Admin 看到各 Topic 的有依據弱點，點 Keep 後下次出卷可選 0–2 個版本；更正成績後舊弱點自動失效。",
+    "gates": [
+      "指標可用確定性方法獨立重算，分子／分母與有效成績來源可追溯。",
+      "同 Course/Target 最多兩個 VALID ACTIVE；並發 Keep 不會超限，Discard/Retire 不會刪原成績。",
+      "S17 Correction 發生時相應 Snapshot 必須變 STALE，不能在下一次生成使用過時資料。",
+      "B 有 Candidate／Active／STALE／RETIRED 查詢以及 Discard，既有分數不受影響"
+    ],
+    "watch": [
+      "成績統計與 AI 評語要分開；不容相關變因果或以小樣本當普遍結論。",
+      "「Keep 兩版」限制的是可選 Weakness Snapshot，不是學生所有歷史事件。"
+    ],
+    "prior": [
+      "只能依賴 S17 確認 Grade，不用 S16 Draft 或 S19 尚未批准的 AI Suggest。",
+      "不向 A Notebook 寫學生弱點或分數；不改 I 的 Evidence 模型。"
+    ],
+    "future": [
+      "S21 UI 會顯示弱項兩版，S27 年終結算要保留 Score/Audit 歷史與快照狀態。",
+      "日後用弱項生成下一份卷時要檢查 Course/Scope 和舊版過期狀態。"
+    ],
+    "open": [
+      "統計指標／門檻／可視化可持續調整；但算術、Source Grade Watermark 和 Keep2 原則要先固定。"
+    ],
+    "stage": 20,
+    "owner": "B",
+    "release": "R20",
+    "depends_on": [
+      17
+    ],
+    "downstream": [
+      21,
+      22,
+      27
+    ],
+    "stage_filename": "STAGE_20.md",
+    "acceptance_ids": [
+      "S20-AT01",
+      "S20-AT02",
+      "S20-AT03",
+      "S20-AT04",
+      "S20-AT05",
+      "S20-AT06",
+      "S20-AT07",
+      "S20-AT08",
+      "S20-AT09",
+      "S20-AT10",
+      "S20-AT11"
+    ]
+  },
+  {
+    "goal": "U 增加可用的名冊、Assessment、Grade History、批改和 Weakness 操作入口，但不改 B 邏輯。",
+    "demo": "Admin 由 Sunrise UI 查看模擬學生、提交／查成績歷史、查 AI／人工批改結果和 Keep／Discard 弱項。",
+    "gates": [
+      "頁面真正讀寫已發布 B API，顯示 Score Draft／正式分數／Correction History 的差異。",
+      "Weakness 只能選擇 B 返回的 VALID ACTIVE，Stale/Retired 狀態清楚。",
+      "U-only Responsive/Session/Empty/Error/E2E 回歸通過，沒有前端硬編成績或直連 DB。",
+      "從 B S20 API 真實取得 Candidate/Keep/Discard/STALE/RETIRED，無需在 U Stage 修改 B"
+    ],
+    "watch": [
+      "S21 只會提供合成學生工作台，不能誤導操作者以為系統已獲真實個資批准。",
+      "AI Marking 建議和最終 Grade 必須在畫面明確分開。"
+    ],
+    "prior": [
+      "S5 原有 Course／Content 及 S10 Generation UI 不得被新頁面破壞。",
+      "U 不修改 B 成績規則、S17 事件或 S20 Keep2 查詢。"
+    ],
+    "future": [
+      "S24 將加入教師可用版面與 B/I 授權；S25 才可能載入真實學生。",
+      "分權來臨時既有 UI route 要能隱藏未授權功能，Server 仍需實際拒絕。"
+    ],
+    "open": [
+      "圖表風格、表單佈局及互動細節可以經試用修改；不得把 Mock 當最終有效數據。"
+    ],
+    "stage": 21,
+    "owner": "U",
+    "release": "R21",
+    "depends_on": [
+      10,
+      17,
+      18,
+      19,
+      20
+    ],
+    "downstream": [
+      24
+    ],
+    "stage_filename": "STAGE_21.md",
+    "acceptance_ids": [
+      "S21-AT01",
+      "S21-AT02",
+      "S21-AT03",
+      "S21-AT04",
+      "S21-AT05",
+      "S21-AT06",
+      "S21-AT07"
+    ]
+  },
+  {
+    "goal": "B 由單 Admin 擴展至 Staff/Teacher/System Admin 身份與課程授權，只開放 B 資料。",
+    "demo": "System Admin 發出邀請、分配 Course／Teaching Group Grant；Teacher 登入後只能使用所屬 B 功能。",
+    "gates": [
+      "登入／停用／Grant／撤銷實際生效；跨 Course B API read/export/write 一律被拒絕。",
+      "Teacher 不能直接改正式分數；歷史唯一 Admin 操作在新 Actor/Role 模型下可核。",
+      "B 向 I 提供最小化 Staff Grant 查核 API；本期不開 A 教材存取。",
+      "教師可用 StaffSession 讀獲授權 Course、TeachingGroup、Synthetic Roster、Assessment、Grades、Submissions；只可授權 Submit/Manual Mark，不可更正正式分數",
+      "停用/撤權時，舊 Token/舊列表/跨 Course/Group/Student 被 B 每一個業務 API 拒絕；無 AdminToken"
+    ],
+    "watch": [
+      "StaffSession、ServiceToken 不可混用；前端不能得到 B service_role。",
+      "遷移早期單 Admin Actor 資料時需保留舊 Audit，不得改寫事件作者。"
+    ],
+    "prior": [
+      "S1–S21 單 Admin 模式既有業務操作不能因增加身份而無故失效。",
+      "S23 I Teacher A Content 功能未做完之前，不向教師顯示 A 教材可讀。"
+    ],
+    "future": [
+      "S23 必須驗證實際 B Grants／Revocation，S24 UI 再公開教師教材介面。",
+      "S25 真實學生准入還依賴更嚴格的 Course／Class 授權與校方資料政策。"
+    ],
+    "open": [
+      "OIDC 供應商、教師身份資料、Class 權限粒度仍需 Owner 批准；不能直接將 B RLS 搬入 A SurrealDB。"
+    ],
+    "stage": 22,
+    "owner": "B",
+    "release": "R22",
+    "depends_on": [
+      3,
+      17,
+      18,
+      20
+    ],
+    "downstream": [
+      23,
+      25
+    ],
+    "stage_filename": "STAGE_22.md",
+    "acceptance_ids": [
+      "S22-AT01",
+      "S22-AT02",
+      "S22-AT03",
+      "S22-AT04",
+      "S22-AT05",
+      "S22-AT06",
+      "S22-AT07",
+      "S22-AT08",
+      "S22-AT09",
+      "S22-AT10",
+      "S22-AT11",
+      "S22-AT12"
+    ]
+  },
+  {
+    "goal": "I 提供 Teacher 唯讀的課程教材搜尋／下載，查 B Staff Grant 後才向 A 取數。",
+    "demo": "授權教師只讀其班級課程的教材；取消 Grant 後即使保存舊連結亦無法搜尋／下載。",
+    "gates": [
+      "StaffSession 必須先經 B Grant API 驗證，且查 A 每個 Source/Download 仍受 Scope 限制。",
+      "教師所有 A Upload/Edit/Create/Delete/Link 請求均拒絕，跨課程、猜 ID、撤銷後即時失效。",
+      "I-only 新增讀取 API／授權邏輯，A/B Runtime SHA、Schema、憑證及部署不變。",
+      "S23 I只讀 A，S22 B 的 Staff Grant 每次查核；舊 Stream/下載/快取 URL 過期及撤權測試"
+    ],
+    "watch": [
+      "快取 URL／瀏覽器檔案／既有 Stream 亦需考慮撤銷與過期的影響。",
+      "S9 的 Admin Evidence Scope 不可直接變成教師權限。"
+    ],
+    "prior": [
+      "依賴 S22 B Grant 查核與 S4 Course Binding；不能用 AdminToken 代表 Teacher。",
+      "保留 S1 原生 A raw API 私有化，教師不能繞過 I 直接登入 A 管理端。"
+    ],
+    "future": [
+      "S24 將呈現教師 UI，權限決策必須由 I/B 服務端作出。",
+      "S25 實名學生資料不應因教材唯讀 Token 而被授權瀏覽。"
+    ],
+    "open": [
+      "Token 壽命、快取失效策略和授權聲明格式待真正 IAM Provider 測試確認。"
+    ],
+    "stage": 23,
+    "owner": "I",
+    "release": "R23",
+    "depends_on": [
+      4,
+      22
+    ],
+    "downstream": [
+      24,
+      25
+    ],
+    "stage_filename": "STAGE_23.md",
+    "acceptance_ids": [
+      "S23-AT01",
+      "S23-AT02",
+      "S23-AT03",
+      "S23-AT04",
+      "S23-AT05",
+      "S23-AT06",
+      "S23-AT07",
+      "S23-AT08",
+      "S23-AT09",
+      "S23-AT10",
+      "S23-AT11",
+      "S23-AT12",
+      "S23-AT13"
+    ]
+  },
+  {
+    "goal": "U 提供可登入的 Teacher Portal，與 Admin 介面分開，所有內容權限沿用 B/I。",
+    "demo": "Teacher 登入只見自己課程及唯讀教材；Admin 仍可做原本管理，撤權後介面同步消失。",
+    "gates": [
+      "教師頁的 Course/Materials 搜尋、下載及唯讀顯示可真實使用。",
+      "直接猜 URL 或已撤權時 UI 不能偽裝授權；Server API 本身亦應拒絕。",
+      "U-only 部署，A/B/I 的身份、來源和 Grant 邏輯完全未被改動。"
+    ],
+    "watch": [
+      "前端隱藏按鈕不是授權；根據 API 授權結果處理導航與錯誤。",
+      "不要將教師可編輯教材誤認為學校已批准操作；唯讀是硬規則。"
+    ],
+    "prior": [
+      "S5/S10/S21 的 Admin 入口及操作仍可用。",
+      "S23 I 已處理授權，U 不另建一套 Role Table。"
+    ],
+    "future": [
+      "S25 可加入實名學生資料頁，但需校方批准及完整權限 Gate，不能提前開放。",
+      "教學班／課程編組改動需沿用 B Course TeachingGroup 而不是自建。"
+    ],
+    "open": [
+      "界面導航／Mobile Layout 可先試用再調整，不能改變來源及授權責任。"
+    ],
+    "stage": 24,
+    "owner": "U",
+    "release": "R24",
+    "depends_on": [
+      5,
+      21,
+      23
+    ],
+    "downstream": [
+      25
+    ],
+    "stage_filename": "STAGE_24.md",
+    "acceptance_ids": [
+      "S24-AT01",
+      "S24-AT02",
+      "S24-AT03",
+      "S24-AT04",
+      "S24-AT05",
+      "S24-AT06"
+    ]
+  },
+  {
+    "goal": "只有在校方及供應商／私隱要求完成後，B 才允許正式學生名冊、真實成績與 Evidence。",
+    "demo": "在校方批准的隔離環境，以受授權用戶完成實名資料匯入、課程歸屬、成績及查閱；未批准則嚴格拒絕。",
+    "gates": [
+      "沒有具體校方資料／供應商／AI 處理批准時，所有 Real Import API 必須 Fail Closed。",
+      "校方／班級／科目權限與資料留存政策可實測；真實數據絕不入 A。",
+      "保留 Synthetic 與 Real 資料分離及事件血緣，備份／還原與撤權演練通過。"
+    ],
+    "watch": [
+      "即使系統功能完成，法律／學校政策未批准也不能宣布正式上線使用真實學生資料。",
+      "模型 Provider 會否接觸學生資料需要獨立明確批准，不可依教材 Gemini 設定推定。"
+    ],
+    "prior": [
+      "S22–S24 教師權限與 UI 已須實際通過；不能再用單 Admin 共享帳號測真 PII。",
+      "不能將先前合成 Student 資料直接「改為真實」以繞過資料審核。"
+    ],
+    "future": [
+      "S27 年度結算／保留將以真實資料政策執行；不影響 A 教材保留。",
+      "更廣泛報表、AI 分析必須遵守已批准用途與 Access Scope。"
+    ],
+    "open": [
+      "校方資料治理、法律依據、保存年期、Cloud Region 及供應商審批不是技術文件可先確定的內容。"
+    ],
+    "stage": 25,
+    "owner": "B",
+    "release": "R25",
+    "depends_on": [
+      22,
+      23,
+      24
+    ],
+    "downstream": [
+      27
+    ],
+    "stage_filename": "STAGE_25.md",
+    "acceptance_ids": [
+      "S25-AT01",
+      "S25-AT02",
+      "S25-AT03",
+      "S25-AT04",
+      "S25-AT05",
+      "S25-AT06",
+      "S25-AT07",
+      "S25-AT08"
+    ]
+  },
+  {
+    "goal": "A 做自己的年度教材封存、原檔／版本校驗與保留政策管理工具。",
+    "demo": "Admin 選學年進行 A 教材 Archive、查保留規則、執行原檔 Hash／A-only Restore 核對。",
+    "gates": [
+      "Archive 後 Notebook／Source/Version/Hash 仍可依政策查閱，普通功能無直接 Delete。",
+      "保留期／例外須有管理審查；A-only Backup/Restore／索引重建可驗。",
+      "A-only Release 不改 B Student/Grade、I Binding 或 U Runtime。",
+      "A 提供最小 ServiceToken-only /health 和 /backup-status 含可核對 snapshot/restore 狀態；不可暴露檔案或 Root Key"
+    ],
+    "watch": [
+      "「年度 Housekeeping」不是定時清空；教材版權／法規／校方保留要求需先批准。",
+      "A 來源封存後可能影響 S9 Evidence，需有 API 可識別版本已撤回／不可用。"
+    ],
+    "prior": [
+      "S1 起已有最低安全與基本保留資訊，S26 只加治理 UI/進階程序，不能推遲早期備份。",
+      "不刪 B Grade Events 或學生紀錄，也不修改 I 整合契約。"
+    ],
+    "future": [
+      "S28 I 對帳要知道 A 來源封存狀態而非把 Archive 當刪除。",
+      "資料依法清除若涉及 B 學生紀錄須各自另行批准及單 Owner 流程。"
+    ],
+    "open": [
+      "具體保留年期、Legal Hold、刪除申請責任及存儲成本待正式校方政策確認。"
+    ],
+    "stage": 26,
+    "owner": "A",
+    "release": "R26",
+    "depends_on": [
+      2
+    ],
+    "downstream": [
+      28
+    ],
+    "stage_filename": "STAGE_26.md",
+    "acceptance_ids": [
+      "S26-AT01",
+      "S26-AT02",
+      "S26-AT03",
+      "S26-AT04",
+      "S26-AT05",
+      "S26-AT06",
+      "S26-AT07",
+      "S26-AT08",
+      "S26-AT09"
+    ]
+  },
+  {
+    "goal": "B 建學年結算、成績事件保留／查核及封存報告，不影響 A 教材。",
+    "demo": "System Admin 預覽未完成 Assessment，將學年按合法狀態關閉／封存，保留 Grade History 和稽核紀錄。",
+    "gates": [
+      "結算 Open→Closing→Closed→Archived 及失敗回退可測，不合法轉換拒絕。",
+      "正式 Grade Ledger/Correction/Audit 不會因 Closing 或 Weakness Keep2 被靜默刪除。",
+      "B-only Restore、重新計分及結算報告可核；B 版本改動不觸及 A。",
+      "B 提供最小 ServiceToken-only /health 和 /backup-status 含 migration/snapshot/restore 時點；不能透出學生/成績內容"
+    ],
+    "watch": [
+      "真實學生記錄的保留期限、撤回及法律保留優先於省儲存成本。",
+      "已關閉學年仍可能有合法更正，應有受控補正流程而非無稽核 UPDATE。"
+    ],
+    "prior": [
+      "不能改動 S26 A 教材封存狀態；B Academic Year Close 不會自動 Delete Notebook。",
+      "S17 不可覆寫 Grade、S20 保留 Weakness 版本記憶原則仍有效。"
+    ],
+    "future": [
+      "S28 的跨服務檢查依賴 B 的學年狀態與對帳 API。",
+      "如未來支援跨年 Course Copy，需有獨立版本／資料治理設計而非直接共用原資料物件。"
+    ],
+    "open": [
+      "學校實際學年邊界、保留期與 Close/Reopen 權限需 Owner／校方決定。"
+    ],
+    "stage": 27,
+    "owner": "B",
+    "release": "R27",
+    "depends_on": [
+      17,
+      18,
+      20,
+      25
+    ],
+    "downstream": [
+      28
+    ],
+    "stage_filename": "STAGE_27.md",
+    "acceptance_ids": [
+      "S27-AT01",
+      "S27-AT02",
+      "S27-AT03",
+      "S27-AT04",
+      "S27-AT05",
+      "S27-AT06",
+      "S27-AT07",
+      "S27-AT08",
+      "S27-AT09"
+    ]
+  },
+  {
+    "goal": "I 提供跨服務狀態與異常 Dashboard，但不取代兩套庫各自的還原工具。",
+    "demo": "管理員查看 A/B Healthy、Course Binding、Source Version、Backup/Restore 報告及異常告警，能清楚定位哪邊需處理。",
+    "gates": [
+      "以既有 API 偵測缺 B Binding、孤兒 A Notebook、Source Hash/版本差異、Restore 時點不一致。",
+      "不一致就標示異常／阻止誤判 READY；I 不直接執行 SurrealQL／SQL/DB Restore。",
+      "S4 原有核心 Reconcile/Retry 仍可用，I-only Dashboard 升級可回退。",
+      "I 只使用 S26 A 與 S27 B Health/Backup/Manifest Service API，不使用 SQL/SurrealDB 或 DB Restore 權限"
+    ],
+    "watch": [
+      "Dashboard 是診斷工具，不能偷偷直接執行未獲批准的刪除／自動修復資料庫操作。",
+      "狀態顯示要標明資料新鮮度及監控缺口，不能把最後一次成功當即時健康。"
+    ],
+    "prior": [
+      "不能把 S4 已必需的 Saga Recovery 推遲到 S28；不得修改 S26 A/S27 B 的治理資料模型。",
+      "I 沒有 A/B DB Root Secret，不能藉方便監控加 DB DSN。"
+    ],
+    "future": [
+      "作為後續運維平台的 API-only 基線，異常跨 Owner 修復仍應拆 A-only/B-only 版本。",
+      "Retention/PII 變更必須遵守 S25–S27 的批准與證據，不由 I 自行決定。"
+    ],
+    "open": [
+      "監控平台、報警閾值、Dashboard 技術和日誌保留細節在部署後根據真實故障模式決定。"
+    ],
+    "stage": 28,
+    "owner": "I",
+    "release": "R28",
+    "depends_on": [
+      4,
+      26,
+      27
+    ],
+    "downstream": [],
+    "stage_filename": "STAGE_28.md",
+    "acceptance_ids": [
+      "S28-AT01",
+      "S28-AT02",
+      "S28-AT03",
+      "S28-AT04",
+      "S28-AT05",
+      "S28-AT06",
+      "S28-AT07",
+      "S28-AT08",
+      "S28-AT09"
+    ]
+  }
+]

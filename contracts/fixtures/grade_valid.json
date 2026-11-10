@@ -1,0 +1,11 @@
+{
+  "event_id": "G1",
+  "grade_key": "student-1:assessment-1",
+  "event_type": "SUBMIT",
+  "revision": 1,
+  "score": 8,
+  "actor_id": "admin-1",
+  "created_at": "2026-11-08T00:00:00Z",
+  "operation_id": "submit-1",
+  "canonical_request_hash": "3822694f77a7cc89bb68d20bf26b107004a26c6d52499600abfac674941b026a"
+}

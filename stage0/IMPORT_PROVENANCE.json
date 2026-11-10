@@ -1,0 +1,10 @@
+{
+  "active_repo": "Enochan222/sunrise-school-ai-platform",
+  "original_zip_sha256": "ee4d07d9e4d46fb9bf8c8b8f26c22413a4d2b0cca58acd0a45fc937da0b95bd5",
+  "original_zip_entries": 149,
+  "original_source_manifest_entries": 148,
+  "adaptation": "No GitHub Copilot; no GitHub Actions; local-only QA; new owner; historical ADR not imported",
+  "actual_runtime_tests": "NOT_RUN",
+  "stage0_owner_approval": "PENDING",
+  "import_to_github_state": "LOCAL_PREPARATION_NOT_COMMITTED"
+}

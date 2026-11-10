@@ -1,0 +1,20 @@
+gap_id,owner_stage,owner,area,blocking_contract,planning_status,actual_runtime_evidence
+CG-01,22,B,Teacher business API authorization,staff Session on real B Course/Group/Assessment/Grade/Submission operations; no Admin impersonation,DESIGN_UPDATED / PROVIDER_NOT_RUN,NOT RUN
+CG-02,9,I,Evidence validate B Worker identity,"service-only link.evidence.validate with exact B Worker/Job audience, S8 B worker reference",DESIGN_UPDATED / PROVIDER_NOT_RUN,NOT RUN
+CG-03,3,B,Course grain,"grade+curriculum_stream, no single class_id; Course one-to-many Teaching Groups",DESIGN_UPDATED / PROVIDER_NOT_RUN,NOT RUN
+CG-04,6,B,Blueprint lifecycle,create/read/draft update/publish/versions; stable Blueprint ID pinned in S8,DESIGN_UPDATED / PROVIDER_NOT_RUN,NOT RUN
+CG-05,20,B,Weakness full state,"candidate/active/stale/retired read, discard/keep, source Grade watermark",DESIGN_UPDATED / PROVIDER_NOT_RUN,NOT RUN
+CG-06,9,I,Evidence second validation,same jti+job can revalidate at different phases; different job denied; fresh revocation each time,MODEL_FIXED / RUNTIME_NOT_RUN,NOT RUN
+CG-07,17,B,Grade idempotency hash,"same op+same canonical_request_hash replay; changed payload 409, actor bound",MODEL_FIXED / RUNTIME_NOT_RUN,NOT RUN
+CG-08,1,A,School ownership for Content Shell,A shell has mandatory school_id and all searches/downloads verify school before source,DESIGN_UPDATED / PROVIDER_NOT_RUN,NOT RUN
+CG-09,4,I,Course/Content Cutover,S3 B reserve then S2 A idempotent create then B finalize; FAIL CLOSED on school mismatch,STAGE_GATE_UPDATED / RUNTIME_NOT_RUN,NOT RUN
+CG-10,0,P,Stage1 Gemini decision,A search indexing required; A Gemini optional separate key/consent/budget; B S7 key separate,REFERENCE_DECISION / OWNER_APPROVAL_PENDING,NOT RUN
+CG-11,15,B,TeachingGroup enrollment,student_id/course_id/teaching_group_id must reconcile same School/Course,DESIGN_UPDATED / PROVIDER_NOT_RUN,NOT RUN
+CG-12,18,B,Item-level manual marking,"item ID + rubric version + score/max + revision, preserve Grade Ledger",DESIGN_UPDATED / PROVIDER_NOT_RUN,NOT RUN
+CG-13,21,U,Assessment/weakness UI readiness,S20 B supplies candidate/active/stale/retired/read/keep/discard before S21 U,STAGE_GATE_UPDATED / UAT_NOT_RUN,NOT RUN
+CG-14,22,B,Teacher grant revocation,B validates staff session epoch/School-Course-Group scope at each resource API,STAGE_GATE_UPDATED / SECURITY_NOT_RUN,NOT RUN
+CG-15,25,B,Real student privacy gate,"no real PII before school and vendor permissions, class grants, retention consent",RETAINED / SCHOOL_APPROVAL_PENDING,NOT RUN
+CG-16,26,A,Vault health and backup read,"A read-only ServiceToken health/backup-status for S28, no root access",DESIGN_UPDATED / RUNTIME_NOT_RUN,NOT RUN
+CG-17,27,B,Core health and backup read,"B read-only ServiceToken health/backup-status for S28, no student/grade leakage",DESIGN_UPDATED / RUNTIME_NOT_RUN,NOT RUN
+CG-18,2,A,Contract freeze and compatibility,"S2 A, S3 B, S8 B, S22 B provider tests and consumer negative tests before dependent I stage",STAGE_GATE_UPDATED / CONTRACT_NOT_FROZEN,NOT RUN
+CG-19,4,I,Independent migration rollback,"no cross-db ACID; read-after-write, bounded retries, orphan quarantine, forward-fix, never notebook delete",RETAINED / RUNTIME_NOT_RUN,NOT RUN

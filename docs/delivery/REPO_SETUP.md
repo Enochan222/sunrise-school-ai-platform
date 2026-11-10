@@ -1,0 +1,7 @@
+# Repository Arrangement and GitHub Rules
+
+> **CURRENT REPOSITORY OVERRIDE (2026-11-10):** Active repo is `Enochan222/sunrise-school-ai-platform`; no GitHub Copilot/Actions; local QA must be executed and evidenced; old repo, old CI, old ADR references below are historical only. Read [current Stage0 rules](NEW_REPO_STAGE0.md).
+
+The **existing** private control repo is `IssacSitHk/sunrise-education-ai-platform`, not a new blank repo. Its main baseline is v0.5; this kit must go through a reviewed **docs-only PR**. For runtime source isolation, recommended future repositories are independently owned `sunrise-vault` A, `sunrise-core` B, `sunrise-bridge` I, `sunrise-frontend` U (provisional names, not verified/created). Alternate monorepo acceptable only with path/owner gated CI and independently versioned Image/Schema migrations. Never claim repos created without verifying.
+
+Keep GitHub `main` manual PR/squash, existing `validate-docs` CI Job and CODEOWNERS unchanged; GitHub Free private account settings may not enforce independent review. Do not require nonexistent GitHub branch protection. Admin approves merge. `.env`/Gemini Keys/private school files/Backups excluded from Git. Avoid dumping upstream Open Notebook Zip into control repo, pin upstream exact version and preserve license. Live old ADR-001..010 stay historical, new ADRs 011..020 via new files. For exact step-by-step see [GitHub baseline PR plan](GITHUB_BASELINE_PR_PLAN.md).

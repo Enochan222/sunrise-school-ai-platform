@@ -1,16 +1,13 @@
-# Import exact v0.7.5 into new private GitHub (no Actions)
+# Verified v0.7.5 Import (No GitHub Actions)
 
-**Source already verified locally:** `Sunrise_Master_Project_Kit_v0.7.5_Reuse_First_Stage_Logic_Reviewed.zip`, SHA-256 `ee4d07d9e4d46fb9bf8c8b8f26c22413a4d2b0cca58acd0a45fc937da0b95bd5`.
+This local candidate **does include** the source ZIP contents adapted to the fresh Enochan222 repository, plus local-only QA. The external original ZIP has SHA-256 `ee4d07d9e4d46fb9bf8c8b8f26c22413a4d2b0cca58acd0a45fc937da0b95bd5` and 149 original file entries. Original file hashes are retained in `docs/quality/V075_ORIGINAL_SOURCE_MANIFEST.sha256`; adapted package hashes are in root `FILE_MANIFEST.sha256`.
 
-**Adapted package already prepared locally:** `Sunrise_v0.7.5_No_Actions_Fixed_QA_Environment.zip` (164 files including source manifest and Docker QA configuration). This GitHub repository has NOT imported its contents yet. The original v0.7.5 had 149 entries; no old GitHub history/ADRs 001–010 are to be migrated.
+## What to import into GitHub
 
-## Exact import gate
+Import the **contents of this package**, including hidden `.github/` but **excluding GitHub Actions workflows**. Import into a dedicated docs-only branch with `main` as its base, not through direct pushes to `main`. Do not import or delete the old IssacSitHk repository. GitHub's existing bootstrap README/AGENTS/S0 files should be replaced by the current full v0.7.5 package; delete the obsolete `.github/workflows/validate-docs.yml` from the new repo in the same PR.
 
-1. Upload **expanded individual files**, preserving folder paths, to a feature branch (never directly to protected `main`). Do not upload just the ZIP and claim its contents are imported.
-2. Reconcile the adapted kit's README, AGENTS, QA scripts, `stage0/STAGE0_BASELINE.json`, docs, contracts and `.github` config; remove the old `.github/workflows/validate-docs.yml`. The adapted ZIP has **no workflow files**.
-3. Verify adapted `FILE_MANIFEST.sha256` against all files and source provenance: 29 Stage specs S0–S28, 100 candidate API operations, 310 planned acceptance cases.
-4. Run all 16 local test groups using `python scripts/run_qa_no_actions.py` (or a verified Docker QA environment), record commit SHA and actual logs. Local tests were run in Python 3.13; the Docker 3.11 recipe requires a separate real Docker execution check.
-5. Open PR with evidence, check privacy/secrets and no old repo instructions, then squash merge only if the tests actually ran and passed. No required GitHub status check, no automatic GPT wake-up and no unattended auto-merge.
-6. Keep `stage0_product_approval: PENDING` and `runtime_tests: NOT_RUN`. Product architecture decisions remain Owner-controlled.
+## Validate and merge only on evidence
 
-**Web uploader limit:** GitHub's browser allows at most 100 files per upload. Use two uploads to the **same feature branch**, or use GitHub Desktop to copy the expanded folder locally and push once. The Owner does not need to read code.
+Run `python scripts/run_qa_no_actions.py` against the exact Git HEAD with a suitable Python 3.11+ and pinned jsonschema. Record logs/commit SHA and actual negative/regression outcomes in PR. Do not assert any GitHub Required Checks (they are deliberately OFF) or automatically merge untested code. No Runtime A/B/I/U, restore or student-data tests have run.
+
+The connected GitHub app can modify individual text files and PRs but does NOT directly accept this workspace's entire local ZIP/folder; a Git client or connected Work-mode browser/desktop workflow is required for the one-off full bulk import. Do NOT claim the imported GitHub main is already complete until branch contents and hashes are independently checked.

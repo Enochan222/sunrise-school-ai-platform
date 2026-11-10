@@ -1,0 +1,9 @@
+# Evidence Validation v0.7.4 — Single-use Job Binding, Repeatable Freshness Checks
+
+**Contract candidate / NOT cryptographically implemented.** No B Worker may borrow an AdminSession to call I. S8 B owns Worker identity and signed service request creation; S9 I validates short-lived `ServiceToken` (`aud=I`, `sub=expected B Worker`, issuer, signature, `exp/nbf`, `scope=link.evidence.validate`, job_id/attempt, school/course/binding version).
+
+Evidence bundle `jti` is **not** a once-and-discard API request nonce. It is a stable signed Evidence Bundle identifier bound to exactly one `(job_id, allowed_purpose, binding_version, course_id)` claim; model execution and paper approval **recheck the same bundle** with `validation_phase=MODEL_PRE_EXECUTION` and `PAPER_PRE_APPROVAL`. The ServiceToken for the actual HTTP request *may* be one-time or rotated; that token's own nonce/replay protection is distinct from the Evidence Bundle `jti`.
+
+At both checks, verify current School/Course/Source owner, published Source Version/sha256, revocation/usage policy, B Grant epoch, Binding version, clock expiry, job operation integrity. Rechecking the same jti from **another job** or different purpose is 409/403 and quarantines the job; rechecking same job after expiry/revocation also fails. Never bypass failed preapproval check by accepting stale success from a previous phase. Do not reuse the B Admin UI session or S7 Provider Key to validate Evidence.
+
+`POST /link/v1/evidence-bundles/{bundle_id}/validate`: ServiceToken-only, required JSON `expected_course_id`,`binding_version`,`purpose`,`job_id`,`validation_phase`; signed response contains request_id and typed evidence status. Negative tests include another job replay, wrong phase, expired/changed source, revoked grant, wrong school and raw A direct access. S8 B Generation works with Evidence OFF before S9; S9 cannot force a B Schema change.

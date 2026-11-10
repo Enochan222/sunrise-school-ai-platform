@@ -1,0 +1,14 @@
+{
+  "question_id": "Qbad",
+  "schema_version": "1.0",
+  "subject": "math",
+  "question_type": "fraction",
+  "stem": "invalid",
+  "max_score": 2,
+  "rubric_version": "rv1",
+  "answer_spec": {
+    "kind": "fraction",
+    "numerator": 1,
+    "denominator": 0
+  }
+}

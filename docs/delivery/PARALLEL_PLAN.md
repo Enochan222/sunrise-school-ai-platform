@@ -1,0 +1,5 @@
+# Safe Parallel Development vs Sequential Platform Releases
+
+After S0 owner approval, A and B can prototype/develop in separate code repos/branches in parallel without shared DB; S1/S2 A API contracts frozen before I; S3 B independently usable Course (CONTENT_UNLINKED) and atomic reserve; S4 I only after A/B actual API contracts pass and Owner approves. Release Manifest ordering R01–R28 ensures one changed runtime owner per release, but **technical dependencies** are recorded separately from numeric predecessor. B question/AI modules S6–S8 can develop independently of I S4 after S3; S9 evidence consumes S2 A, S4 I binding and S8 B accepted generic evidence. U Stage S5/S10/S21/S24 is necessary to expose relevant new features in Sunrise frontend.
+
+Avoid pushing all owners into one monorepo PR. If a consumer needs a new endpoint, create and release an owner-only change first; review version/rollback and rerun APIs. Max one active production rollout at a time; keep A/B independent backups and update project status/owner manifest for each feature. Optional one-hour Spike not a deployment promise. Product/school privacy approval precedes real PII imports at S25.

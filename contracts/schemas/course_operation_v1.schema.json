@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Course Binding Operation v1 B owner",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "operation_id",
+    "mode",
+    "link_key",
+    "idempotency_key",
+    "request_hash",
+    "state",
+    "course_id",
+    "actor_id",
+    "binding_version"
+  ],
+  "properties": {
+    "operation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mode": {
+      "enum": [
+        "CREATE_NEW",
+        "ADOPT_EXISTING"
+      ]
+    },
+    "link_key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "request_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "state": {
+      "enum": [
+        "UNLINKED",
+        "RESERVED",
+        "PROVISIONING",
+        "VERIFYING",
+        "ACTIVE",
+        "RETRYABLE",
+        "CONFLICT",
+        "QUARANTINED",
+        "ARCHIVED"
+      ]
+    },
+    "course_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "a_shell_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "a_notebook_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "actor_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "binding_version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "last_error": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

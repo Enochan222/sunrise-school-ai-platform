@@ -1,10 +1,37 @@
-# Sunrise Stage0 agent operating contract — no GitHub Actions
+# AGENTS — Sunrise v0.7.5 / Enochan222 / No GitHub Actions
 
-- The active private repo is `Enochan222/sunrise-school-ai-platform`. Do not migrate prior `IssacSitHk` commit/Issue history. The exact v0.7.5 Master Kit has been verified **locally**, but is **not yet uploaded to this GitHub repository**.
-- **No GitHub Copilot and no GitHub Actions by Owner decision.** Never add files under `.github/workflows/`, require `validate-docs` from disabled Actions, or claim local tests run automatically for each PR.
-- The `Protect main` ruleset uses PR-only, squash, required human code approvals 0, prevents deletion and force-push. A green manual GPT check is not a GitHub-enforced status. Keep unattended auto-merge disabled without an independent CI/Webhook service.
-- Stage S0 is documentation/governance only. S1–S28 runtime work is NOT IMPLEMENTED. Stage 0 product signoff remains PENDING. No backup/restore, A/B databases, paid AI providers or student records have been tested or authorized.
-- GPT works on a feature branch, runs applicable actual checks, records full evidence and commit SHA, audits failures/negative paths, and proposes PR. The Owner decides product/security/privacy/cost and irreversible releases; no technical code-review expertise is required.
-- The complete v0.7.5 29-Stage docs, 100 API candidates and 310 planned ATs become source-of-truth only after exact archive import, manifest check, QA and controlled squash merge. Do not substitute an old v0.7 archive.
-- Design boundaries: A reuses Open Notebook with school/source policy; B owns grades/questions/learning records; I calls A and B only through APIs; U consumes APIs only.
-- For every runtime Stage, require real service/environment and tests; a static QA result alone is not Stage acceptance.
+**Active repository**: `Enochan222/sunrise-school-ai-platform`. Old IssacSitHk repository, commits, Issues and ADR-001..010 are not migrated. Active new candidate ADR-011..022 remain PROPOSED until Owner product sign-off. Stage0 is documents only; no real school data, runtime, deployment or paid providers.
+
+**Owner's choice:** do not use GitHub Copilot or GitHub Actions. Do not add workflows under `.github/workflows/`, do not require status checks from disabled Actions, and do not assume a passing local test can be independently enforced by GitHub. Keep `Protect main` PR-only, squash, prevent force pushes/deletions; human code review approvals are 0. **Auto-merge must remain disabled per PR** absent a separate trusted enforcement process.
+
+**GPT must:** read S0–S28 Stage cards, dependency matrix, owner boundaries and all relevant candidate APIs; create an isolated branch, write change, run actual executable tests in a clean environment, capture exact commands/commit SHA/logs, perform negative/mutation/regression checks, open PR, and identify missing tests. Only merge when all applicable Gate evidence is available; NEVER claim success based on a self-written explanation. Owners approve product, budget, privacy and irreversible operations, not code semantics. If no runtime environment exists, Stage runtime remains NOT RUN.
+
+**Local S0 validation command:** `python scripts/run_qa_no_actions.py` after installing pinned JSON Schema validator (see `docs/delivery/NEW_REPO_STAGE0.md`). It is not a CI service. The current PR cannot be genuinely auto-protected by tests alone.
+
+## Stage 控制卡須先讀、再動工
+
+每次實作必須先閱讀當期 `docs/stages/STAGE_XX.md` 新增的 **1–7 項控制卡**以及 [總表](docs/product/STAGE_BOUNDARY_MATRIX.md)、[決策政策](docs/delivery/STAGE_DECISION_POLICY.md)。先核准「目標／驗收／不能撞前期／後期必需接口」，再決定 API DTO、Queue、Hosting 等細節。不得以具體候選方案當既有規範而跳過 Owner/Provider Test。
+
+工程師每 PR 記錄：本 Stage 交付的一條真可試用流程、全部 AT、前版 Regression、後續消費者依賴、剩餘 TBD、跨 Owner 風險、Rollback；沒有真證據時把完成標記保持 NOT RUN。
+
+## Hard owner isolation
+
+Stage0 P only docs; S1/S2 A, S3 B, S4 I, S5 U, and onward exactly as Registry. One runtime Stage may modify only its owner Service/DB Schema/Infra and corresponding docs. I may call **previously released** A/B APIs, and API calls can have normal DB side effects via owners' API rules, but I shall never use direct A/B DB DSN or modify A/B schema/runtime. If contract is missing, stop I and schedule a preceding owner-only Stage; document revision/renumbering required. U never stores secrets or directly accesses DB.
+
+## Non-negotiable product rules
+
+S1 secure Sunrise Policy Layer; raw Open Notebook API/private UI cannot be exposed. Fail startup on missing auth/encryption/DB/credential Secrets. Search/download/preview/SSE: before and after checks for Shell+Source ownership, nonempty Notebook Scope, no cross Shell links. A-only stores textbook/note/past paper, source version/license/immutable hash; no generated paper/student/grades. B own Course/subject/year/class; **Course is school-year-grade-subject-stream scope, Class is Teaching Group linked N:1 to Course**; A Shell linked 1:1 to B Course after S4, but S1 Shell only A classification. Duplicate physical blobs need not imply shared logical Source ID. No Notebook hard delete in normal UI.
+
+S3 B independent `CONTENT_UNLINKED` until S4. S3 reserve creates B Course+op in a single B transaction for CREATE_NEW; in ADOPT_EXISTING use existing B Course. S4 I's B op journal + A creation journal supports replay, conflict quarantine, read-after-write and core reconciliation. S28 adds dashboard only. S6 Question/Rubric JSON contracts, S7 B Gemini BYOK secret management/ready test, S8 B Queue, S9 I signed version-pinned Evidence. Evidence is untrusted data not model instructions; pre-use and pre-publish source revocation/binding revalidation required. AI always human reviewed; grades immutable event ledger, corrections APPEND, Weakness max2 Active while preserving full grade history.
+
+S1–S21 only one Admin/Principal; future Actor/Scope/School ID reserved from first DB stages. S22 B multiuser IAM; S23 I teacher readonly A with per-request grant recheck; S25 real student PII only after school approval. Minimum auth/private DB/backup always from earliest relevant release.
+
+Every Stage: Issue/Prereq Contract Freeze→single-owner Branch→real user flow+failure+negative tests→owner-local persistence/restore→regression→compatibility and restore/rollback checks→verify ONE owner image/schema/digest change→document evidence→evidence-gated PR. Do not claim Goldfish independent review unless fresh-context reviewer actually ran. No unapproved prod, paid provider, force push or automatic merge. One-hour Spike is exploration, not S1 release deadline.
+
+
+## v0.7.4 Mandatory contract checkpoints
+
+Before Owner Stage implementation, read `docs/quality/CONTRACT_GAP_REMEDIATION.md`. Treat OpenAPI as CANDIDATE only. Hard requirements: Course has many TeachingGroups, A Shell has `school_id`, S8 Generation references published Blueprint+version, Evidence may be fresh-checked twice for same Job but cannot be borrowed by a different Job, B Grade retries hash canonical payload, S22 teachers can truly access B scoped business APIs, I S9 Worker uses ServiceToken, S21 UI uses S20 Weakness State APIs, S28 uses S26/S27 owner health APIs. If missing, block and split Owner Stage; never silently reassign another owner.
+
+
+**Reuse-first hard rule:** Inspect the pinned Open Notebook implementation before building any A ingestion/search/notes/credentials/worker/UI component; use an A policy wrapper and never expose raw native auth/routes. B paper/grade/marking remain B-only despite ON Transformations. See `docs/architecture/OPEN_NOTEBOOK_REUSE_AUDIT.md`; S21, S22, S24 and S27 have corrected technical prerequisites. Adapted to the new Enochan222 repository; latest repo status must be checked.

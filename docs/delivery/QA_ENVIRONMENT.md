@@ -1,12 +1,25 @@
-# Repeatable QA — explicitly invoked, not automatic
+# Repeatable QA environment (no GitHub Actions, no GitHub Copilot)
 
-For the v0.7.5 docs/contract candidate, Python `3.11.11` and exact package versions in `requirements-qa.txt` are specified by `Dockerfile.qa`.
+**Scope:** Stage 0 document, OpenAPI-candidate, semantic, mutation and Stage0 status tests only. Not runtime, security penetration testing, production deployment or a hosted PR CI.
 
-With a Docker engine:
+## Local user/GPT invocation
+
+With Docker installed and a running Docker daemon, from the repository root run:
+
 ```sh
 sh scripts/run_qa_docker.sh
 ```
 
-The QA runner runs the full Master Kit 16-script local checks **only after the entire kit is imported**. In BOOTSTRAP_ONLY mode it runs the local bootstrap tests. Docker image download needs network on build; the test container itself uses no network. The Docker image build has not been tested here because this ChatGPT environment does not provide Docker. The image tag is pinned to a Python patch version but not to an immutable base-image digest, and dependencies are pinned by version rather than by download hashes.
+The Dockerfile uses Python `3.11.11` on Debian Bookworm and pins the six Python requirements in `requirements-qa.txt`. The first build needs to download base image and dependencies; the test container runs with no network access and a read-only filesystem. We have *not* verified the Docker build in the ChatGPT execution environment because Docker is unavailable. A base-image digest, image supply-chain integrity, and lockfile with hashes are not provided yet; patch+dependency pinning is useful reproducibility, not cryptographic environment identity.
 
-For each PR log the exact source SHA, Python version, installed package versions, all test commands/results, negative and regression tests, and known NOT_RUN. Do not auto-merge without independent CI. GPT cannot receive a PR event automatically in this configuration.
+If Docker is unavailable but Python >=3.11 and dependencies are available, run `python scripts/run_qa_no_actions.py`; **label this fallback non-identical** unless its `python --version`, dependency versions and OS match the pinned environment. The current Stage0 QA has previously been executed under Python 3.13, not the Docker Python 3.11 container; do not claim the Docker path has passed until it actually runs.
+
+## Each PR evidence card
+
+1. Exact feature-branch commit SHA, Stage and single runtime Owner.
+2. Docker image/container identification and `python --version`; `pip freeze`, command and exit code.
+3. Save full stdout and stderr to a log and identify the corresponding commit. Check negative cases, predecessor regression and Stage Acceptance IDs.
+4. Attach logs/summary to GitHub PR; if runner is offline/unavailable label `NOT_RUN` and do not merge.
+5. For runtime stages, use staging A/B/I/U services with isolated credentials and DBs. Docker Stage0 QA is never proof of A/B security, restore or actual serving behavior.
+
+**Automatic PR trigger:** absent. GitHub cannot require a PR check merely because GPT claims it ran. A dedicated external CI/Webhook service is necessary for automatic invocation and server-side gating without Actions. Do not enable unattended auto-merge in the interim.

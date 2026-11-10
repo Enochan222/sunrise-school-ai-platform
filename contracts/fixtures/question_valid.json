@@ -1,0 +1,14 @@
+{
+  "question_id": "Q1",
+  "schema_version": "1.0",
+  "subject": "math",
+  "question_type": "fraction",
+  "stem": "3/4 + 1/2 = ?",
+  "max_score": 2,
+  "rubric_version": "rv1",
+  "answer_spec": {
+    "kind": "fraction",
+    "numerator": 5,
+    "denominator": 4
+  }
+}

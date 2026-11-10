@@ -1,0 +1,14 @@
+{
+  "operation_id": "O1",
+  "mode": "ADOPT_EXISTING",
+  "link_key": "link-1",
+  "idempotency_key": "link:1",
+  "request_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "state": "RESERVED",
+  "course_id": "C1",
+  "actor_id": "admin1",
+  "binding_version": 0,
+  "a_shell_id": null,
+  "a_notebook_id": null,
+  "last_error": null
+}

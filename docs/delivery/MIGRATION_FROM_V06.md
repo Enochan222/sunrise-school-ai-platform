@@ -1,0 +1,3 @@
+# Older v0.6 → Reviewed v0.7 (Historical Context)
+
+Previously v0.6 mixed B DB implementation and I A/B Integration in one Stage, an unacceptable combined runtime owner. Original v0.7 isolated A (S1/S2), B (S3–S6), I (S7), U (S8); this review **reorders to earlier I S4 and U S5**, adds question schema/provider key/UI gates and four subject releases before students/IAM. Stage0 remains docs/owner review, no DB/Restore Runtime PoC. The approved live GitHub baseline is **still v0.5**, so this file is historical planning context, not an instruction to overwrite current main. For exact original uploaded v0.7 AT mapping, read [MIGRATION_FROM_V07.md](MIGRATION_FROM_V07.md).

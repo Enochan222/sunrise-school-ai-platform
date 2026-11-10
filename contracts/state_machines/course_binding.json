@@ -1,0 +1,80 @@
+{
+  "binding_state": [
+    "UNLINKED",
+    "RESERVED",
+    "PROVISIONING",
+    "VERIFYING",
+    "ACTIVE",
+    "RETRYABLE",
+    "CONFLICT",
+    "QUARANTINED",
+    "ARCHIVED"
+  ],
+  "creation_mode": [
+    "STANDALONE",
+    "FREEZE",
+    "MANAGED"
+  ],
+  "transitions": {
+    "UNLINKED": [
+      "RESERVED",
+      "ARCHIVED"
+    ],
+    "RESERVED": [
+      "PROVISIONING",
+      "VERIFYING",
+      "RETRYABLE",
+      "CONFLICT",
+      "QUARANTINED"
+    ],
+    "PROVISIONING": [
+      "VERIFYING",
+      "RETRYABLE",
+      "CONFLICT",
+      "QUARANTINED"
+    ],
+    "VERIFYING": [
+      "ACTIVE",
+      "RETRYABLE",
+      "CONFLICT",
+      "QUARANTINED"
+    ],
+    "RETRYABLE": [
+      "PROVISIONING",
+      "VERIFYING",
+      "CONFLICT",
+      "QUARANTINED"
+    ],
+    "ACTIVE": [
+      "VERIFYING",
+      "CONFLICT",
+      "QUARANTINED",
+      "ARCHIVED"
+    ],
+    "CONFLICT": [
+      "QUARANTINED",
+      "VERIFYING"
+    ],
+    "QUARANTINED": [
+      "VERIFYING",
+      "ARCHIVED"
+    ],
+    "ARCHIVED": []
+  },
+  "modes": {
+    "CREATE_NEW": "B transaction atomically creates Course (if absent) plus reserved operation; then A provisions by stable link_key; B finalizes",
+    "ADOPT_EXISTING": "Course already exists UNLINKED; operator selects existing A shell; dry-run and exact stable ref verification, B reserves, no A create, B finalizes"
+  },
+  "critical_invariants": [
+    "one binding per course",
+    "one course per A shell/notebook",
+    "same link_key and A external key in final binding",
+    "old A source IDs/Hashes unchanged",
+    "same idempotency key with mismatched canonical body -> HTTP 409",
+    "no auto DELETE A Notebook",
+    "I persistence uses A/B service APIs only",
+    "read-after-write verification of both services before ACTIVE"
+  ],
+  "retry_rules": "Use B durable operation log and A create-op journal; if status unknown, re-read both by op ID, never blindly re-create; retry with exponential backoff+max attempts, quarantine conflicts; no exactly-once promise.",
+  "cutover": "Scoped policy for new shell CREATE actions (STANDALONE→FREEZE→MANAGED) is applied via pre-released A admin API only after S4 dry-run complete and Owner permission; existing A read/search/repair stays available. On failure freeze new writes; keep owner-specific UIs read-only as needed. Rollback cannot erase existing A/B data."
+}

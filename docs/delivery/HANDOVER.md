@@ -1,0 +1,23 @@
+# Engineer Handover — Reviewed v0.7
+
+> **CURRENT REPOSITORY OVERRIDE (2026-11-10):** Active repo is `Enochan222/sunrise-school-ai-platform`; no GitHub Copilot/Actions; local QA must be executed and evidenced; old repo, old CI, old ADR references below are historical only. Read [current Stage0 rules](NEW_REPO_STAGE0.md).
+
+**Do NOT begin runtime coding using old GitHub v0.5 Stage numbers or unapproved v0.7 ZIP.** First verify private repo owner, live main SHA, branch, PRs, Issues #4/#7, recorded Stage0 handoff and approved ADR. Follow [Docs PR Plan](GITHUB_BASELINE_PR_PLAN.md) and keep `.github/CODEOWNERS`, `validate-docs` job and existing ADR-001..010. New proposed ADRs are separate files 011..020. Docs PR only, no auto-merge or deploy.
+
+## 接手者最先核對的 Stage Go／No-Go
+
+以 [29 Stage 控制總表](../product/STAGE_BOUNDARY_MATRIX.md) 和當期 `STAGE_XX.md` 控制卡為交接主體；每一期都要講清楚「**可試用咩、點測、唔准整到邊舊舊功能、留咩接口畀下一期**」。原有 API／Schema／Token／模型詳細欄位仍屬 `TYPED_CANDIDATE/REFERENCE`，不因文件寫得仔細就視作凍結。Owner 在該 Stage 的真 Runtime Gate 中決定／確認細節。
+
+**Blocker escalation：** 若某 Stage 必須修改另一 Owner，立即停止、開獨立 Stage/ADR，不得以「暫時參考」掩蓋當期核心功能已無法交付。
+
+Next approved implementation once Owner signs S0 revised model: **S1 A only** Open Notebook/SurrealDB, private Vue/React or native safe Vault Content Shell screen, Admin HTTPS, Sources/Hash/Search, fail-start secrets and A Restore. S2 A catalog/API contract. S3 B Postgres Course/TeachingGroup/bindings reserve/ops API but no A call; independent B Restores. S4 I-only performs link/Create via those APIs, durable operation and core recovery. S5 U Sunrise Course Portal. B Question S6, Gemini Key S7, Queue S8, optional I evidence S9, U Generation S10. Four subject B S11–14 before Synthetic and IAM.
+
+Every Stage follows its [Stage Spec](../product/ROADMAP.md) and [API Inventory](../architecture/API_INVENTORY.json), one owner runtime diff with contract freeze/prereqs, real negative tests and rollback/restore evidence. If I needs unexpected owner APIs, stop, create separate owner-only Release. Screenshots or CI success do not equal actual Deployment. Current Project Status is NOT IMPLEMENTED.
+
+
+## v0.7.4 delta for engineer
+
+Read [Contract Gap Register](../quality/CONTRACT_GAP_REMEDIATION.md) before any owner-stage code. Before I S4, A S2 and B S3 need real contract tests; before I S9, B S8 Worker identity, Blueprint and Evidence input; before U S21, B S20 Weakness full API; before I S23, B S22 **real StaffSession on business APIs**. All current OpenAPI paths/DTOs are **design candidates** until owner provider tests and approval. Never use AdminSession/Service Role to bypass restricted staff or worker operation. See [Grade Idempotency](../architecture/GRADE_IDEMPOTENCY.md) and [Evidence Revalidation](../architecture/EVIDENCE_REVALIDATION.md).
+
+
+**v0.7.5 handover requirement:** Show a code-backed REUSE/WRAP/BUILD assessment before implementing S1/S2; do not start by cloning Open Notebook into a new RAG app. Check A native direct routes, source multi-notebook linking and search global fallback. S21/S22/S24/S27 dependency fixes in Stage Registry are now contract guards. See `docs/delivery/STAGE_FLOW_ENGINEERING_AUDIT.md`.
