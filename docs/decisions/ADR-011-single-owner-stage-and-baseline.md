@@ -1,5 +1,7 @@
 # ADR-011 — Single Owner Stage And Baseline
 
+> **Current repository clarification (2026-11-10):** This original 2026-11-08 *proposal* uses historical v0.5/old-GitHub language. Reviewed 164-file v0.7.5 has now been merged into `Enochan222/sunrise-school-ai-platform` via PR #8. Product signoff is still pending; see [Owner decision packet](STAGE0_APPROVAL_DECISIONS.md).
+
 **Status:** PROPOSED, PRODUCT OWNER SIGNOFF PENDING. **Spec date:** 2026-11-08. **New revision only; do not overwrite existing live ADR-001..010.**
 
 ## Decision

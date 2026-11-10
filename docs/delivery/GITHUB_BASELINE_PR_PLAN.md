@@ -1,5 +1,7 @@
 # Fresh GitHub repository — v0.7.5 import and PR plan
 
+> **COMPLETION UPDATE 2026-11-10:** The docs-only import prescribed below **was completed by PR #8** and confirmed on GitHub `main` (164/164 source files). Numbered steps below are a historical import procedure, not an outstanding import task. Stage0 architecture/signoff is still pending; see [S0 evidence](STAGE0_EVIDENCE_2026-11-10.md).
+
 The owner decided to use `Enochan222/sunrise-school-ai-platform` as the only current repository. Older `IssacSitHk` v0.5, Issue/PR/ADR-001–010 and `@IssacSitHk` CODEOWNERS material are NOT imported. Preserve versioned v0.7.5 ADR-011..022 **as proposals**; no implied owner approval or old GitHub history.
 
 1. Validate original v0.7.5 ZIP CRC, safe paths, 149 source file entries, SHA-256 and the 148-line original source manifest. Keep provenance; do not commit ZIP or real school/student data.

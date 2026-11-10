@@ -16,7 +16,7 @@ Every Release records: `manifest_id Rnn`, `stage`, `owner_track`, Git SHA & imag
 
 ## Source of Truth and pull requests
 
-Live GitHub private main currently baseline v0.5 until reviewed docs PR passes; don't force-overwrite. Keep existing ADR-001..010 intact; add new ADR-011..021. Keep `validate-docs` CI and CODEOWNERS `@IssacSitHk`; Github Free/private workflow requires authorized human PR+CI+Squash Merge, not artificially enforce second reviewer. Do not auto-merge, auto-deploy, spend, or import real students. Owner approves each runtime Stage cutover.
+The only current source of truth is new private GitHub `Enochan222/sunrise-school-ai-platform`; reviewed 164-file v0.7.5 kit was merged through PR #8 on 2026-11-10. Historical `IssacSitHk`, v0.5, and old ADR-001..010 remain **outside** this repo. Current active ADR-011..022 are **proposals**, not all Owner-approved. Keep `.github/CODEOWNERS` targeting `@Enochan222`, protected PR/squash-only `main`, and **no GitHub Actions/Copilot** per Owner decision. Local GPT-run QA is not a GitHub-enforced PR check; do not unattended-auto-merge, auto-deploy, spend, or import real student data. See [S0 decisions](../decisions/STAGE0_APPROVAL_DECISIONS.md).
 
 ## Stage-critical gates
 

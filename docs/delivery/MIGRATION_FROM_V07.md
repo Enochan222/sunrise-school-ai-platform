@@ -1,5 +1,7 @@
 # Original Uploaded v0.7 → Reviewed v0.7 Stage Migration Crosswalk
 
+> **HISTORICAL v0.7 MIGRATION NOTE (2026-11-10):** The new Enochan222 repo has already imported reviewed v0.7.5 via PR #8. Old GitHub v0.5 and `IssacSitHk` directions below are not current instructions. See [current S0 evidence](STAGE0_EVIDENCE_2026-11-10.md).
+
 **The original uploaded kit has Stage S0–S23 and 149 designed ATs. This reviewed kit has a different planned sequence.** Old IDs stay historical; GitHub work branches/Issues must be mapped by **function**, not blindly rename without owner review.
 
 | Previous ZIP Stage | Reviewed Stage | Owner | Meaning / reason |

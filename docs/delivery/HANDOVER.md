@@ -2,7 +2,7 @@
 
 > **CURRENT REPOSITORY OVERRIDE (2026-11-10):** Active repo is `Enochan222/sunrise-school-ai-platform`; no GitHub Copilot/Actions; local QA must be executed and evidenced; old repo, old CI, old ADR references below are historical only. Read [current Stage0 rules](NEW_REPO_STAGE0.md).
 
-**Do NOT begin runtime coding using old GitHub v0.5 Stage numbers or unapproved v0.7 ZIP.** First verify private repo owner, live main SHA, branch, PRs, Issues #4/#7, recorded Stage0 handoff and approved ADR. Follow [Docs PR Plan](GITHUB_BASELINE_PR_PLAN.md) and keep `.github/CODEOWNERS`, `validate-docs` job and existing ADR-001..010. New proposed ADRs are separate files 011..020. Docs PR only, no auto-merge or deploy.
+**CURRENT HANDOVER GATE (2026-11-10):** The 164-file v0.7.5 planning kit is merged in new `Enochan222` repo PR #8. No `validate-docs` GitHub Actions job and no migrated old ADR 001–010. Before S1 coding: confirm [S0 Owner approvals](../decisions/STAGE0_APPROVAL_DECISIONS.md) and [Stage1 start criteria](STAGE1_START_CRITERIA.md); verify latest GitHub `main`, full QA evidence and security controls. Never treat proposed contracts as live deployment; Stage 1 can begin only after S0 signoff, in an A-only Stage PR.
 
 ## 接手者最先核對的 Stage Go／No-Go
 
