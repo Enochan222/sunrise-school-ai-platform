@@ -1,16 +1,14 @@
-# Stage 0 — Acceptance and Evidence
+# Stage 0 — current acceptance state (no GitHub Actions)
 
-This checklist is a bootstrap supplement, not a replacement for the 29 Stage Specs in v0.7.5.
+- [x] Private fresh `Enochan222/sunrise-school-ai-platform`; old history not copied.
+- [x] `Protect main` Active: PR-only/squash, no bypass, block deletion and force push.
+- [x] Required GitHub Actions status check disabled per Owner decision; no GitHub Copilot.
+- [x] Prior PR #1 passed actual historical GitHub Actions tests; prior deliberate negative PR #2 failed and was closed. **These are historic bootstrap observations, not a current automated gate.**
+- [x] Exact original v0.7.5 archive verified locally; No-Actions adaptation built and local static QA passed.
+- [ ] Entire adapted Master Kit actually imported into GitHub preserving paths and hashes.
+- [ ] Full GitHub imported source verified again independently and 16 static test groups rerun against the exact PR commit.
+- [ ] Pinned Docker QA container actually built and executed (not possible in current GPT sandbox without Docker).
+- [ ] Owner confirms Course/TeachingGroup, A school ownership, S1 Gemini optional vs B S7, S4 Cutover, security/privacy, and cost boundaries.
+- [ ] Stage0 product acceptance recorded with real evidence in Issue. **Stage 1 NOT STARTED.**
 
-- [x] New private repository at `Enochan222/sunrise-school-ai-platform`; no old repo imported.
-- [x] New default branch `main` initialized with README and gitignore.
-- [ ] **Exact v0.7.5 ZIP** available, archive CRC/path safety/SHA-256 verified and all files imported via docs-only PR.
-- [ ] 29 Stage documents S0–S28, 100 candidate APIs, 310 designed ATs and Owner dependency matrix present (NOT actual runtime UAT).
-- [ ] Owner explicitly approves Course/TeachingGroup, A school ownership, S1 optional Gemini/embedding, S4 Cutover and budget/security choices.
-- [ ] GitHub Actions `validate-docs` has a verified successful PR run and real logs.
-- [ ] Deliberately broken PR fails CI and is **not merged**.
-- [ ] `Protect main` enforceable with required `validate-docs` status, no bypass/force-push and squash-only; test actual enforcement, not only Active appearance.
-- [ ] Full Master Kit CI tests (Stage Registry, contract/schema fixtures, negative mutations) pass on imported-source PR.
-- [ ] Stage 0 accepted with evidence in its Issue. Stage 1 remains NOT STARTED and requires A-only real implementation/Restore.
-
-**Important:** A green bootstrap CI result is not a Stage 0 release approval. Owner does not need to manually review code but retains authority for product requirements, data privacy, billing and production changes.
+**Limit:** With no GitHub Actions or external CI, no server-enforced PR tests or automatic GPT trigger exist. Never claim a passing GPT comment automatically protects merges.
