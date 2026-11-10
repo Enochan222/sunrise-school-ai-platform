@@ -1,5 +1,7 @@
 # Release Policy — Reviewed v0.7 / R01–R28
 
+> **S0 SIGNOFF UPDATE (2026-11-10):** Owner has approved only the **bounded D01–D08 planning decisions** in [Stage0 approval packet](../decisions/STAGE0_APPROVAL_DECISIONS.md). Candidate ADR-011–022 implementation details remain proposals unless independently accepted. No deployment, spend, production school content, or student PII has been authorized.
+
 > **CURRENT REPOSITORY OVERRIDE (2026-11-10):** Active repo is `Enochan222/sunrise-school-ai-platform`; no GitHub Copilot/Actions; local QA must be executed and evidenced; old repo, old CI, old ADR references below are historical only. Read [current Stage0 rules](NEW_REPO_STAGE0.md).
 
 **Stage0** = planning/Repo/Owner approval only; NO compulsory runtime Staging, Gateway PoC, DB/Restore. **Runtime Releases R01–R28** = each one owner A/B/I/U changes; each must deliver a real usable journey, data persistence, negative/security tests, owner-local backup restore, prior Release regression, schema/API compatibility, actual Staging evidence + Owner approval. A one-hour Spike isn't release acceptance.

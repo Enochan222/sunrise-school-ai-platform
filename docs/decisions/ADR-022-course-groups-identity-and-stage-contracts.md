@@ -1,5 +1,7 @@
 # ADR-022 — Course/TeachingGroup, staff business grants and replay-safe contracts (candidate)
 
+> **2026-11-10 bounded Owner ratification:** D02 (Course/TeachingGroup grain), D03 (school-scope source rights) and D06 (I-owned S4 cutover) are approved **only as defined in [Stage0 approval packet](STAGE0_APPROVAL_DECISIONS.md)**. Implementation-specific candidate ADR details remain proposed pending owner-stage contract freeze.
+
 > **Current repository clarification (2026-11-10):** References below to retaining existing old GitHub ADR-001..010 are historical; those files were **not** migrated into the new `Enochan222` repository. ADR-022 remains a candidate until [Owner decision packet](STAGE0_APPROVAL_DECISIONS.md) is explicitly approved.
 
 **Status:** PROPOSED, Owner Approval PENDING. **Scope:** S0 grain signoff, S3 B group contract, S6 B Blueprint, S9 I Evidence, S17 B Grade, S20 B Weakness, S22 B Staff grants. Retain historical ADR-001…010 in existing GitHub without overwrite; ADR-011–021 are still pending new architecture history. This ADR does not authorize a runtime code change.

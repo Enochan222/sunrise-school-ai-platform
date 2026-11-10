@@ -1,6 +1,6 @@
 # Stage 0 — engineering evidence and acceptance matrix (2026-11-10)
 
-**Status: TECHNICAL DOCUMENT GATE PASS; PRODUCT OWNER SIGNOFF PENDING.** This is S0 [P] planning/Repo/security review only. No A/B/I/U runtime is implemented, deployed or accepted. See [formal S0 spec](../stages/STAGE_00.md), [decision packet](../decisions/STAGE0_APPROVAL_DECISIONS.md), and [S1 start gate](STAGE1_START_CRITERIA.md).
+**Status: S0 DOCUMENT PLANNING COMPLETE — OWNER APPROVED D01–D08 (2026-11-10).** This is S0 [P] planning/Repo/security review only. No A/B/I/U runtime is implemented, deployed or accepted. See [formal S0 spec](../stages/STAGE_00.md), [decision packet](../decisions/STAGE0_APPROVAL_DECISIONS.md), and [S1 start gate](STAGE1_START_CRITERIA.md).
 
 ## Sources, independent verification and provenance
 
@@ -16,14 +16,14 @@
 | ID | Stage 0 evidence | Engineering | Owner gate |
 |---|---|---|---|
 | S0-AT01 | Uploaded Open Notebook ZIP **exact** official v1.15.1 tree, MIT repo metadata, explicit unsafe native-route limitations | PASS | S1 source-security trials still NOT RUN |
-| S0-AT02 | A SurrealDB and B PostgreSQL/credentials/backups isolated; I may use only published scoped APIs | DOCUMENT PASS | Explicit product approval pending |
-| S0-AT03 | 29 Stage Registry/Owner/technical dependency structure checked; one runtime owner per Stage | PASS | Pending collective S0 signoff |
-| S0-AT04 | S1 A only; S2 A, S3 B, S4 I only after provider contracts; S5 U | PASS | Pending collective S0 signoff |
-| S0-AT05 | Protected GitHub main, secret policy, CODEOWNERS, PR templates verified; no Actions/status check as requested | PASS with stated lack of independent merge QA | Pending collective S0 signoff |
-| S0-AT06 | Correct split: planning docs imported, S1–S28 runtime NOT RUN, product approval PENDING | PASS | **Signoff outstanding** |
-| S0-AT07 | 12 current ADR-011..022 present as proposals; Course, IAM, Evidence and API candidate contracts audited | PASS for completeness | **Approval outstanding** |
-| S0-AT08 | New Enochan222 repo and PR #8 verified, no old history imported | PASS | Pending collective S0 signoff |
-| S0-AT09 | All S0 tests explicitly design/document only, no staging or DB/Restore requirement | PASS | Pending collective S0 signoff |
-| S0-AT10 | Course/Group grain, mandatory A school owner, optional S1 Gemini, I-only S4 cutover described | PASS for design | **Approval outstanding** |
+| S0-AT02 | A SurrealDB and B PostgreSQL/credentials/backups isolated; I may use only published scoped APIs | DOCUMENT PASS | D01/D03 **APPROVED** (planning only) |
+| S0-AT03 | 29 Stage Registry/Owner/technical dependency structure checked; one runtime owner per Stage | PASS | D01 **APPROVED** |
+| S0-AT04 | S1 A only; S2 A, S3 B, S4 I only after provider contracts; S5 U | PASS | D01/D05/D06 **APPROVED** |
+| S0-AT05 | Protected GitHub main, secret policy, CODEOWNERS, PR templates verified; no Actions/status check as requested | PASS with stated lack of independent merge QA | D08 **APPROVED**; no server-enforced GPT QA |
+| S0-AT06 | Planning documents imported; Owner D01–D08 signed; S1–S28 runtime still NOT RUN | PASS | **S0 approved; runtime NOT AUTHORIZED** |
+| S0-AT07 | 12 current ADR-011..022 retained as candidate documents; bounded D01–D08 approved, implementation-specific ADR details still proposed | PASS for completeness | **D01–D08 approved; candidate ADR freeze deferred** |
+| S0-AT08 | New Enochan222 repo and PR #8 verified, no old history imported | PASS | Owner D08 **APPROVED** |
+| S0-AT09 | All S0 tests explicitly design/document only, no staging or DB/Restore requirement | PASS | Owner D07 **APPROVED**; no deployment permission |
+| S0-AT10 | Course/Group grain, mandatory A school owner, optional S1 Gemini, I-only S4 cutover described | PASS for design | D02/D03/D05/D06 **APPROVED** |
 
-**Release decision: NO-GO until explicit Owner signoff of the [decision packet](../decisions/STAGE0_APPROVAL_DECISIONS.md).** The architecture is ready for product approval but **S0 is not yet marked approved**. Continue to mark `stage0_product_approval: PENDING` in [baseline](../../stage0/STAGE0_BASELINE.json); do not start S1 on static evidence alone.
+**Release decision: S0 DOCUMENT PLANNING GO — bounded Owner D01–D08 signoff received.** [Formal decision packet](../decisions/STAGE0_APPROVAL_DECISIONS.md), [Issue #10](https://github.com/Enochan222/sunrise-school-ai-platform/issues/10) and [Stage0 baseline](../../stage0/STAGE0_BASELINE.json) record **APPROVED / COMPLETE**. This closes S0-AT01..AT10 **as design/document-review gates**, not 10 runtime feature tests. S1 is **NOT STARTED**; only separate A-only offline synthetic work is eligible to begin. External hosting, spend, real student data, paid AI, licensing and deployment all remain separately unauthorized. No GitHub Actions/Copilot or unattended PR auto-merge. Before S1 deployment, resolve the explicit [S1 prerequisites](STAGE1_START_CRITERIA.md).

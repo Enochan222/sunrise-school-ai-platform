@@ -1,10 +1,10 @@
 # Stage 00 [P] — Planning Baseline & Security Decisions
 
-**Release:** `—` | **Exactly one owner:** `P` | **Technical prerequisites:** None | **Status:** PLANNED / NOT IMPLEMENTED.
+**Release:** `—` | **Exactly one owner:** `P` | **Technical prerequisites:** None | **Status:** DOCUMENT PLANNING APPROVED / COMPLETE (2026-11-10); NO RUNTIME IMPLEMENTED.
 
 ## Stage 目標、驗收與跨 Stage 邊界（現行規劃判準）
 
-**本章屬文件審批，不代表已部署任何服務。**
+**本章屬文件審批，不代表已部署任何服務。** D01–D08 已獲 Owner 明確批准，見 [Stage0 正式簽核](../decisions/STAGE0_APPROVAL_DECISIONS.md)及 [逐項文件驗收證據](../delivery/STAGE0_EVIDENCE_2026-11-10.md)。此處完成的是 S0 文件／GitHub／決策驗收，不是 Stage1 服務驗收。
 
 ### 1. 目標：這一期完成甚麼？
 

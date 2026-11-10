@@ -1,5 +1,7 @@
 # ADR-011 — Single Owner Stage And Baseline
 
+> **2026-11-10 bounded Owner ratification:** D01 (A/B/I/U ownership and Stage single-owner boundary) and D08 (No-Actions GitHub rules) are approved **only as defined in [Stage0 approval packet](STAGE0_APPROVAL_DECISIONS.md)**. The historical v0.5/old-repo sentences below remain source history, not current repository instructions; technical implementation details in this draft ADR remain proposed.
+
 > **Current repository clarification (2026-11-10):** This original 2026-11-08 *proposal* uses historical v0.5/old-GitHub language. Reviewed 164-file v0.7.5 has now been merged into `Enochan222/sunrise-school-ai-platform` via PR #8. Product signoff is still pending; see [Owner decision packet](STAGE0_APPROVAL_DECISIONS.md).
 
 **Status:** PROPOSED, PRODUCT OWNER SIGNOFF PENDING. **Spec date:** 2026-11-08. **New revision only; do not overwrite existing live ADR-001..010.**

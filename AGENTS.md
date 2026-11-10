@@ -1,6 +1,6 @@
 # AGENTS — Sunrise v0.7.5 / Enochan222 / No GitHub Actions
 
-**Active repository**: `Enochan222/sunrise-school-ai-platform`. Old IssacSitHk repository, commits, Issues and ADR-001..010 are not migrated. Active new candidate ADR-011..022 remain PROPOSED until Owner product sign-off. Stage0 is documents only; no real school data, runtime, deployment or paid providers.
+**Active repository**: `Enochan222/sunrise-school-ai-platform`. Old IssacSitHk repository, commits, Issues and ADR-001..010 are not migrated. Bounded D01–D08 decisions were approved by Owner on 2026-11-10 ([record](docs/decisions/STAGE0_APPROVAL_DECISIONS.md)); implementation-specific candidate ADR-011..022 details remain PROPOSED unless separately accepted. Stage0 is documents only; no real school data, runtime, deployment or paid providers.
 
 **Owner's choice:** do not use GitHub Copilot or GitHub Actions. Do not add workflows under `.github/workflows/`, do not require status checks from disabled Actions, and do not assume a passing local test can be independently enforced by GitHub. Keep `Protect main` PR-only, squash, prevent force pushes/deletions; human code review approvals are 0. **Auto-merge must remain disabled per PR** absent a separate trusted enforcement process.
 
