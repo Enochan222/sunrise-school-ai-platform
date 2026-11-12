@@ -35,3 +35,11 @@ Before Owner Stage implementation, read `docs/quality/CONTRACT_GAP_REMEDIATION.m
 
 
 **Reuse-first hard rule:** Inspect the pinned Open Notebook implementation before building any A ingestion/search/notes/credentials/worker/UI component; use an A policy wrapper and never expose raw native auth/routes. B paper/grade/marking remain B-only despite ON Transformations. See `docs/architecture/OPEN_NOTEBOOK_REUSE_AUDIT.md`; S21, S22, S24 and S27 have corrected technical prerequisites. Adapted to the new Enochan222 repository; latest repo status must be checked.
+
+## Stage 1 [A] documentation entry and multi-Builder controls
+
+After Stage0 D01–D08 signoff, the Stage1 Builder first reads live `main`, this file, `INSTRUCTIONS.md`, `docs/stages/STAGE_01.md`, [`docs/stage1/IMPLEMENTATION_PLAN.md`](docs/stage1/IMPLEMENTATION_PLAN.md), [`WORKBOARD.md`](docs/stage1/WORKBOARD.md), and merged PR evidence under [`docs/stage1/evidence/`](docs/stage1/evidence/README.md). Formal Stage/AT/API controls outrank implementation suggestions.
+
+An Integration Reviewer coordinates WP00–09 claims, overlap and dependency order; only that reviewer proposes serial WORKBOARD changes. Builders use distinct explicitly authorized feature branches/PRs, attach truthful per-PR test evidence, and never mark unmerged work DONE. Before review/merge, recheck current main, conflicting files, actual tested commit, regressions and manifest. No auto-merge, Actions, Copilot, force push or cross-owner runtime edits.
+
+**Permission boundary and Evidence revisions:** these workflow instructions grant no ongoing right to edit code, create branches/PRs, merge or deploy; each action requires its own explicit Owner authorization. Per-PR Evidence records the **Tested Revision**, not the self-changing Final PR Head. Integration Reviewer independently reads current PR Head from GitHub before merge and checks the diff since Tested Revision; after squash, verify main Merge Commit, Git Tree and file hashes. No auto-merge, Actions, Copilot or force push.
