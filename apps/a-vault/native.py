@@ -161,6 +161,14 @@ class Native:
         checked_id(nb_id, 'notebook')
         if not self.text_only_verified:
             raise NativeUnavailable('Pinned native text fallback is not verified to be vector-free')
+        # An environment flag alone is NOT sufficient attestation. The patched
+        # native service must prove its A-only no-vector implementation on each search.
+        try:
+            proof = (await self._request('GET', '/api/sunrise-patch-status')).json()
+        except (ValueError, TypeError) as e:
+            raise NativeUnavailable('Native patch proof malformed') from e
+        if not isinstance(proof, dict) or proof.get('marker') != 'sunrise-a-text-only-no-vector-v1' or proof.get('text_only') is not True:
+            raise NativeUnavailable('Pinned native no-vector patch not confirmed')
         if not isinstance(term, str) or not term.strip() or not 1 <= limit <= 50:
             raise ValueError('Invalid scoped text-search input')
         r = await self._request('POST', '/api/search',
