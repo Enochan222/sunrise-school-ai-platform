@@ -72,9 +72,13 @@ def inspect(root=ROOT, baseline=None):
     for stage in range(29):
         if not (root / f'docs/stages/STAGE_{stage:02d}.md').is_file():
             issues.append('MISSING_STAGE:' + str(stage))
+    # Preserve historical Stage0 D08: only the later Owner-approved Stage1
+    # addendum can authorize exactly two named workflow files; all others fail.
+    approved_ci = {'stage1-light.yml', 'stage1-native-integration.yml'}
+    ci_addendum = root / 'docs/decisions/STAGE1_LIMITED_CI_ADDENDUM.md'
     for ext in ('*.yml', '*.yaml'):
         for p in (root / '.github/workflows').glob(ext):
-            if p.is_file():
+            if p.is_file() and (p.name not in approved_ci or not ci_addendum.is_file()):
                 issues.append('UNWANTED_GITHUB_ACTIONS:' + str(p.relative_to(root)))
 
     try:
