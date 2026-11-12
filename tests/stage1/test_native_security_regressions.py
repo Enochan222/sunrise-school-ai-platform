@@ -111,6 +111,8 @@ def test_text_search_requires_verified_native_patch_and_nonempty_notebook():
 def test_text_search_uses_exact_single_scope_type_and_no_notes():
     seen=[]
     def handler(req):
+        if req.url.path=='/api/sunrise-patch-status':
+            return httpx.Response(200,json={'marker':'sunrise-a-text-only-no-vector-v1','text_only':True})
         assert req.url.path=='/api/search'
         data=json.loads(req.content)
         seen.append(data)
@@ -130,9 +132,17 @@ def test_text_search_uses_exact_single_scope_type_and_no_notes():
 ])
 def test_text_search_rejects_unverifiable_results(payload):
     with pytest.raises(NativeUnavailable):
-        run(adapter(lambda req:httpx.Response(200,json=payload),verified=True).search('notebook:owned','math',10))
+        def handler(req):
+            if req.url.path=='/api/sunrise-patch-status':
+                return httpx.Response(200,json={'marker':'sunrise-a-text-only-no-vector-v1','text_only':True})
+            return httpx.Response(200,json=payload)
+        run(adapter(handler,verified=True).search('notebook:owned','math',10))
 
 
 def test_native_overflow_http_500_is_error_not_empty_results():
     with pytest.raises(NativeUnavailable):
-        run(adapter(lambda req:httpx.Response(500,json={'detail':'position overflow'}),verified=True).search('notebook:owned','math'))
+        def handler(req):
+            if req.url.path=='/api/sunrise-patch-status':
+                return httpx.Response(200,json={'marker':'sunrise-a-text-only-no-vector-v1','text_only':True})
+            return httpx.Response(500,json={'detail':'position overflow'})
+        run(adapter(handler,verified=True).search('notebook:owned','math'))
