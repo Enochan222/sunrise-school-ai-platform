@@ -1,4 +1,4 @@
-# Repeatable QA environment (no GitHub Actions, no GitHub Copilot)
+# Repeatable QA environment (manual QA; limited Stage 1 CI exception)
 
 **Scope:** Stage 0 document, OpenAPI-candidate, semantic, mutation and Stage0 status tests only. Not runtime, security penetration testing, production deployment or a hosted PR CI.
 
@@ -22,4 +22,4 @@ If Docker is unavailable but Python >=3.11 and dependencies are available, run `
 4. Attach logs/summary to GitHub PR; if runner is offline/unavailable label `NOT_RUN` and do not merge.
 5. For runtime stages, use staging A/B/I/U services with isolated credentials and DBs. Docker Stage0 QA is never proof of A/B security, restore or actual serving behavior.
 
-**Automatic PR trigger:** absent. GitHub cannot require a PR check merely because GPT claims it ran. A dedicated external CI/Webhook service is necessary for automatic invocation and server-side gating without Actions. Do not enable unattended auto-merge in the interim.
+**Automatic PR trigger:** historically absent for Stage 0. The [Stage 1 limited CI addendum](../decisions/STAGE1_LIMITED_CI_ADDENDUM.md) permits only one automatic PR lightweight workflow and one manual Native Runtime workflow, after their own reviewed PR merges. Skipped/blocked checks are NOT_RUN; their status does not replace independent QA, native security, restore or Owner UAT. The $0 spending cap and no-auto-merge rule remain.
