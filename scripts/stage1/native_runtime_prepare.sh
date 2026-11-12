@@ -33,8 +33,15 @@ fi
 if grep -Eq '^\s+-\s*"?(0\.0\.0\.0|8502|8000):' "$HERE/compose.native.synthetic.yml"; then
   echo 'Unsafe published native/UI/DB port detected' >&2; exit 78
 fi
-python "$HERE/apply_native_text_only_patch.py" --source-root "$ON_SOURCE_DIR" --verify-only
-python "$HERE/apply_native_text_only_patch.py" --source-root "$ON_SOURCE_DIR"
+# Always create an isolated patched copy of the clean pinned source; do not mutate upstream.
+: "${ON_PATCHED_DIR:?Set ON_PATCHED_DIR to a NONEXISTENT absolute staging directory}"
+bash "$HERE/prepare_native_checkout.sh"
+if [[ ! -f "$ON_PATCHED_DIR/.sunrise-patch-provenance.json" ]]; then
+  echo 'Pinned patch provenance missing; aborting' >&2
+  exit 78
+fi
+# Fail fast on unresolved interpolation before attempting a network build.
+docker compose -f "$HERE/compose.native.synthetic.yml" config --quiet
 docker compose -f "$HERE/compose.native.synthetic.yml" up --build -d
 printf '%s\n' "Native stack started. Runtime proof requires independent probes:"
 docker compose -f "$HERE/compose.native.synthetic.yml" ps
