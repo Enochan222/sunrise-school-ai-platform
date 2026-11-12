@@ -5,8 +5,12 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
 OUT=ROOT/'docs/stage1/evidence'
 OUT.mkdir(parents=True,exist_ok=True)
-CASES=['wp00_builder_b/tests','tests/stage1']
-env=dict(os.environ,PYTHONPATH=str(ROOT/'wp00_builder_b'))
+CASES=['tests/stage1']
+if (ROOT/'wp00_builder_b/tests').is_dir():
+    CASES.insert(0,'wp00_builder_b/tests')
+env=dict(os.environ)
+if (ROOT/'wp00_builder_b').is_dir():
+    env['PYTHONPATH']=str(ROOT/'wp00_builder_b')
 command=[sys.executable,'-m','pytest','-q',*CASES]
 start=datetime.datetime.now(datetime.timezone.utc).isoformat()
 run=subprocess.run(command,cwd=ROOT,env=env,capture_output=True,text=True,timeout=180)
@@ -31,7 +35,8 @@ for sub in source_roots:
 file_hashes={str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(set(paths))}
 snapshot=hashlib.sha256(json.dumps(file_hashes,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 payload={'timestamp_start_utc':start,'timestamp_end_utc':end,
-    'command':'PYTHONPATH=wp00_builder_b python -m pytest -q wp00_builder_b/tests tests/stage1',
+    'command':'python -m pytest -q '+' '.join(CASES),
+    'local_preliminary_wp00_available':(ROOT/'wp00_builder_b/tests').is_dir(),
     'process_exit_code':run.returncode,'result_status':status,'parsed_results':summary,
     'python':sys.version,'pytest':importlib.metadata.version('pytest'),'os':platform.platform(),
     'snapshot_sha256':snapshot,'manifest_algorithm':'SHA256(sorted compact JSON path->file SHA256)',
