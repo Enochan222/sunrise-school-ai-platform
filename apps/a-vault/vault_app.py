@@ -1,0 +1,333 @@
+"""Sunrise A-only local synthetic Gateway. Backend-dependent gates remain closed.
+
+Use `VAULT_...` env values, bind loopback only. OpenAPI/docs intentionally disabled.
+"""
+import hashlib
+import hmac
+import json
+import re
+import secrets
+import time
+from collections import defaultdict,deque
+from datetime import datetime,timezone
+from html import escape
+from pathlib import Path
+from threading import Lock
+
+import jwt
+from argon2 import PasswordHasher,exceptions as argon_errors
+from fastapi import FastAPI,Request,HTTPException,UploadFile,File,Form
+from fastapi.responses import HTMLResponse,JSONResponse,Response,RedirectResponse
+from itsdangerous import URLSafeTimedSerializer,BadSignature,SignatureExpired
+from pydantic import BaseModel,Field
+
+from config import Settings,from_env
+from native import Native,NativeUnavailable,NativeOwnershipError
+from store import Store,Conflict,Indeterminate
+
+SESSION_COOKIE='sunrise_a_sid'
+LOGIN_COOKIE='sunrise_a_login_csrf'
+YEAR_RE=re.compile(r'^[A-Za-z0-9._ -]{1,32}$')
+ID_RE=re.compile(r'^[A-Za-z0-9_-]{1,80}$')
+
+class ShellInput(BaseModel):
+    academic_year:str=Field(min_length=1,max_length=32)
+    grade:str=Field(min_length=1,max_length=32)
+    subject:str=Field(min_length=1,max_length=48)
+    curriculum_stream:str=Field(min_length=1,max_length=48)
+
+class SearchInput(BaseModel):
+    query:str=Field(min_length=1,max_length=300)
+    limit:int=Field(default=20,ge=1,le=50)
+
+
+def build_app(cfg:Settings|None=None,native=None):
+    cfg=(cfg or from_env()).validate()
+    store=Store(cfg.sqlite_file)
+    upstream=native or Native(cfg.native_url,cfg.native_password,
+                                    text_only_verified=cfg.native_text_only_verified,
+                                    max_download_bytes=cfg.max_pdf_bytes)
+    app=FastAPI(title='Sunrise Private A Vault — Synthetic',docs_url=None,redoc_url=None,openapi_url=None)
+    serializer=URLSafeTimedSerializer(cfg.session_secret,salt='sunrise-a-session')
+    login_serializer=URLSafeTimedSerializer(cfg.session_secret,salt='sunrise-login-csrf')
+    ph=PasswordHasher()
+    attempts=defaultdict(deque)
+    attempt_lock=Lock()
+    app.state.store=store
+    app.state.native=upstream
+
+    def origin_guard(req:Request):
+        # CSRF origin guard applies even to /auth/login; strict same-origin on browser POSTs.
+        origin=req.headers.get('origin')
+        if origin:
+            from urllib.parse import urlsplit
+            u=urlsplit(origin)
+            if u.scheme not in ('http','https') or u.netloc!=req.headers.get('host'):
+                raise HTTPException(403,'Origin mismatch')
+        fetch_site=req.headers.get('sec-fetch-site')
+        if fetch_site not in (None,'none','same-origin'):
+            raise HTTPException(403,'Cross-site request forbidden')
+
+    def rate_limit(req):
+        ip=req.client.host if req.client else 'unknown'
+        now=time.monotonic()
+        with attempt_lock:
+            q=attempts[ip]
+            while q and q[0]<now-60:q.popleft()
+            if len(q)>=8:raise HTTPException(429,'Too many login attempts')
+            q.append(now)
+
+    def credentials(req:Request,permission=None,write=False):
+        if write:origin_guard(req)
+        authorization=req.headers.get('authorization','')
+        if authorization:
+            if not authorization.startswith('Bearer ') or not cfg.service_public_key:
+                raise HTTPException(401,'Invalid authorization')
+            try:
+                claims=jwt.decode(authorization[7:],cfg.service_public_key,algorithms=['RS256'],
+                    issuer=cfg.service_issuer,audience=cfg.service_audience,
+                    options={'require':['sub','iss','aud','exp','iat','nbf','jti','school_id','scope']},leeway=5)
+                if (claims['school_id']!=cfg.school_id or not permission or
+                    not isinstance(claims['scope'],str) or permission not in claims['scope'].split() or
+                    not isinstance(claims['sub'],str) or not claims['sub'] or
+                    not isinstance(claims['jti'],str) or not claims['jti'] or
+                    claims['exp']-claims['iat']>300):
+                    raise HTTPException(403,'Service scope denied')
+                return {'school_id':cfg.school_id,'actor_id':claims['sub'],'service':True,'csrf':None}
+            except jwt.PyJWTError:
+                raise HTTPException(401,'Invalid service token')
+        token=req.cookies.get(SESSION_COOKIE)
+        if not token:raise HTTPException(401,'Authentication required')
+        try:sid=serializer.loads(token,max_age=3600)
+        except (BadSignature,SignatureExpired):raise HTTPException(401,'Invalid session')
+        state=store.session(sid,cfg.school_id)
+        if not state:raise HTTPException(401,'Session revoked or expired')
+        if write and not hmac.compare_digest(str(req.headers.get('x-csrf-token','')),state['csrf']):
+            raise HTTPException(403,'CSRF token missing or invalid')
+        return {'school_id':cfg.school_id,'actor_id':cfg.actor_id,'service':False,'csrf':state['csrf']}
+
+    def admin_only(p):
+        if p['service']:raise HTTPException(403,'Admin only')
+
+    def get_owned_shell(p,shell_id):
+        s=store.shell(p['school_id'],shell_id)
+        if not s:raise HTTPException(404,'Shell not found')
+        return s
+
+    def return_error(e):
+        if isinstance(e,Conflict): raise HTTPException(409,str(e))
+        if isinstance(e,(Indeterminate,NativeUnavailable)): raise HTTPException(503,'Native operation not confirmed; fail closed')
+        if isinstance(e,NativeOwnershipError): raise HTTPException(403,'Native ownership verification failed')
+        raise e
+
+    @app.middleware('http')
+    async def secure_headers(req:Request,call_next):
+        # Never trust forwarded proxy headers to make a private service public.
+        host=req.url.hostname
+        if host not in ('127.0.0.1','localhost','testserver','::1'):
+            return JSONResponse({'detail':'Loopback-only synthetic gateway'},status_code=403)
+        response=await call_next(req)
+        response.headers.update({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',
+            'X-Frame-Options':'DENY','Referrer-Policy':'no-referrer',
+            'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'"})
+        return response
+
+    @app.get('/health')
+    def health():
+        return {'gateway':'running','native':'NOT_VERIFIED','stage':'LOCAL_SYNTHETIC_DEVELOPMENT','release':'NOT_APPROVED'}
+
+    @app.get('/auth/login',response_class=HTMLResponse)
+    def login_form():
+        csrf=secrets.token_urlsafe(24)
+        resp=HTMLResponse('<!doctype html><meta charset="utf-8"><title>Sunrise A Login</title><h1>Sunrise A Vault</h1>'
+            '<p>Local synthetic development. Native gates not verified.</p><form method="post" action="/auth/login">'
+            '<input type="password" name="password" required autocomplete="current-password">'
+            f'<input type="hidden" name="csrf" value="{escape(csrf)}"><button>Login</button></form>')
+        resp.set_cookie(LOGIN_COOKIE,login_serializer.dumps(csrf),httponly=True,secure=cfg.session_secure,samesite='strict',max_age=600)
+        return resp
+
+    @app.post('/auth/login')
+    async def login(req:Request,password:str=Form(...),csrf:str=Form(...)):
+        origin_guard(req);rate_limit(req)
+        try:expected=login_serializer.loads(req.cookies.get(LOGIN_COOKIE,''),max_age=600)
+        except (BadSignature,SignatureExpired):raise HTTPException(403,'Login CSRF invalid')
+        if not hmac.compare_digest(csrf,expected):raise HTTPException(403,'Login CSRF invalid')
+        try:correct=ph.verify(cfg.admin_hash,password)
+        except (argon_errors.VerifyMismatchError,argon_errors.InvalidHashError,argon_errors.VerificationError):correct=False
+        if not correct:raise HTTPException(401,'Invalid credentials')
+        sid=secrets.token_urlsafe(32);session_csrf=secrets.token_urlsafe(32)
+        store.add_session(sid,cfg.school_id,session_csrf)
+        if 'text/html' in req.headers.get('accept',''):
+            resp=RedirectResponse('/admin',status_code=303)
+        else:
+            resp=JSONResponse({'authenticated':True,'school_id':cfg.school_id,'csrf_token':session_csrf})
+        resp.set_cookie(SESSION_COOKIE,serializer.dumps(sid),httponly=True,secure=cfg.session_secure,samesite='strict',max_age=3600)
+        resp.delete_cookie(LOGIN_COOKIE)
+        return resp
+
+    @app.post('/auth/logout')
+    def logout(req:Request):
+        p=credentials(req,write=True);admin_only(p)
+        sid=serializer.loads(req.cookies.get(SESSION_COOKIE,''),max_age=3600)
+        store.del_session(sid)
+        response=JSONResponse({'logged_out':True})
+        response.delete_cookie(SESSION_COOKIE)
+        return response
+
+    @app.get('/auth/me')
+    def me(req:Request):
+        p=credentials(req)
+        return {'school_id':p['school_id'],'actor_id':p['actor_id'],'csrf_token':p['csrf']}
+
+    @app.get('/vault/v1/shells')
+    def list_shells(req:Request):
+        p=credentials(req,permission='vault.shell.read')
+        return {'shells':store.list_shells(p['school_id'])}
+
+    @app.post('/vault/v1/shells',status_code=201)
+    async def create_shell(req:Request,body:ShellInput):
+        p=credentials(req,write=True);admin_only(p)
+        key=req.headers.get('idempotency-key','')
+        if not ID_RE.fullmatch(key):raise HTTPException(400,'Idempotency-Key required (ASCII letters/digits/_/-)')
+        data=body.model_dump()
+        try:
+            record,is_new=store.start_shell(p['school_id'],key,data)
+        except (Conflict,Indeterminate) as e:return_error(e)
+        if not is_new:return JSONResponse(record,status_code=200)
+        try:
+            name='Sunrise '+ ' / '.join(data[k] for k in ('academic_year','grade','subject','curriculum_stream'))
+            nb_id=await upstream.create_notebook(name)
+            return store.complete_shell(p['school_id'],key,record,nb_id)
+        except Exception as e:
+            store.quarantine(p['school_id'],key)
+            if isinstance(e,(NativeUnavailable,Indeterminate)):return_error(e)
+            # Fail closed for any unknown response or DB failure after native create.
+            raise HTTPException(503,'Notebook creation indeterminate; reconcile before retry') from e
+
+    @app.get('/vault/v1/shells/{shell_id}')
+    def get_shell(req:Request,shell_id:str):
+        return get_owned_shell(credentials(req,permission='vault.shell.read'),shell_id)
+
+    @app.post('/vault/v1/shells/{shell_id}/archive')
+    def archive_shell(req:Request,shell_id:str):
+        p=credentials(req,write=True);admin_only(p)
+        get_owned_shell(p,shell_id)
+        return store.archive(p['school_id'],shell_id)
+
+    @app.get('/vault/v1/shells/{shell_id}/materials')
+    async def list_materials(req:Request,shell_id:str):
+        p=credentials(req,permission='vault.materials.read')
+        s=get_owned_shell(p,shell_id)
+        material_rows=store.list_materials(p['school_id'],shell_id)
+        # Live revalidate each recorded native source before showing metadata.
+        for m in material_rows:
+            try: await upstream.ensure_owned(m['source_id'],s['notebook_id'])
+            except (NativeUnavailable,NativeOwnershipError) as e:return_error(e)
+        return {'materials':material_rows}
+
+    @app.post('/vault/v1/shells/{shell_id}/materials',status_code=201)
+    async def upload_material(req:Request,shell_id:str,file:UploadFile=File(...),
+                              title:str=Form(...),license:str=Form(...),retention:str=Form(...)):
+        p=credentials(req,write=True,permission='vault.materials.write')
+        s=get_owned_shell(p,shell_id)
+        if s['archived']:raise HTTPException(409,'Archived shells are read-only')
+        if not title.strip() or len(title)>200 or not license.strip() or len(license)>120 or not retention.strip() or len(retention)>100:
+            raise HTTPException(422,'Title/license/retention metadata required')
+        name=Path(file.filename or '').name
+        if name!=file.filename or not name.lower().endswith('.pdf') or len(name)>180:
+            raise HTTPException(422,'Only safe PDF filenames allowed')
+        content=await file.read(cfg.max_pdf_bytes+1)
+        if len(content)>cfg.max_pdf_bytes or not content.startswith(b'%PDF-') or b'%%EOF' not in content[-2048:]:
+            raise HTTPException(422,'Invalid or oversized PDF')
+        digest=hashlib.sha256(content).hexdigest()
+        key=req.headers.get('idempotency-key','')
+        if not ID_RE.fullmatch(key):raise HTTPException(400,'Idempotency-Key required for upload')
+        fingerprint=hashlib.sha256(json.dumps([digest,title,license,retention,name],separators=(',',':')).encode()).hexdigest()
+        try:
+            receipt_old,is_new=store.start_material(p['school_id'],shell_id,key,fingerprint)
+        except (Conflict,Indeterminate) as e:return_error(e)
+        if not is_new:
+            return JSONResponse({'source_id':receipt_old['source_id'],'sha256':receipt_old['sha256'],
+                'state':'SUBMITTED_NATIVE_PROCESSING','version':1},status_code=200)
+        try:
+            receipt=await upstream.upload_pdf(s['notebook_id'],content,name,title)
+            source_id=receipt['id']
+            # Do not expose uncertain source if ownership cannot be confirmed.
+            await upstream.ensure_owned(source_id,s['notebook_id'])
+            store.finish_material(p['school_id'],shell_id,key,source_id,title,digest,name,license,retention)
+            return {'source_id':source_id,'sha256':digest,'state':'SUBMITTED_NATIVE_PROCESSING','version':1}
+        except (NativeUnavailable,NativeOwnershipError) as e:
+            store.quarantine_material(p['school_id'],shell_id,key)
+            return_error(e)
+        except Exception as e:
+            store.quarantine_material(p['school_id'],shell_id,key)
+            raise HTTPException(503,'Source mapping unconfirmed; manual reconciliation required') from e
+
+    @app.get('/vault/v1/shells/{shell_id}/materials/{source_id}/download')
+    async def download(req:Request,shell_id:str,source_id:str):
+        p=credentials(req,permission='vault.materials.read')
+        s=get_owned_shell(p,shell_id)
+        m=store.material(source_id,shell_id,p['school_id'])
+        if not m:raise HTTPException(404,'Material not found')
+        try:
+            await upstream.ensure_owned(source_id,s['notebook_id'])
+            payload=await upstream.original(source_id,m['sha256'])
+            # Double-check ownership before first byte; no streaming any native bytes.
+            await upstream.ensure_owned(source_id,s['notebook_id'])
+        except (NativeUnavailable,NativeOwnershipError) as e:return_error(e)
+        return Response(payload,media_type='application/pdf',headers={'Content-Disposition':"attachment; filename=source.pdf"})
+
+    @app.post('/vault/v1/shells/{shell_id}/search')
+    async def search(req:Request,shell_id:str,body:SearchInput):
+        p=credentials(req,write=True,permission='vault.search.read')
+        s=get_owned_shell(p,shell_id)
+        # Must never allow global search or unsafe native vector fallback.
+        if not s['notebook_id'].startswith('notebook:'):raise HTTPException(503,'Unverified notebook identity')
+        try: result=await upstream.search(s['notebook_id'],body.query,body.limit)
+        except NativeUnavailable as e:return_error(e)
+        # Defence-in-depth: source id and owner both verified per hit; do not leak raw foreign snippets.
+        safe=[]
+        for hit in result:
+            source_id=hit.get('parent_id')
+            if not isinstance(source_id,str):raise HTTPException(503,'Unverifiable search hit')
+            m=store.material(source_id,shell_id,p['school_id'])
+            if not m:raise HTTPException(403,'Search ownership violation')
+            try:await upstream.ensure_owned(source_id,s['notebook_id'])
+            except (NativeUnavailable,NativeOwnershipError) as e:return_error(e)
+            safe.append({'source_id':source_id,'title':m['title'],'relevance':hit.get('relevance')})
+        return {'results':safe,'total_count':len(safe),'search_type':'text'}
+
+    @app.get('/admin',response_class=HTMLResponse)
+    def dashboard(req:Request):
+        p=credentials(req);admin_only(p)
+        return HTMLResponse("""<!doctype html><html lang="en"><meta charset="utf-8">
+<title>Sunrise A Vault — Local Synthetic</title><link rel="stylesheet" href="/assets/style.css">
+<h1>Sunrise A Vault</h1><p>LOCAL SYNTHETIC DEVELOPMENT — not release-ready.
+Native search and uncertain retries fail closed.</p><p id="status" role="status"></p>
+<form id="create"><h2>Create Content Shell</h2>
+<label>Academic year<input name="academic_year" required maxlength="32" value="2026-2027"></label>
+<label>Grade<input name="grade" required maxlength="32" value="P4"></label>
+<label>Subject<input name="subject" required maxlength="48" value="Mathematics"></label>
+<label>Stream<input name="curriculum_stream" required maxlength="48" value="HK"></label>
+<button>Create</button></form>
+<h2>Owned shells</h2><div id="shells"></div><section id="detail" hidden>
+<h2 id="heading"></h2><button id="archive">Archive</button>
+<form id="upload"><h3>Upload synthetic PDF</h3>
+<input type="file" name="file" accept="application/pdf" required>
+<label>Title<input name="title" required></label>
+<label>License<input name="license" required value="synthetic-test-only"></label>
+<label>Retention<input name="retention" required value="synthetic-short-lived"></label>
+<button>Upload</button></form>
+<form id="search"><h3>Scoped native text search</h3>
+<input name="query" required><button>Search</button></form><div id="search-results"></div>
+<h3>Materials</h3><div id="materials"></div></section>
+<button id="logout">Logout</button><script src="/assets/app.js" defer></script></html>""")
+
+    @app.get('/assets/app.js')
+    def ui_script():
+        return Response((Path(__file__).parent/'ui.js').read_bytes(),media_type='application/javascript')
+
+    @app.get('/assets/style.css')
+    def ui_style():
+        return Response((Path(__file__).parent/'style.css').read_bytes(),media_type='text/css')
+    return app
