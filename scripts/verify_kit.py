@@ -99,16 +99,22 @@ def validate(root, check_manifest=True):
  adrs=list((root/'docs/decisions').glob('ADR-*.md'))
  ck(sorted(int(p.name.split('-')[1]) for p in adrs)==list(range(11,23)),'new ADR011..022 only (legacy GitHub ADRs untouched)')
  ck((root/'.github/CODEOWNERS').read_text().endswith('* @Enochan222\n'),'new repo CODEOWNERS owner matches')
- # Historical D08 is immutable; Owner later authorized only two named Stage 1 workflows.
- workflow_dir=root/'.github/workflows'
- present={p.name for p in workflow_dir.iterdir() if p.is_file()} if workflow_dir.exists() else set()
+ # Historical D08 remains unchanged; only two Owner-approved Stage 1 workflow files are permitted.
+ wfdir=root/'.github/workflows'
+ present={p.name for p in wfdir.iterdir() if p.is_file()} if wfdir.exists() else set()
  permitted={'stage1-light.yml','stage1-native-integration.yml'}
- ck(present.issubset(permitted),'only Owner-authorized Stage1 A-only workflows exist')
- ck(not present or (root/'docs/decisions/STAGE1_LIMITED_CI_ADDENDUM.md').is_file(),'CI addendum exists before workflows')
+ ck(present.issubset(permitted),'only two approved Stage1 workflow names allowed')
+ ck(not present or (root/'docs/decisions/STAGE1_LIMITED_CI_ADDENDUM.md').is_file(),'CI addendum present')
  for name in sorted(present):
-  body=(workflow_dir/name).read_text(encoding='utf-8')
-  ck('permissions:' in body and 'contents: read' in body and 'persist-credentials: false' in body,f'{name} read-only credentials policy')
-  ck('pull_request_target:' not in body and 'schedule:' not in body and not re.search(r'^\s+push:\s*
+  body=(wfdir/name).read_text(encoding='utf-8')
+  normalized=[line.strip() for line in body.splitlines()]
+  ck('permissions:' in normalized and 'contents: read' in normalized and 'persist-credentials: false' in normalized,f'{name} read-only permission and no persisted credentials')
+  forbidden={'pull_request_target:','schedule:','push:'}
+  ck(not forbidden.intersection(normalized),f'{name} has no unapproved trigger')
+  refs=[line.split('uses:',1)[1].strip().split('#')[0].strip() for line in normalized if line.startswith('uses:') or line.startswith('- uses:')]
+  ck(bool(refs) and all(re.fullmatch('actions/(checkout|setup-python)@[0-9a-f]{40}',item) for item in refs),f'{name} approved immutable action references')
+  ck(any(line.startswith('timeout-minutes:') for line in normalized),f'{name} has explicit timeout')
+  ck(('workflow_dispatch:' in normalized and 'pull_request:' not in normalized) if name=='stage1-native-integration.yml' else ('pull_request:' in normalized and 'workflow_dispatch:' not in normalized),f'{name} restricted event type')
  ck('GitHub Actions' in load('docs/delivery/NEW_REPO_STAGE0.md') and 'DISABLED' in load('README.md'), 'current No-Actions operating contract present')
  for f in ('AGENTS.md','README.md','INSTRUCTIONS.md','docs/delivery/HANDOVER.md','docs/delivery/PROJECT_STATUS.md'):
   ck('v0.5' in load(f) or 'v0.7' in load(f),f'{f} clear version')
