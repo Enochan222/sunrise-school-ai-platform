@@ -12,7 +12,7 @@ services:
     security_opt: [no-new-privileges:true]
   open_notebook:
     build:
-      context: ${ON_SOURCE_DIR:?absolute path to PINNED and A-only PATCHED checkout}
+      context: ${ON_PATCHED_DIR:?absolute path to verified A-only patched staging checkout}
       target: runtime
     image: sunrise-on-s1-v1.15.1-text-only:local
     ports:
