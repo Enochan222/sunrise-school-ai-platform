@@ -1,0 +1,40 @@
+# NOT TESTED in Builder Chat. Local synthetic-only Open Notebook pinned-source stack.
+# Never expose native API/UI/SurrealDB publicly or use real school/student data.
+services:
+  surrealdb:
+    image: ${SURREAL_IMAGE:?specific v2 image digest (surrealdb/surrealdb@sha256:...) required}
+    command: ["start", "--log", "warn", "--user", "${SURREAL_USER:?required}", "--pass", "${SURREAL_PASSWORD:?required}", "rocksdb:/mydata/mydatabase.db"]
+    volumes:
+      - surreal_synthetic:/mydata
+    networks: [a_internal]
+    restart: "no"
+  open_notebook:
+    build:
+      context: ${ON_PATCHED_DIR:?absolute path to verified patched staging checkout}
+      target: runtime
+    image: sunrise-on-synthetic:source-5e285b7a-a1
+    ports:
+      - "127.0.0.1:5055:5055"
+    environment:
+      OPEN_NOTEBOOK_PASSWORD: ${OPEN_NOTEBOOK_PASSWORD:?required}
+      OPEN_NOTEBOOK_ENCRYPTION_KEY: ${OPEN_NOTEBOOK_ENCRYPTION_KEY:?required}
+      SURREAL_URL: ws://surrealdb:8000/rpc
+      SURREAL_USER: ${SURREAL_USER:?required}
+      SURREAL_PASSWORD: ${SURREAL_PASSWORD:?required}
+      SURREAL_NAMESPACE: open_notebook
+      SURREAL_DATABASE: open_notebook
+      OPEN_NOTEBOOK_ENABLE_DOCLING: "false"
+      OPEN_NOTEBOOK_ENABLE_CRAWL4AI: "false"
+      OPEN_NOTEBOOK_WORKER_MAX_TASKS: "1"
+      CORS_ORIGINS: "http://127.0.0.1:8765"
+    volumes:
+      - notebook_synthetic:/app/data
+    depends_on: [surrealdb]
+    networks: [a_internal]
+    restart: "no"
+networks:
+  a_internal:
+    internal: true
+volumes:
+  surreal_synthetic: {}
+  notebook_synthetic: {}
