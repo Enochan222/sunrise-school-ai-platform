@@ -9,7 +9,7 @@ STATUS: `LOCAL_SYNTHETIC_DEVELOPMENT`, Native ON/SurrealDB/Worker `RUNTIME_NOT_R
 Install `apps/a-vault/requirements-dev.txt` in a private Python environment, then from the Sunrise repository root run:
 
 ```bash
-PYTHONPATH=wp00_builder_b python -m pytest -q wp00_builder_b/tests tests/stage1
+python -m pytest -q tests/stage1
 python scripts/stage1/http_smoke.py
 bash scripts/stage1/start_local.sh
 ```
