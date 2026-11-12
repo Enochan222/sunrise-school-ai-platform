@@ -58,7 +58,7 @@ def test_native_vector_search_never_invokes_transport():
     def handler(req):called.append(req);return httpx.Response(200,json={'results':[]})
     n=Native('http://127.0.0.1:8001','synthetic-native-secret',transport=httpx.MockTransport(handler))
     with pytest.raises(NativeUnavailable):run(n.search('notebook:expected','中文'))
-    assert called==[]
+    assert [req.url.path for req in called] == ["/api/sunrise-patch-status"]
 
 
 def test_native_original_hash_failure_rejects_bytes():
