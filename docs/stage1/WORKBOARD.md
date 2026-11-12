@@ -46,6 +46,8 @@
 
 **Allowed parallelism:** isolated tests/docs/spikes can be reviewed in parallel after WP00; WP03 must not race a second Builder changing the same notebook schema; WP04/05/06 share source/route files and must be serial or have nonoverlapping named ownership. Never have two Builder PRs change this WORKBOARD; reviewer alone owns its updates.
 
+**Limited CI exception (2026-11-13):** The later [Owner-approved limited Stage 1 CI addendum](../decisions/STAGE1_LIMITED_CI_ADDENDUM.md) overrides older no-Actions wording **only** for the two named Stage 1 [A] workflows. Original D08, WP claims, Reviewer-only WORKBOARD updates, Runtime gates, and R01 NOT_APPROVED are unchanged. CI success does not establish WP DONE or Owner UAT.
+
 ## 4. Progress, PR and `DONE` semantics
 
 1. `NOT_STARTED`: no authorized work. `IN_PROGRESS`: explicitly assigned Builder has authorized active branch or local tests, evidence `NOT_RUN` as applicable. `BLOCKED`: reproduce and link blocker. `PENDING_REVIEW`: PR opened but **not merged**, exact ref recorded. `DONE`: reviewer confirms merged commit is on `main`, requirements/negative/regression tests verified, evidence linked, and no gate regression.
@@ -57,7 +59,7 @@
 
 ## 5. Short Builder bootstrap (read-only until fresh authorization)
 
-> You are a Sunrise Stage 1 [A] Builder. **Read-only first:** verify latest `Enochan222/sunrise-school-ai-platform` `main`, `AGENTS.md`, `INSTRUCTIONS.md`, `docs/stages/STAGE_01.md`, `docs/stage1/IMPLEMENTATION_PLAN.md`, `docs/stage1/WORKBOARD.md`, merged evidence and open PRs. Identify the next dependency-ready unclaimed WP, check file conflicts, and report your exact scope, expected files, tests and required permissions to the Integration Reviewer and Owner. **Stop before code edits or any GitHub writes.** Local synthetic development, branch/PR writes, main merge and hosted deployment/R01 each need **separate explicit authorization**. No Actions/Copilot, paid APIs, real materials or B/I/U runtime changes.
+> You are a Sunrise Stage 1 [A] Builder. **Read-only first:** verify latest `Enochan222/sunrise-school-ai-platform` `main`, `AGENTS.md`, `INSTRUCTIONS.md`, `docs/stages/STAGE_01.md`, `docs/stage1/IMPLEMENTATION_PLAN.md`, `docs/stage1/WORKBOARD.md`, merged evidence and open PRs. Identify the next dependency-ready unclaimed WP, check file conflicts, and report your exact scope, expected files, tests and required permissions to the Integration Reviewer and Owner. **Stop before code edits or any GitHub writes.** Local synthetic development, branch/PR writes, main merge and hosted deployment/R01 each need **separate explicit authorization**. No **unauthorized** Actions/Copilot, paid APIs, real materials or B/I/U runtime changes. See the limited Stage 1 CI addendum.
 
 ## 6. Release restraint
 
