@@ -1,7 +1,7 @@
 # Sunrise Stage 1 [A] — WORKBOARD (authoritative engineering progress index)
 
 **Repository:** `Enochan222/sunrise-school-ai-platform`  
-**Prepared against main:** `744fbbd0ac3b479c80782d6a990c7bfed093f4dd` (verify latest `main` before acting).  
+**Reviewer progress snapshot checked against main:** `8f7df63158dc4d26331dc7ee3334e7fe568629c8` (check newer live `main` and PR heads before acting).  
 **Source of requirements:** [Stage 1 official card](../stages/STAGE_01.md), [S0 decisions](../decisions/STAGE0_APPROVAL_DECISIONS.md), [candidate API inventory](../architecture/API_INVENTORY.json); [Implementation Plan v1.1](IMPLEMENTATION_PLAN.md) defines implementation sequence, not a replacement for formal requirements.  
 **Evidence policy:** [Evidence README](evidence/README.md). **Collaboration / QA:** [Docs PR Handoff](DOCS_PR_HANDOFF.md).
 
@@ -10,37 +10,40 @@
 | Gate | Recorded status | Meaning / change authority |
 |---|---|---|
 | Stage 1 planning | **COMPLETE** | v1.1 planning gate only; not runtime acceptance |
-| GitHub documentation handoff | **PENDING DOCS PR (draft-time only)** | Do not treat this row as evidence that its own PR has merged. After publication, check live GitHub PR/main records for actual handoff status; reviewer updates via a later authorized serial PR if needed |
-| Stage 1 implementation | **NOT_STARTED** | No A runtime WP is claimed complete |
+| GitHub documentation handoff | **COMPLETE — PR #13 and #15 merged** | Only documentation/limited CI governance passed; no native release claim |
+| Stage 1 implementation | **IN_PROGRESS — PR #14 DRAFT** | Actual Gateway/code/tests exist in unmerged PR #14; no formal WP is DONE |
 | S1-AT01–S1-AT15 runtime acceptance | **NOT_RUN** (15/15) | Every AT still needs actual tests and independently checkable evidence |
 | R01 release | **NOT_APPROVED** | Separate runtime, security, privacy, hosting, budget and Owner gates |
-| Local synthetic development | **NOT AUTHORIZED BY THIS FILE** | Local code work requires a separate explicit task-specific Owner instruction |
-| GitHub feature branch / PR / merge / hosted deployment | **NOT AUTHORIZED BY THIS FILE** | Each level requires separate explicit authority; an assigned WP is not write approval |
+| Limited Stage 1 CI definitions | **MERGED, RUNNER NOT_RUN** | PR #17 and PR #16 merged, only `stage1-light.yml` and `stage1-native-integration.yml` approved; no new Runner/Native result |
+| Local synthetic development | **AUTHORIZED UNDER SEPARATE OWNER INSTRUCTIONS** | A-only Builder B synthetic implementation, per active standing technical delegation and reviewer PR #14 assignment; this row grants no new permissions |
+| GitHub A-only branch / PR and Reviewer merge | **STANDING DELEGATION ACTIVE; REVIEWER GATE** | Builder B writes only assigned A-only feature PRs; Reviewer alone independently reviews/manual squash-merges; hosting/R01 NOT AUTHORIZED |
 
 **WP status vocabulary:** `NOT_STARTED / IN_PROGRESS / BLOCKED / PENDING_REVIEW / DONE`. Only an Integration Reviewer may propose a change to the merged WORKBOARD via the normal authorized docs PR process. `DONE` means implementation **merged** and pertinent tests/evidence verified; passing a self-described local test or opening a PR is not enough.
 
-## 2. WP00–WP09 (all unassigned; no PRs or commits are presumed)
+## 2. WP00–WP09 (verified progress snapshot, no WP marked DONE)
 
 | WP | Deliverable | Depends on | Builder / Integration Reviewer | Status | Branch / PR | Verified implementation commit | Evidence | Blocker | Next executable task after authorization |
 |---|---|---|---|---|---|---|---|---|---|
-| **WP00** | Pin upstream/source/digest; scope, fixture and threat inventory; three spikes designed | S0 approved | **Unassigned / IR unassigned** | NOT_STARTED | — / — | — | — | None for planning; local/GitHub permissions pending | Read latest `main`, compare v1.1, verify pinned ON v1.15.1, propose ownership and first reproducible tests |
-| **WP01** | Private ON API, storage, worker, DB and ingress isolation | WP00 | **Unassigned / IR unassigned** | NOT_STARTED | — / — | — | — | WP00 | Demonstrate prohibited raw API/UI/DB routes cannot be reached outside private A boundary |
-| **WP02** | Single Admin login, safe session, fail-start secrets, minimum Service JWT verifier | WP01 | **Unassigned / IR unassigned** | NOT_STARTED | — / — | — | — | WP01 | Test missing secrets, cross-school session, token scope/issuer/audience/revocation limits |
-| **WP03** | A Shell ↔ unique ON Notebook and durable ACK-loss idempotency | WP02 | **Unassigned / IR unassigned** | NOT_STARTED | — / — | — | — | WP02 | Reproduce create-after-commit ACK loss and parallel retry; prove one Notebook |
-| **WP04** | Source ownership, original version/hash, rights, native graph consistency | WP03 | **Unassigned / IR unassigned** | NOT_STARTED | — / — | — | — | WP03 | Define minimal owner record and reject foreign/missing/multi-notebook edges |
-| **WP05** | Native PDF upload/extraction/worker and Embedding-OFF recovery | WP04 | **Unassigned / IR unassigned** | NOT_STARTED | — / — | — | — | WP04 | Process synthetic born-digital PDF; reproduce native retry `embed=True` and apply minimum safe fix if needed |
-| **WP06** | Eight candidate A API operations; scoped list/search/original download; deny native streaming routes | WP04, WP05 | **Unassigned / IR unassigned** | NOT_STARTED | — / — | — | — | WP04–05 | Test text-only search fallback, two-school IDOR, first-byte download denial, mixed results |
-| **WP07** | Minimal A-only Admin page for the complete user journey | WP03, WP05, WP06 | **Unassigned / IR unassigned** | NOT_STARTED | — / — | — | — | WP03/05/06 | Demonstrate Login→Shell→PDF→Search→Download→Archive with only A APIs |
-| **WP08** | A-only consistent backup + independent isolated restore | WP00 design; WP03–06 runtime | **Unassigned / IR unassigned** | NOT_STARTED | — / — | — | — | WP03–06 | Freeze synthetic recovery point; restore DB, originals, encryption keys and indexes; compare hashes |
-| **WP09** | Full S1-AT01–15 security, persistence, regression, UAT, R01 decision record | WP00–WP08 | **Unassigned / IR unassigned** | NOT_STARTED | — / — | — | — | WP00–08 | Collect fifteen actual results; independent recheck and Owner UAT; never call R01 approved prematurely |
+| **WP00** | Pin upstream/source/digest; scope, fixture and threat inventory; real pinned native spikes | S0 approved | **Builder B / Integration Reviewer** | IN_PROGRESS | PR #14 (DRAFT) | — (no merged implementation SHA) | [PR #14 evidence](../../docs/stage1/evidence/WP00-pr-14.md), [owner transfer](https://github.com/Enochan222/sunrise-school-ai-platform/pull/14#issuecomment-6847694659) | Native Image/Worker/SurrealDB and latest-head exact Runtime evidence not independently accepted | Preserve current PR #14 Head; integrate true A SurrealDB journal, run pinned native smoke/fault injection, prepare exact-head QA |
+| **WP01** | Private ON API, storage, worker, DB and ingress isolation | WP00 | **Builder B (dependency-limited prep) / IR** | NOT_STARTED | — / — | — | — | WP00 | Demonstrate prohibited raw API/UI/DB routes cannot be reached outside private A boundary |
+| **WP02** | Single Admin login, safe session, fail-start secrets, minimum Service JWT verifier | WP01 | **Builder B (dependency-limited prep) / IR** | NOT_STARTED | — / — | — | — | WP01 | Test missing secrets, cross-school session, token scope/issuer/audience/revocation limits |
+| **WP03** | A Shell ↔ unique ON Notebook and durable ACK-loss idempotency | WP02 | **Builder B (dependency-limited prep) / IR** | NOT_STARTED | — / — | — | — | WP02 | Reproduce create-after-commit ACK loss and parallel retry; prove one Notebook |
+| **WP04** | Source ownership, original version/hash, rights, native graph consistency | WP03 | **Builder B (dependency-limited prep) / IR** | NOT_STARTED | — / — | — | — | WP03 | Define minimal owner record and reject foreign/missing/multi-notebook edges |
+| **WP05** | Native PDF upload/extraction/worker and Embedding-OFF recovery | WP04 | **Builder B (dependency-limited prep) / IR** | NOT_STARTED | — / — | — | — | WP04 | Process synthetic born-digital PDF; reproduce native retry `embed=True` and apply minimum safe fix if needed |
+| **WP06** | Eight candidate A API operations; scoped list/search/original download; deny native streaming routes | WP04, WP05 | **Builder B (dependency-limited prep) / IR** | NOT_STARTED | — / — | — | — | WP04–05 | Test text-only search fallback, two-school IDOR, first-byte download denial, mixed results |
+| **WP07** | Minimal A-only Admin page for the complete user journey | WP03, WP05, WP06 | **Builder B (dependency-limited prep) / IR** | NOT_STARTED | — / — | — | — | WP03/05/06 | Demonstrate Login→Shell→PDF→Search→Download→Archive with only A APIs |
+| **WP08** | A-only consistent backup + independent isolated restore | WP00 design; WP03–06 runtime | **Builder B (dependency-limited prep) / IR** | NOT_STARTED | — / — | — | — | WP03–06 | Freeze synthetic recovery point; restore DB, originals, encryption keys and indexes; compare hashes |
+| **WP09** | Full S1-AT01–15 security, persistence, regression, UAT, R01 decision record | WP00–WP08 | **Unassigned until WP00–08 gates / IR** | NOT_STARTED | — / — | — | — | WP00–08 | Collect fifteen actual results; independent recheck and Owner UAT; never call R01 approved prematurely |
 
 `—` means **no verified branch, PR, SHA or evidence link**. No completed feature is implied. Before changing this table the reviewer must inspect live GitHub PRs and exact merged commits; `main` index reflects the **last independently verified merge**, while the open PR list is the live view of unmerged work.
 
-## 3. Claim and coordination ledger (reviewer-controlled; empty at initialization)
+**Reviewer source-of-truth reminder (2026-11-13):** PR #14 is unmerged. Submitted 61/95 Synthetic and Component test counts are **not** Native Runtime evidence. Work has reported separate local native tests, but full logs/digests at the latest PR Head have not been independently matched; keep official S1-AT01–15 NOT_RUN. PR #16/#17 workflow merges prove configuration only, not Runner availability or billing. External AI/embedding, real data, production and R01 remain outside authorization.
+
+## 3. Claim and coordination ledger (reviewer-controlled)
 
 | WP | Approved claimant | Scope / exact expected files | Depends-on merged SHAs | Approved permissions | Active feature branch / PR | Claim status / last checked |
 |---|---|---|---|---|---|---|
-| — | No active WP claim | — | — | — | — | Not claimed |
+| WP00 (and dependency-safe preparatory code for WP01–08) | Builder B, original Chat; Work lease revoked | `apps/a-vault/**`, `scripts/stage1/**`, `tests/stage1/**`, A-only `docs/stage1/evidence/**` | S0 merged; WP01–08 formal gates not passed | Stage 1 A-only standing technical delegation PR #13; no self-merge, no B/I/U, paid/real data/hosting/R01 | PR #14 Draft, current head must be read live | Reviewer owner transfer [comment #6847694659](https://github.com/Enochan222/sunrise-school-ai-platform/pull/14#issuecomment-6847694659); no overlapping writers |
 
 **Claim protocol:** Builder first reads `main` + open Stage1 PRs, asks the **designated Integration Reviewer** to reserve a WP and concrete file boundary, and provides the proposed branch name, changed-file list and dependencies. Reviewer checks the table and live GitHub PRs, confirms one owner per overlapping file, and records the claim through the next **authorized, single-writer WORKBOARD documentation PR**. Until that PR has been merged, the reviewer’s explicit written assignment/PR discussion is **provisional**, not an independently enforced lock. Do not start overlapping implementation while a competing claim is unresolved. Without a designated reviewer, no concurrent builders may begin conflicting work.
 
