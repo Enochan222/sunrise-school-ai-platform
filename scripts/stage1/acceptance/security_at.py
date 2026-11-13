@@ -6,8 +6,10 @@ failures always fail closed. External observer proof + Docker identity +
 Gateway route denial required; local loopback-only does not satisfy HTTPS AT07.
 """
 import argparse
+import base64
 import hashlib
-from datetime import datetime,timezone
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from datetime import datetime,timezone,timedelta
 import json
 import os
 from pathlib import Path
@@ -20,6 +22,8 @@ import httpx
 ROOT=Path(__file__).resolve().parents[3]
 sys.path.insert(0,str(ROOT/'scripts/stage1'))
 from wp01_network_boundary_probe import verify_manifest,verify_private_address
+from runtime_identity import tls_gateway_identity
+from acceptance.evidence_inventory import verify_clean_source
 
 
 def ensure(condition,reason):
@@ -161,20 +165,91 @@ def native_process_secret_fail_start(args):
 
 
 
+def verify_external_denial_evidence(args):
+    """Consume *signed real-observer* evidence bound to a real target host.
+
+    An arbitrary RFC1918 IP or three TCP timeouts are not security proof.
+    No arbitrary network probes are issued by the acceptance consumer.
+    """
+    identity,mappings,identity_sha=verify_manifest(args.runtime_identity,args.context,
+                                         args.project,args.source_sha,args.source_tree)
+    target=identity.get('external_target')
+    ensure(isinstance(target,dict) and
+           target.get('private_ip')==verify_private_address(args.target_private_ip) and
+           isinstance(target.get('host_identity_sha256'),str) and
+           len(target['host_identity_sha256'])==64 and
+           all(x in '0123456789abcdef' for x in target['host_identity_sha256']),
+           'C runtime identity must independently bind actual external target host')
+    document=getattr(args,'observer_evidence',None)
+    ensure(document and document.is_file() and not document.is_symlink()
+           and document.stat().st_size<=1<<16,
+           'Signed independent observer evidence missing')
+    envelope=json.loads(document.read_text(encoding='utf-8'))
+    ensure(isinstance(envelope,dict) and set(envelope)=={'payload','signature_ed25519'}
+           and isinstance(envelope['payload'],dict),'Malformed signed observer evidence')
+    payload=envelope['payload']
+    trust=os.getenv('VAULT_EXTERNAL_OBSERVER_PUBKEY_BASE64')
+    ensure(bool(trust),'Independently pinned observer public key absent')
+    try:
+        key=base64.b64decode(trust,validate=True)
+        signature=base64.b64decode(envelope['signature_ed25519'],validate=True)
+        ensure(len(key)==32 and len(signature)==64,'Invalid observer signing key')
+        Ed25519PublicKey.from_public_bytes(key).verify(signature,
+            json.dumps(payload,sort_keys=True,separators=(',',':')).encode('utf-8'))
+    except (ValueError,TypeError,KeyError) as error:
+        raise AssertionError('Observer signature verification failed') from error
+    expected={'type':'SUNRISE_S1_EXTERNAL_PORT_DENIAL_V1',
+              'source_commit':args.source_sha,'source_tree':args.source_tree,
+              'runtime_identity_sha256':identity_sha,
+              'context':args.context,'project':args.project,
+              'target_private_ip':target['private_ip'],
+              'target_host_identity_sha256':target['host_identity_sha256'],
+              'gateway_instance_id':identity['gateway'].get('instance_id'),
+              'observer_independent':True,
+              'observer_network_isolated':True,
+              'target_host_identity_verified':True}
+    ensure(all(payload.get(k)==v for k,v in expected.items()),
+           'Observer target/physical runtime/source binding mismatch')
+    ensure(isinstance(payload.get('observer_id'),str) and len(payload['observer_id'])>=12,
+           'Independent observer identity missing')
+    observed=payload.get('observed_utc')
+    ensure(isinstance(observed,str),'Observer UTC missing')
+    try:
+        when=datetime.fromisoformat(observed.replace('Z','+00:00'))
+        ensure(when.tzinfo is not None and when.utcoffset()==timedelta(0),
+               'Only UTC observer evidence accepted')
+        age=datetime.now(timezone.utc)-when
+        ensure(timedelta(seconds=-30)<=age<=timedelta(minutes=10),
+               'External observer evidence stale or future-dated')
+    except ValueError as error:
+        raise AssertionError('Invalid observer UTC') from error
+    observations=payload.get('observations')
+    ensure(isinstance(observations,list) and len(observations)==len(mappings),
+           'Missing physical service port observations')
+    intended={(service,container,bind,port,internal)
+              for service,container,bind,port,internal in mappings}
+    measured=set()
+    for row in observations:
+        ensure(isinstance(row,dict) and row.get('outcome') in
+               ('CONNECTION_REFUSED','CONNECTION_TIMED_OUT') and
+               row.get('target_host_identity_verified') is True,
+               'External observer result cannot prove denial')
+        item=(row.get('service'),row.get('container_id'),row.get('published_host_ip'),
+              row.get('published_host_port'),row.get('container_port'))
+        ensure(item in intended and item not in measured,
+               'Port observation does not match the exact Docker service')
+        measured.add(item)
+    ensure(measured==intended,'Incomplete independent published port coverage')
+    return {'external_network_status':'SIGNED_REAL_TARGET_OBSERVER_DENIED',
+            'observer_evidence_sha256':hashlib.sha256(document.read_bytes()).hexdigest(),
+            'runtime_identity_sha256':identity_sha,
+            'observer_utc':observed,'observer_id':payload['observer_id'],
+            'physical_services':sorted(x[0] for x in measured)}
+
+
 def public_port_denials(args):
-    identity,mappings,_=verify_manifest(args.runtime_identity,args.context,args.project,
-                                         args.source_sha,args.source_tree)
-    host=verify_private_address(args.target_private_ip)
-    ensure(bool(mappings),'No genuine Docker Published Port mappings available to test')
-    observed=[]
-    for service,container,bind,port,internal in mappings:
-        try:
-            with socket.create_connection((host,port),timeout=3):
-                raise AssertionError('Private '+service+' published HostPort reachable externally')
-        except (socket.timeout,ConnectionRefusedError,OSError) as error:
-            observed.append({'service':service,'published_host_port':port,
-                'outcome':type(error).__name__})
-    return observed
+    """Legacy name retained; now rejects unbound RFC1918/private-IP guesses."""
+    return verify_external_denial_evidence(args)
 
 
 def gateway_negative(args,at):
@@ -186,12 +261,20 @@ def gateway_negative(args,at):
     identity,_,_=verify_manifest(args.runtime_identity,args.context,args.project,
                                  args.source_sha,args.source_tree)
     gateway=identity['gateway']
+    ensure(set(identity.get('services',{}))=={'a_db','on_db','native'}
+           and identity.get('dual_rpc',{}).get('on_viewer_read_only') is True
+           and identity.get('dual_rpc',{}).get('separate_root_secrets') is True,
+           'Independent dual DB and read-only graph viewer missing')
     ca=args.gateway_ca_file
     ensure(ca.is_file() and not ca.is_symlink() and ca.stat().st_size<=1<<20,
            'Exact independent Gateway CA material required')
     ensure(hashlib.sha256(ca.read_bytes()).hexdigest()==gateway.get('tls_ca_sha256')
            and args.gateway.rstrip('/')==gateway.get('origin'),
            'AT Gateway origin/CA differs from captured physical runtime')
+    verified=tls_gateway_identity(args.gateway,ca)
+    ensure(verified.get('tls_peer_sha256')==gateway.get('tls_peer_sha256')
+           and verified.get('instance_id')==gateway.get('instance_id'),
+           'Actual HTTPS TLS peer/Gateway identity changed after capture')
     with httpx.Client(base_url=args.gateway,verify=str(ca),trust_env=False,
                       follow_redirects=False,timeout=10) as c:
         # Bind HTTPS/loopback observer result to the actual private Gateway
@@ -206,6 +289,20 @@ def gateway_negative(args,at):
         ensure(result.get('gateway')=='running' and
                result.get('gateway_instance')==instance,
                'Observed HTTP endpoint is not the attested private Gateway process')
+        if at=='S1-AT07':
+            ensure(os.environ.get('VAULT_COOKIE_SECURE','').lower()=='true',
+                   'Actual Gateway secure-cookie launch setting not attested')
+            login=c.get('/auth/login')
+            ensure(login.status_code==200,'Real login page unavailable')
+            cookies=login.headers.get_list('set-cookie')
+            ensure(any('Secure' in value and 'HttpOnly' in value and
+                       'SameSite=strict' in value for value in cookies),
+                   'Real login CSRF cookie lacks HTTPS/HttpOnly/SameSite')
+            no_csrf=c.post('/auth/login',data={'password':'synthetic-invalid','csrf':'missing'})
+            ensure(no_csrf.status_code==403,'Missing login CSRF not rejected')
+            unauthorized=c.post('/auth/school',json={'school_id':'synthetic-other'})
+            ensure(unauthorized.status_code in (401,403),
+                   'Missing session / school CSRF unexpectedly accepted')
         # Authenticated API must never leak an anonymous school or Source.
         for path in ('/vault/v1/shells','/vault/v1/shells/foreign',
                      '/vault/v1/shells/foreign/materials','/admin'):
@@ -240,12 +337,14 @@ def main():
     for key in ('runtime-identity','context','project','source-sha','source-tree',
                 'target-private-ip','out'):
         p.add_argument('--'+key,required=True)
+    p.add_argument('--observer-evidence',type=Path)
     args=p.parse_args()
     args.runtime_identity=Path(args.runtime_identity)
     args.out=Path(args.out)
     if os.getenv('VAULT_RUNTIME_SYNTHETIC_CONFIRM')!='YES' or (
         os.getenv('VAULT_OBSERVER_ISOLATED_CONFIRM')!='YES'):
         p.error('External synthetic observer attestation required')
+    verify_clean_source(ROOT,args.source_sha,args.source_tree,output=args.out)
     report={'at_id':args.at_id,'status':'NOT_RUN',
             'source_commit':args.source_sha,'source_tree':args.source_tree,
             'started_utc':datetime.now(timezone.utc).isoformat()}
@@ -253,12 +352,16 @@ def main():
         if args.at_id=='S1-AT08':
             negative_startups()
             tested=native_compose_secret_preflight(args)
+            identity,_,identity_sha=verify_manifest(args.runtime_identity,args.context,
+                args.project,args.source_sha,args.source_tree)
+            report['runtime_identity_sha256']=identity_sha
             report['gateway_secret_fail_start']='PASS'
             report['pinned_native_compose_required_secrets']=tested
             report['direct_native_process_missing_secret_test']=native_process_secret_fail_start(args)
             report['status']='PASS'
         else:
             report['private_ports']=public_port_denials(args)
+            report['runtime_identity_sha256']=report['private_ports']['runtime_identity_sha256']
             report.update(gateway_negative(args,args.at_id))
         if args.at_id=='S1-AT07':
             if not args.owner_attestation:
@@ -291,6 +394,7 @@ def main():
             report['unique_admin_full_login_audit']='PASS'
             report['real_student_data_absence_audit']='INDEPENDENT_SIGNED_FULL_VOLUME_REVIEW'
             report['audit_evidence_sha256']=hashlib.sha256(audit_path.read_bytes()).hexdigest()
+        verify_clean_source(ROOT,args.source_sha,args.source_tree,output=args.out)
         report['status']='PASS'
     except Exception as error:
         report['status']='FAIL';report['error_type']=type(error).__name__
@@ -298,7 +402,8 @@ def main():
     finally:
         report['end_utc']=datetime.now(timezone.utc).isoformat()
         if args.out.exists():raise RuntimeError('Evidence overwrite refused')
-        args.out.write_text(json.dumps(report,sort_keys=True,indent=2)+'\n')
+        with args.out.open('x',encoding='utf-8') as stream:
+            stream.write(json.dumps(report,sort_keys=True,indent=2)+'\n')
 
 
 if __name__=='__main__':main()

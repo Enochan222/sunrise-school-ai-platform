@@ -21,6 +21,11 @@ import subprocess
 import tempfile
 import zipfile
 
+if __package__:
+    from .evidence_inventory import verify_clean_source
+else:
+    from evidence_inventory import verify_clean_source
+
 SAFE_EXT={'.json','.txt','.log','.md','.csv'}
 MAX_FILE=2<<20
 MAX_BUNDLE=20<<20
@@ -37,12 +42,8 @@ def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def checkout(repo,source_sha,tree):
-    def command(what):
-        return subprocess.run(['git','-C',str(repo),'rev-parse',what],check=True,
-            text=True,capture_output=True,timeout=12).stdout.strip()
-    if (command('HEAD'),command('HEAD^{tree}'))!=(source_sha,tree):
-        raise ValueError('Actual source commit/tree differs from supplied tested SHA/tree')
+def checkout(repo,source_sha,tree,output=None):
+    return verify_clean_source(repo,source_sha,tree,output=output)
 
 
 def sanitize(data):
@@ -115,7 +116,9 @@ def collect(folder):
 def create(args):
     if not SHA40.fullmatch(args.source_sha) or not SHA40.fullmatch(args.source_tree):
         raise ValueError('Full tested SHA and tree required')
-    checkout(args.repo_root,args.source_sha,args.source_tree)
+    checkout(args.repo_root,args.source_sha,args.source_tree,output=args.output)
+    if args.evidence_dir.resolve().is_relative_to(args.repo_root.resolve()):
+        raise ValueError('Uncontrolled evidence under source checkout forbidden')
     files=collect(args.evidence_dir)
     record={'classification':'REDACTED_CANDIDATE_REVIEW_REQUIRED_NOT_ACCEPTANCE',
             'created_utc':datetime.now(timezone.utc).isoformat(),
@@ -135,6 +138,7 @@ def create(args):
     output=args.output.absolute()
     if output.exists() or output.is_relative_to(args.evidence_dir.resolve()):
         raise ValueError('Output ZIP must be new and outside evidence input')
+    checkout(args.repo_root,args.source_sha,args.source_tree,output=output)
     output.parent.mkdir(parents=True,exist_ok=True)
     with tempfile.NamedTemporaryFile(prefix='.s1-evidence-',suffix='.zip',
                                      dir=output.parent,delete=False) as temp:
@@ -150,6 +154,7 @@ def create(args):
             for name,_,clean in files:
                 add('evidence/'+name,clean)
         os.chmod(scratch,0o600)
+        checkout(args.repo_root,args.source_sha,args.source_tree,output=output)
         scratch.replace(output)
     finally:
         scratch.unlink(missing_ok=True)
@@ -162,8 +167,9 @@ def verify(path):
         records=zipf.infolist()
         if len(records)<3 or len(set(x.filename for x in records))!=len(records):
             raise ValueError('Empty or duplicate evidence archive')
-        if any(x.is_dir() or x.file_size>MAX_FILE for x in records):
-            raise ValueError('Unknown evidence member type/size')
+        if (len(records)>500 or sum(x.file_size for x in records)>MAX_BUNDLE+2*MAX_FILE
+                or any(x.is_dir() or x.file_size>MAX_FILE for x in records)):
+            raise ValueError('Unknown/unbounded evidence member type/size')
         for member in records:
             name=member.filename
             if (name.startswith('/') or '..' in Path(name).parts or '\\\\' in name
@@ -186,6 +192,18 @@ def verify(path):
             raise ValueError('Archive member inventory incomplete')
         for name,digest in expectation.items():
             if sha(zipf.read(name))!=digest:raise ValueError('Evidence checksum mismatch')
+        if not SHA40.fullmatch(str(manifest.get('source_commit',''))) or not SHA40.fullmatch(str(manifest.get('source_tree',''))):
+            raise ValueError('Archive provenance missing')
+        for logical,entry in manifest.get('files',{}).items():
+            if (not isinstance(entry,dict)
+                    or not re.fullmatch(r'[a-f0-9]{64}',str(entry.get('original_sha256','')))
+                    or entry.get('exported_sha256')!=sha(zipf.read('evidence/'+logical))
+                    or type(entry.get('redaction_applied')) is not bool):
+                raise ValueError('Archive file provenance/redaction inventory invalid')
+        if any(not isinstance(x,dict) for x in manifest.get('files',{}).values()):
+            raise ValueError('Malformed evidence manifest')
+        if set('evidence/'+x for x in manifest['files'])!=set(zipf.namelist())-{'MANIFEST.json','SHA256SUMS'}:
+            raise ValueError('Evidence manifest members disagree')
         return {'classification':'ARCHIVE_INTEGRITY_VERIFIED_MANUAL_REVIEW_REQUIRED',
                 'source_commit':manifest.get('source_commit'),
                 'files':len(manifest['files'])}

@@ -19,6 +19,8 @@ import httpx
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from wp01_network_boundary_probe import verify_manifest
+from runtime_identity import tls_gateway_identity
+from acceptance.evidence_inventory import verify_clean_source
 
 
 class CSRF(HTMLParser):
@@ -122,24 +124,33 @@ def case_14(client,args,session):
 
 
 def case_15(client,args,session):
+    """Real same-Gateway two-school IDOR and session-switch negatives."""
+    checks={}
     session=change_school(client,session,args.school_a) if session['school_id']!=args.school_a else session
     expect(client.get('/vault/v1/shells/'+args.shell_a).status_code==200,'School A shell missing')
-    for path in (f'/vault/v1/shells/{args.shell_b}',
-                 f'/vault/v1/shells/{args.shell_b}/materials',
-                 f'/vault/v1/shells/{args.shell_b}/materials/{args.source_b}/download'):
+    checks['school_a_access']='PASS'
+    negatives=((f'/vault/v1/shells/{args.shell_b}', 'school_a_denies_school_b_shell'),
+               (f'/vault/v1/shells/{args.shell_b}/materials', 'school_a_denies_school_b_materials'),
+               (f'/vault/v1/shells/{args.shell_b}/materials/{args.source_b}/download',
+                'school_a_denies_school_b_original_download'))
+    for path,key in negatives:
         expect(client.get(path).status_code==404,'B identity leaked in A context')
-    # Client forged header must not change active school.
+        checks[key]='PASS'
     forged=client.get('/auth/me',headers={'X-School-ID':args.school_b})
     expect(forged.status_code==200 and forged.json()['school_id']==args.school_a,
            'Client-controlled header changed trusted school context')
+    checks['forged_school_header_denied']='PASS'
     stale=session['csrf_token']
     session=change_school(client,session,args.school_b)
     old_csrf=client.post('/auth/school',headers={'X-CSRF-Token':stale},
                          json={'school_id':args.school_a})
     expect(old_csrf.status_code==403,'Rotated CSRF accepted after school switch')
+    checks['csrf_rotated_on_switch']='PASS'
     expect(client.get('/vault/v1/shells/'+args.shell_b).status_code==200,'B shell unreadable')
+    checks['school_b_access']='PASS'
     expect(client.get('/vault/v1/shells/'+args.shell_a).status_code==404,'A shell leaked after switch')
-    return session
+    checks['school_b_denies_school_a_shell']='PASS'
+    return checks
 
 
 CASES={'S1-AT03':case_03,'S1-AT10':case_10,'S1-AT14':case_14,'S1-AT15':case_15}
@@ -164,6 +175,7 @@ def main():
             and gateway.port and gateway.path in ('','/') and not gateway.query
             and not gateway.fragment and not gateway.username and not gateway.password):
         p.error('Formal HTTP AT requires exactly one loopback HTTPS Gateway origin')
+    verify_clean_source(Path(__file__).resolve().parents[3],args.source_sha,args.source_tree,output=args.out)
     identity,_,identity_sha=verify_manifest(args.runtime_identity,args.context,
         args.project,args.source_sha,args.source_tree)
     trusted=identity.get('gateway',{})
@@ -172,6 +184,11 @@ def main():
             or hashlib.sha256(ca.read_bytes()).hexdigest()!=trusted.get('tls_ca_sha256')
             or trusted.get('origin')!=args.gateway.rstrip('/')):
         p.error('HTTP AT Gateway TLS CA/origin does not match runtime identity')
+    actual_gateway=tls_gateway_identity(args.gateway,ca)
+    if (actual_gateway.get('tls_peer_sha256')!=trusted.get('tls_peer_sha256')
+            or actual_gateway.get('instance_id')!=trusted.get('instance_id')
+            or actual_gateway.get('origin')!=trusted.get('origin')):
+        p.error('Actual TLS peer / Gateway process has changed since attestation')
     for value in (args.school_a,args.school_b):
         if not value.startswith('synthetic-'):p.error('Only synthetic schools permitted')
     report={'at_id':args.at_id,'status':'NOT_RUN',
@@ -184,7 +201,10 @@ def main():
         with httpx.Client(base_url=args.gateway,timeout=35,follow_redirects=False,
                           trust_env=False,verify=str(args.gateway_ca_file)) as client:
             session=authenticate(client)
-            CASES[args.at_id](client,args,session)
+            checks=CASES[args.at_id](client,args,session)
+            if args.at_id=='S1-AT15':
+                report['checks']=checks
+        verify_clean_source(Path(__file__).resolve().parents[3],args.source_sha,args.source_tree,output=args.out)
         report['status']='PASS'
     except Exception as exc:
         report['status']='FAIL'
@@ -193,7 +213,8 @@ def main():
     finally:
         report['end_utc']=datetime.now(timezone.utc).isoformat()
         if args.out.exists():raise RuntimeError('Evidence overwrite forbidden')
-        args.out.write_text(json.dumps(report,sort_keys=True,indent=2)+'\n')
+        with args.out.open('x',encoding='utf-8') as stream:
+            stream.write(json.dumps(report,sort_keys=True,indent=2)+'\n')
 
 
 if __name__=='__main__':main()
