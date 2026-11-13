@@ -129,16 +129,49 @@ def test_result(at,report):
                     'gateway_restart_persistence','school_b_separate_gateway_negative',
                     'independent_backup_restore','browser_admin_journey')))
     if at=='S1-AT06':
-        r=report.get('results',{})
+        r=report.get('results')
+        if not isinstance(r,dict):
+            return False
+        lost=r.get('real_native_lost_ack_tcp')
+        races=r.get('fresh_first_reservation_races')
+        if not isinstance(lost,dict) or not isinstance(races,dict):
+            return False
+        # Require three genuinely fresh concurrent claims, not merely
+        # retries against an already-reserved scope.
+        modes={'same_key_same_body','different_key_same_scope','same_key_different_body'}
+        if set(races)!=modes:
+            return False
+        for mode in modes:
+            entry=races[mode]
+            if not isinstance(entry,dict):
+                return False
+            outcomes=entry.get('outcomes')
+            if (not isinstance(outcomes,dict)
+                    or not set(outcomes).issubset(
+                        {'FRESH','REPLAY','CONFLICT','INDETERMINATE'})
+                    or any(type(v) is not int or v<0 for v in outcomes.values())
+                    or outcomes.get('FRESH')!=1 or outcomes.get('REPLAY',0)!=0
+                    or sum(outcomes.values())!=8
+                    or any(type(entry.get(k)) is not int or entry[k]!=1
+                           for k in ('durable_operations','durable_scope_claims',
+                                     'durable_shells','native_create_posts'))):
+                return False
         return (report.get('status')=='PASS' and report.get('native_gate')=='PASS'
             and all(r.get(x)=='PASS' for x in (
                 'real_surrealdb_unique_operation_reservation','different_body_conflict',
                 'same_key_concurrent_no_second_reservation',
                 'real_native_crash_after_create_before_journal_commit',
-                'marker_reconciliation_unique_mapping','same_key_replay_original_notebook'))
-            and isinstance(r.get('real_native_lost_ack_tcp'),dict)
-            and r['real_native_lost_ack_tcp'].get('native_create_posts')==1
-            and r['real_native_lost_ack_tcp'].get('client_received_post_ack') is False)
+                'marker_reconciliation_unique_mapping','same_key_replay_original_notebook',
+                'cross_school_shell_negative'))
+            and type(lost.get('native_create_posts')) is int
+            and lost['native_create_posts']==1
+            and lost.get('client_received_post_ack') is False
+            and type(lost.get('persisted_mapping_count')) is int
+            and lost['persisted_mapping_count']==1
+            and isinstance(lost.get('original_notebook_sha256'),str)
+            and re.fullmatch(r'[a-f0-9]{64}',lost['original_notebook_sha256']) is not None
+            and isinstance(report.get('notebook_id_sha256'),str)
+            and re.fullmatch(r'[a-f0-9]{64}',report['notebook_id_sha256']) is not None)
     if at=='S1-AT11':
         return (report.get('status')=='PASS' and
                 all(report.get(k)=='PASS' for k in
