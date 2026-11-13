@@ -37,6 +37,32 @@ def patch_text_search(source: str) -> str:
     return source[:begin] + fragment[:start] + new + fragment[stop:] + source[end:]
 
 
+def patch_scoped_cjk_search(source: str) -> str:
+    """Match contiguous Han text when the English BM25 analyzer finds no source."""
+    begin = source.index("async def text_search(")
+    end = source.index("\nasync def vector_search(", begin)
+    fragment = source[begin:end]
+    old = "        return search_results\n"
+    new = """        # English BM25 does not reliably match substrings of Han text.
+        # Limit the literal match to sources linked to one explicit notebook.
+        if (not search_results and source and not note and notebook_ids
+                and len(notebook_ids) == 1
+                and any("\u3400" <= char <= "\u9fff" for char in keyword)):
+            search_results = await repo_query(
+                "SELECT id, id AS parent_id, title, 0 AS relevance FROM source "
+                "WHERE id IN (SELECT VALUE in FROM reference WHERE out = $notebook) "
+                "AND (string::contains(title ?? '', $term) "
+                "OR string::contains(full_text ?? '', $term)) "
+                "ORDER BY id LIMIT $limit",
+                {"notebook": ensure_record_id(notebook_ids[0]),
+                 "term": keyword, "limit": results},
+            )
+        return search_results
+"""
+    return source[:begin] + replace_once(fragment, old, new, "scoped CJK literal search") + source[end:]
+
+
+
 def patch_retry(source: str) -> str:
     start = source.index("async def retry_source_processing(")
     end = source.index("\n@router.", start)
@@ -86,7 +112,8 @@ async def sunrise_patch_status():
 
 def patch_checkout(root: Path) -> list[str]:
     edits = [
-        ("open_notebook/domain/notebook.py", patch_text_search),
+        ("open_notebook/domain/notebook.py",
+         lambda source: patch_scoped_cjk_search(patch_text_search(source))),
         ("api/routers/sources.py", patch_retry),
         ("api/routers/notebooks.py", patch_graph),
         ("api/main.py", patch_main),

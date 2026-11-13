@@ -78,9 +78,14 @@ async def main():
         if src not in [hit['parent_id'] for hit in matches]:
             raise RuntimeError('Scoped BM25 did not locate extracted synthetic PDF')
         result['runtime_tests']['scoped_bm25']='PASS'
-        # Chinese BM25 behavior is version/tokenizer-sensitive: record truth, not fabricated PASS.
+        # The native A-only patch supports a scoped literal fallback for Han text.
         zh=await n.search(nb,'繁體中文',10)
-        result['runtime_tests']['traditional_chinese_bm25'] = 'PASS' if src in [hit['parent_id'] for hit in zh] else 'FAIL'
+        result['runtime_tests']['traditional_chinese_scoped_text_search'] = 'PASS' if src in [hit['parent_id'] for hit in zh] else 'FAIL'
+        foreign = await n.create_notebook('SUNRISE SYNTHETIC SEPARATE NOTEBOOK')
+        foreign_hits = await n.search(foreign, '繁體中文', 10)
+        if any(hit['parent_id'] == src for hit in foreign_hits):
+            raise RuntimeError('Scoped Chinese text search exposed a foreign source')
+        result['runtime_tests']['traditional_chinese_foreign_notebook_denial']='PASS'
         result['runtime_tests']['graph_owner_readback']='PASS'
         result['status']='PASS' if all(v=='PASS' for v in result['runtime_tests'].values()) else 'FAIL'
     except Exception as e:
