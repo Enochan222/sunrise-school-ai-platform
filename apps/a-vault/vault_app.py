@@ -24,6 +24,7 @@ from pydantic import BaseModel,Field
 from config import Settings,from_env
 from native import Native,NativeUnavailable,NativeOwnershipError
 from store import Store,Conflict,Indeterminate
+from surreal_store import SurrealStore,SurrealConfig,SurrealUnavailable
 
 SESSION_COOKIE='sunrise_a_sid'
 LOGIN_COOKIE='sunrise_a_login_csrf'
@@ -43,7 +44,9 @@ class SearchInput(BaseModel):
 
 def build_app(cfg:Settings|None=None,native=None):
     cfg=(cfg or from_env()).validate()
-    store=Store(cfg.sqlite_file)
+    store=(Store(cfg.sqlite_file) if cfg.store_backend=='synthetic_sqlite' else
+           SurrealStore(SurrealConfig(cfg.surreal_ws_url,cfg.surreal_user,cfg.surreal_password,
+               cfg.surreal_namespace,cfg.surreal_database),cfg.actor_id))
     upstream=native or Native(cfg.native_url,cfg.native_password,
                                     text_only_verified=cfg.native_text_only_verified,
                                     max_download_bytes=cfg.max_pdf_bytes)
@@ -192,11 +195,37 @@ def build_app(cfg:Settings|None=None,native=None):
         data=body.model_dump()
         try:
             record,is_new=store.start_shell(p['school_id'],key,data)
-        except (Conflict,Indeterminate) as e:return_error(e)
+        except Conflict as e:
+            return_error(e)
+        except Indeterminate as e:
+            if not getattr(store,'is_durable',False):
+                return_error(e)
+            # A SurrealDB reservation survives a lost native create ACK. NEVER re-send CREATE.
+            op=store.operation(p['school_id'],key,'shell')
+            from surreal_store import _digest
+            if (not op or op.get('payload_sha')!=_digest(data) or
+                    not str(op.get('marker','')).startswith('sunrise-a-op-v1:')):
+                return_error(Indeterminate('Reservation identity cannot be reconciled'))
+            try:
+                matches=await upstream.find_notebooks_by_marker(op['marker'])
+                if len(matches)!=1:
+                    store.quarantine(p['school_id'],key)
+                    return_error(Indeterminate('Missing or duplicate native creation marker'))
+                reserved={'shell_id':op['shell_id'],'school_id':p['school_id'],**data}
+                return store.complete_shell(p['school_id'],key,reserved,matches[0])
+            except (NativeUnavailable,Indeterminate) as failure:
+                return_error(failure)
         if not is_new:return JSONResponse(record,status_code=200)
         try:
             name='Sunrise '+ ' / '.join(data[k] for k in ('academic_year','grade','subject','curriculum_stream'))
-            nb_id=await upstream.create_notebook(name)
+            if getattr(store,'is_durable',False):
+                nb_id=await upstream.create_notebook(name,marker=record['creation_marker'])
+                # Re-read the exact marker; never trust title or a possibly lost POST receipt.
+                readback=await upstream.find_notebooks_by_marker(record['creation_marker'])
+                if readback!=[nb_id]:
+                    raise Indeterminate('Native notebook marker/readback mismatch')
+            else:
+                nb_id=await upstream.create_notebook(name)
             return store.complete_shell(p['school_id'],key,record,nb_id)
         except Exception as e:
             store.quarantine(p['school_id'],key)
