@@ -94,6 +94,61 @@ def test_requires_real_configuration(tmp_path):
         with pytest.raises(ValueError):build_app(replace(base,**modification))
 
 
+
+def test_formal_surreal_gateway_rejects_missing_maintenance_at_startup(tmp_path):
+    """Validate formal configuration before opening a Surreal connection."""
+    from dataclasses import replace
+    base=cfg(tmp_path)
+    with pytest.raises(ValueError,match='VAULT_MAINTENANCE_FILE'):
+        replace(base,store_backend='surreal').validate()
+
+
+@pytest.mark.parametrize('bad_path',[
+    'relative/maintenance.lock',
+    '/this/sunrise/nonexistent/maintenance.lock',
+])
+def test_maintenance_path_invalid_configuration_fails_closed(tmp_path,bad_path):
+    from dataclasses import replace
+    with pytest.raises(ValueError,match='Maintenance flag'):
+        replace(cfg(tmp_path),maintenance_file=bad_path).validate()
+
+
+def test_maintenance_symlink_and_directory_rejected(tmp_path):
+    from dataclasses import replace
+    real=tmp_path/'real.lock'
+    real.touch()
+    link=tmp_path/'alias.lock'
+    link.symlink_to(real)
+    for path in (link,tmp_path):
+        with pytest.raises(ValueError,match='Maintenance flag'):
+            replace(cfg(tmp_path),maintenance_file=str(path)).validate()
+
+
+def test_gateway_health_attests_configured_maintenance_path_and_freeze(tmp_path):
+    from dataclasses import replace
+    flag=tmp_path/'maintenance.lock'
+    settings=replace(cfg(tmp_path),maintenance_file=str(flag))
+    with TestClient(build_app(settings,native=NativeFixture())) as client:
+        before=client.get('/health')
+        assert before.status_code==200
+        body=before.json()
+        assert body['gateway']=='running'
+        assert body['maintenance'] is False
+        assert body['maintenance_path_sha256']==hashlib.sha256(
+            str(flag).encode('utf-8')).hexdigest()
+        assert len(body['gateway_instance'])==32
+        assert body['mutations_in_flight']==0
+        flag.write_text('synthetic freeze test',encoding='utf-8')
+        frozen=client.get('/health')
+        assert frozen.status_code==200
+        assert frozen.json()['maintenance'] is True
+        assert frozen.json()['gateway_instance']==body['gateway_instance']
+        assert frozen.json()['maintenance_path_sha256']==body['maintenance_path_sha256']
+        assert client.get('/auth/login').status_code==503
+        flag.unlink()
+        assert client.get('/auth/login').status_code==200
+
+
 def test_login_session_logout_and_no_docs(env):
     c,_,_=env
     assert c.get('/vault/v1/shells').status_code==401
