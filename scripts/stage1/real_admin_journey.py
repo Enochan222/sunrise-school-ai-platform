@@ -13,6 +13,7 @@ from html.parser import HTMLParser
 import json
 import os
 import secrets
+import subprocess
 import sys
 import time
 from datetime import datetime,timezone
@@ -24,6 +25,7 @@ ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'apps/a-vault'))
 from native import Native
 from native_runtime_smoke import fixture as synthetic_chinese_pdf
+from wp01_network_boundary_probe import verify_manifest
 
 
 def utc():return datetime.now(timezone.utc).isoformat()
@@ -50,12 +52,37 @@ def login(client,password):
 
 def main():
     p=argparse.ArgumentParser()
-    p.add_argument('--gateway',default='http://127.0.0.1:8765')
+    p.add_argument('--gateway',required=True)
+    p.add_argument('--ca-file',required=True,type=Path)
+    p.add_argument('--runtime-identity',required=True,type=Path)
+    p.add_argument('--context',required=True)
+    p.add_argument('--project',required=True)
+    p.add_argument('--source-sha',required=True)
+    p.add_argument('--source-tree',required=True)
+    p.add_argument('--native-url',required=True)
     p.add_argument('--out',type=Path,default=Path('wp03-owner-journey-redacted.json'))
     args=p.parse_args()
     target=urlsplit(args.gateway)
-    if target.scheme!='http' or target.hostname not in ('127.0.0.1','localhost') or target.username or target.password or target.path not in ('','/'):
-        raise ValueError('Only dedicated loopback synthetic A Gateway is permitted')
+    if (target.scheme!='https' or target.hostname not in ('127.0.0.1','localhost')
+            or not target.port or target.username or target.password
+            or target.path not in ('','/') or target.query or target.fragment):
+        raise ValueError('Only authenticated, verified loopback HTTPS A Gateway permitted')
+    if not args.ca_file.is_file() or args.ca_file.is_symlink():
+        raise ValueError('Private trusted Gateway TLS CA missing')
+    identity,_,_=verify_manifest(args.runtime_identity,args.context,
+                                  args.project,args.source_sha,args.source_tree)
+    gateway=identity['gateway']
+    if (args.gateway.rstrip('/')!=gateway.get('origin') or
+            hashlib.sha256(args.ca_file.read_bytes()).hexdigest()!=gateway.get('tls_ca_sha256')):
+        raise ValueError('Native Admin diagnostic Gateway TLS identity changed')
+    native_port=identity['services']['native']['published_ports'][0]['host_port']
+    if args.native_url!='http://127.0.0.1:'+str(native_port):
+        raise ValueError('Native diagnostic endpoint not from inspected Docker container')
+    if (subprocess.run(['git','-C',str(ROOT),'rev-parse','HEAD'],
+                       capture_output=True,text=True,check=True,timeout=12).stdout.strip()!=args.source_sha
+            or subprocess.run(['git','-C',str(ROOT),'rev-parse','HEAD^{tree}'],
+                       capture_output=True,text=True,check=True,timeout=12).stdout.strip()!=args.source_tree):
+        raise ValueError('HTTP diagnostic revision not fixed Source SHA/tree')
     if os.getenv('VAULT_RUNTIME_SYNTHETIC_CONFIRM')!='YES' or os.getenv('VAULT_STORE_BACKEND')!='surreal':
         print('RUNTIME_NOT_RUN: real A SurrealDB + synthetic runtime confirmation missing',file=sys.stderr)
         raise SystemExit(69)
@@ -64,14 +91,16 @@ def main():
             print('RUNTIME_NOT_RUN: private operator secret missing',file=sys.stderr)
             raise SystemExit(69)
     token=secrets.token_hex(6)
-    evidence={'start_utc':utc(),'probe':'A_ADMIN_NATIVE_SURREAL_WORKER_LOOPBACK',
+    evidence={'start_utc':utc(),'probe':'A_ADMIN_NATIVE_SURREAL_WORKER_HTTPS_LOOPBACK',
+              'source_commit':args.source_sha,'source_tree':args.source_tree,
               'stage':'LOCAL_SYNTHETIC_DEMO_NOT_RELEASE_READY',
               'formal_s1_at01_15':'NOT_RUN','results':{}}
     raw=synthetic_chinese_pdf()
     digest=hashlib.sha256(raw).hexdigest()
     evidence['pdf_sha256']=digest
     try:
-        with httpx.Client(base_url=args.gateway,trust_env=False,timeout=25,follow_redirects=False) as c:
+        with httpx.Client(base_url=args.gateway,trust_env=False,timeout=25,
+                          follow_redirects=False,verify=str(args.ca_file)) as c:
             assert c.get('/vault/v1/shells').status_code==401
             h=login(c,os.environ['VAULT_ADMIN_PASSWORD'])
             assert c.get('/admin').status_code==200
@@ -102,7 +131,7 @@ def main():
             receipt=upload.json();source=receipt['source_id']
             assert receipt['sha256']==digest and source.startswith('source:')
             evidence['results']['native_pdf_upload_original_sha']='PASS'
-            native=Native('http://127.0.0.1:5055',os.environ['OPEN_NOTEBOOK_PASSWORD'],text_only_verified=True)
+            native=Native(args.native_url,os.environ['OPEN_NOTEBOOK_PASSWORD'],text_only_verified=True)
             deadline=time.monotonic()+120
             while True:
                 detail=asyncio.run(native.ensure_owned(source,nb))
