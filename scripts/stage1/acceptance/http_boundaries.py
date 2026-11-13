@@ -102,11 +102,18 @@ def case_14(client,args,session):
     if any(not x for x in values.values()):
         raise RuntimeError('Independent signed positive/negative service JWT fixtures required')
     urls='/vault/v1/shells/'+args.shell_a+'/materials'
-    allowed=client.get(urls,headers={'Authorization':'Bearer '+values['VAULT_TEST_SERVICE_A']})
-    expect(allowed.status_code==200,'Valid scoped Service JWT materials read denied')
-    for key in ('VAULT_TEST_SERVICE_WRONG_SCOPE','VAULT_TEST_SERVICE_FOREIGN_SCHOOL'):
-        bad=client.get(urls,headers={'Authorization':'Bearer '+values[key]})
-        expect(bad.status_code in (401,403,404),'Service token bypassed scope/school')
+    # The Admin client above holds a valid session cookie. Reusing it for JWT
+    # checks would not prove token-only authorization (or rejection): a valid
+    # Admin cookie could independently grant access to the same endpoint.
+    # Use a fresh cookie-free HTTP client for every Service JWT probe.
+    with httpx.Client(base_url=args.gateway,timeout=35,follow_redirects=False,
+                      trust_env=False,verify=True) as service_client:
+        allowed=service_client.get(
+            urls,headers={'Authorization':'Bearer '+values['VAULT_TEST_SERVICE_A']})
+        expect(allowed.status_code==200,'Valid scoped Service JWT materials read denied')
+        for key in ('VAULT_TEST_SERVICE_WRONG_SCOPE','VAULT_TEST_SERVICE_FOREIGN_SCHOOL'):
+            bad=service_client.get(urls,headers={'Authorization':'Bearer '+values[key]})
+            expect(bad.status_code in (401,403,404),'Service token bypassed scope/school')
     return session
 
 
