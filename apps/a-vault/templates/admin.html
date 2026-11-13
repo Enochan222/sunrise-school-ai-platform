@@ -20,7 +20,12 @@
     <button id="retry-session" type="button" hidden>重新核對登入狀態</button>
     <a id="sign-in-again" class="button" href="/auth/login" hidden>前往登入</a>
     <div id="workspace" hidden>
-      <p>目前學校 <strong id="active-school"></strong></p>
+      <p>目前學校（由伺服器 Session 決定）：<strong id="active-school"></strong></p>
+      <form id="switch-school" class="school-switch" aria-labelledby="switch-school-label">
+        <label id="switch-school-label" for="school-choice">切換獲授權的合成學校</label>
+        <select id="school-choice" name="school_id" required></select>
+        <button id="switch-school-submit" type="submit">切換學校</button>
+      </form>
       <div id="pending" class="pending" hidden>
         <p id="pending-message"></p>
         <button id="reconcile" class="secondary" type="button">以原有請求核對結果</button>
