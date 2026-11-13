@@ -602,6 +602,9 @@ function setupAdmin() {
         select.append(option);
       }
       select.value=session.school_id;
+      // Single-school demo hides the switcher; the server session still owns identity.
+      // Synthetic A/B authorization mode continues to display trusted choices.
+      $('switch-school').hidden = session.available_schools.length === 1;
       $('active-school').textContent = session.school_id;
       $('workspace').hidden = false;
       $('logout').hidden = false;
