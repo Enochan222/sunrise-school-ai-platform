@@ -64,11 +64,16 @@ image_id="$(docker --context "$context" image inspect "$image" --format '{{.Id}}
 repo_digests="$(docker --context "$context" image inspect "$image" --format '{{json .RepoDigests}}')"
 [[ "$repo_digests" == *"@$VAULT_SURREAL_IMAGE_DIGEST"* ]] ||
     { echo "Wrong/unverified SurrealDB image registry digest" >&2; exit 78; }
-# Only use verified Pinned Image's actual non-root numerical UID and GID.
-image_user="$(docker --context "$context" image inspect "$image" --format '{{.Config.User}}')"
-[[ "$image_user" =~ ^[1-9][0-9]*:[1-9][0-9]*$ ]] ||
-    { echo "Pinned DB image does not expose verified numeric nonroot UID:GID; manual review" >&2; exit 78; }
-uid="${image_user%%:*}"; gid="${image_user##*:}"
+# Official v2.3.10 declares UID-only 65532. Resolve the PRIMARY GID
+# from passwd/group *inside the exact digest-attested image*, not UID=GID
+# guesswork. No DB starts, volume mounts or shell inside the pinned image.
+verified_user="$(python "$HERE/verify_surreal_image_user.py" \
+    --context "$context" --image "$image_id" --digest "$VAULT_SURREAL_IMAGE_DIGEST")" || {
+    echo "Cannot attest pinned SurrealDB image UID and primary GID" >&2; exit 78;
+}
+[[ "$verified_user" =~ ^[1-9][0-9]*:[1-9][0-9]*$ ]] || exit 78
+uid="${verified_user%%:*}"; gid="${verified_user##*:}"
+(( uid <= 65534 && gid <= 65534 )) || exit 78
 export A_SURREAL_IMAGE_UID="$uid" A_SURREAL_IMAGE_GID="$gid"
 export ON_SURREAL_IMAGE_UID="$uid" ON_SURREAL_IMAGE_GID="$gid"
 docker --context "$context" compose -p "$project" -f "$compose" config --quiet
