@@ -16,6 +16,7 @@ import re
 import ssl
 import subprocess
 from urllib.parse import urlsplit
+from loopback_port_contract import inspect_port_pair,verify as verify_loopback_port
 
 COMMIT_RE=re.compile(r'^[0-9a-f]{40}$')
 SHA64=re.compile(r'^[0-9a-f]{64}$')
@@ -109,13 +110,19 @@ def load_containers(context,project):
     require(rows,'Selected project has no Docker containers')
     identities=json.loads(run('inspect',*[row['ID'] for row in rows]))
     result={}
+    relays={}
     network_ids={}
     for item in identities:
         labels=item.get('Config',{}).get('Labels',{})
         service=labels.get('com.docker.compose.service')
-        require(labels.get('com.docker.compose.project')==project
-                and service in EXPECTED_SERVICES and service not in result,
-                'Unexpected/duplicate/nonproject container')
+        require(labels.get('com.docker.compose.project')==project,
+                'Foreign Docker container in exclusive project')
+        if service in ('a_relay','on_relay','native_relay'):
+            require(service not in relays,'Duplicate scoped relay')
+            relays[service]=item
+            continue
+        require(service in EXPECTED_SERVICES and service not in result,
+                'Unexpected/duplicate private Docker container')
         image=item.get('Image')
         require(isinstance(image,str) and re.fullmatch(r'sha256:[a-f0-9]{64}',image),
                 'Container does not refer to immutable image')
@@ -134,9 +141,8 @@ def load_containers(context,project):
             require(1024<=port<=65535,'Unsafe mapped loopback host port')
             publishes.append({'container_port':target,'host_ip':'127.0.0.1',
                               'host_port':port})
-        expected_target={'a_db':'8000/tcp','on_db':'8000/tcp','native':'5055/tcp'}[service]
-        require(len(publishes)==1 and publishes[0]['container_port']==expected_target,
-                'Physical service not using exactly one dynamic loopback mapping')
+        require(not publishes,
+                'Physical A/ON/Native service must not publish any host port')
         mounts=[m for m in item.get('Mounts',[])
                 if m.get('Destination')==EXPECTED_MOUNTS[service]]
         require(len(mounts)==1 and mounts[0].get('Type')=='volume'
@@ -192,7 +198,25 @@ def load_containers(context,project):
                          'mount_destination':EXPECTED_MOUNTS[service],
                          'network_name':expected_name,'network_id':network_id,
                          'published_ports':publishes}
-    require(set(result)==EXPECTED_SERVICES,'Required dual DB/Native services missing')
+    require(set(result)==EXPECTED_SERVICES
+            and set(relays)=={'a_relay','on_relay','native_relay'},
+            'Required dual DB/Native and host relay services missing')
+    native_image=result['native']['image_id']
+    for service in ('a_db','on_db','native'):
+        relay_name={'a_db':'a_relay','on_db':'on_relay','native':'native_relay'}[service]
+        backend=next(i for i in identities
+                     if i.get('Id')==result[service]['container_id'])
+        proof=inspect_port_pair(service,backend,relays[relay_name],project,native_image)
+        # Independently cross-check the composed and actually inspected
+        # dynamic endpoint and private vs publish network identity.
+        checked=verify_loopback_port(context,project,
+            Path(__file__).parent/'compose.native.synthetic.yml',service)
+        require(proof==checked,'Published port identity changed during attestation')
+        result[service]['published_ports']=[{
+            'container_port':{'a_db':'8000/tcp','on_db':'8000/tcp','native':'5055/tcp'}[service],
+            'host_ip':'127.0.0.1','host_port':proof['port'],
+            'transport':'isolated_loopback_relay'}]
+        result[service]['host_relay']=proof
     require(result['a_db']['container_id']!=result['on_db']['container_id']
             and result['a_db']['persistent_volume']!=result['on_db']['persistent_volume']
             and result['a_db']['network_id']!=result['on_db']['network_id'],
