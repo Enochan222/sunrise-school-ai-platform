@@ -26,7 +26,7 @@ from wp01_network_boundary_probe import verify_manifest
 from runtime_identity import tls_gateway_identity
 from browser_observability import (
     Events,BrowserContractError,STAGES,same_origin,safe_path,
-    worker_status,http_category,classify_failure
+    worker_status,http_category,classify_failure,valid_admin_login_redirect
 )
 
 
@@ -161,7 +161,14 @@ def main():
                         and r.request.method=='POST',timeout=30000) as login_receipt:
                     page.locator('#login button[type=submit]').click()
                 login_response=login_receipt.value
-                safe_http(login_response,200,trace,report,'POST',login_response.url)
+                # HTML form response is a 303 /admin redirect, not the JSON
+                # login API's HTTP 200. Reject off-origin/unknown Location.
+                trace.http('POST',login_response.url,login_response.status)
+                if not valid_admin_login_redirect(
+                        login_response.status,login_response.header_value('location')):
+                    report['error_category']=http_category(
+                        safe_path(login_response.url),login_response.status)
+                    raise BrowserContractError('HTML Admin login redirect contract mismatch')
                 page.wait_for_url('**/admin',timeout=30000)
                 require(same_origin(page.url,origin),'Admin browser redirected outside Gateway')
                 page.locator('#workspace').wait_for(state='visible',timeout=30000)
