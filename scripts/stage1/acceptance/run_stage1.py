@@ -112,6 +112,10 @@ def test_result(at,report):
             and isinstance(r.get('real_native_lost_ack_tcp'),dict)
             and r['real_native_lost_ack_tcp'].get('native_create_posts')==1
             and r['real_native_lost_ack_tcp'].get('client_received_post_ack') is False)
+    if at=='S1-AT11':
+        return (report.get('status')=='PASS' and
+                all(report.get(k)=='PASS' for k in
+                    ('native_unlink','native_link_and_duplicate','original_hash_preserved')))
     return report.get('status')=='PASS' and report.get('at_id')==at
 
 
@@ -138,15 +142,12 @@ def run_restore(config,output):
     steps=config.get('restore_flags')
     if not isinstance(steps,dict):raise IncompleteAT('Restore scenario absent')
     bundle=output/'synthetic-a-cold.tar'
-    capture_flags=dict(steps['capture'])
-    capture_flags['--out']=str(bundle)
-    # Special step: --out must be inserted by orchestrator, never config.
-    capture_flags.pop('--out')
     first=subprocess_case(capture,steps['capture'],bundle,has_out=True)
     if not bundle.is_file():raise IncompleteAT('Cold stopped Volume bundle not created')
-    restore_flags=dict(steps['restore'])
+    restore_flags={**steps['restore'],'--bundle':str(bundle)}
     second=subprocess_case(restore,restore_flags,output/'ignored.json',has_out=False)
-    third=subprocess_case(start,steps['native'],output/'ignored-native.json',has_out=False)
+    native_flags={**steps['native'],'--bundle':str(bundle)}
+    third=subprocess_case(start,native_flags,output/'ignored-native.json',has_out=False)
     workdir=Path(restore_flags['--workdir'])
     final=read_json(workdir/'native-readback-evidence.json')
     if (final.get('classification')!='ISOLATED_RESTORE_NATIVE_READBACK_NOT_AT_PASS'
@@ -177,8 +178,8 @@ def validate_restore_rights(config,output):
     record.write_text(json.dumps({'at_id':'S1-AT12','status':'PASS',
         'rights_retention_initial_version_original_checked_by_native_readback':True,
         'utc':timestamp()},indent=2)+'\n')
-    return {'depends_on':'S1-AT05 verified Native owner/readback'},
-        hashlib.sha256(record.read_bytes()).hexdigest()
+    return ({'depends_on':'S1-AT05 verified Native owner/readback'},
+            hashlib.sha256(record.read_bytes()).hexdigest())
 
 
 def main():
