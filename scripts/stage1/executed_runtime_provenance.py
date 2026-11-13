@@ -12,8 +12,8 @@ from pathlib import Path
 import re
 import subprocess
 
-_SHA40=re.compile(r'[0-9a-f]{40}\\Z')
-_SHA64=re.compile(r'[0-9a-f]{64}\\Z')
+_SHA40=re.compile(r'[0-9a-f]{40}\Z')
+_SHA64=re.compile(r'[0-9a-f]{64}\Z')
 _TYPE='SUNRISE_S1_A_DUAL_DB_RUNTIME_IDENTITY_UNREVIEWED'
 
 
