@@ -181,3 +181,21 @@ def test_service_jwt_probe_uses_cookie_free_client(monkeypatch):
     assert h.case_14(admin,args,session) is session
     assert calls==['Bearer synthetic-allow','Bearer synthetic-wrong-scope',
                    'Bearer synthetic-foreign']
+
+
+def test_at12_rejects_stale_restore_evidence_from_different_git_tree(tmp_path):
+    import json
+    workdir=tmp_path/'restored'
+    workdir.mkdir()
+    (workdir/'native-readback-evidence.json').write_text(json.dumps({
+        'classification':'ISOLATED_RESTORE_NATIVE_READBACK_NOT_AT_PASS',
+        'source_commit':'a'*40,'source_tree':'b'*40,
+        'native_owner_identity_matches_before_after':True,
+        'db_inventories_equal':True,
+        'native_readback':{
+            'source_owner_count':1,'verified_original_count':1,
+            'owned_source_graph_hash':'c'*64}}))
+    config={'restore_flags':{'restore':{'--workdir':str(workdir)}}}
+    with pytest.raises(r.IncompleteAT,match='rights/version/original'):
+        r.validate_restore_rights(config,tmp_path,'d'*40,'e'*40)
+    assert not (tmp_path/'S1-AT12.json').exists()
