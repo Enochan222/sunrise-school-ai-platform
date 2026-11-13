@@ -17,6 +17,7 @@ import ssl
 import subprocess
 from urllib.parse import urlsplit
 from loopback_port_contract import inspect_port_pair,verify as verify_loopback_port
+from external_target_attestation import verify_attested_target
 
 COMMIT_RE=re.compile(r'^[0-9a-f]{40}$')
 SHA64=re.compile(r'^[0-9a-f]{64}$')
@@ -264,6 +265,8 @@ def main():
     p.add_argument('--gateway-ca-file',required=True,type=Path)
     p.add_argument('--compose-file',required=True,type=Path)
     p.add_argument('--on-patch-sha256',required=True)
+    p.add_argument('--external-target-attestation',type=Path,
+                   default=os.getenv('VAULT_EXTERNAL_TARGET_ATTESTATION_FILE'))
     for name in ('surreal_namespace','surreal_database','on_namespace','on_database'):
         p.add_argument('--'+name.replace('_','-'),required=True)
     p.add_argument('--out',required=True,type=Path)
@@ -294,6 +297,13 @@ def main():
                         'on_database':os.getenv('ON_GRAPH_DATABASE')},
             'A and ON DB namespace/database identity inconsistent')
     gateway=tls_gateway_identity(args.gateway_url,args.gateway_ca_file)
+    # External binding is only available after a separate real observer
+    # signs a fresh authenticated target-host challenge. Without it,
+    # runtime capture may proceed but network acceptance MUST fail-closed.
+    external_target=None
+    if args.external_target_attestation:
+        external_target=verify_attested_target(Path(args.external_target_attestation),
+            sha,tree,args.context,args.project,gateway['instance_id'])
     rpc=require_dual_rpc_ready(args.context,services,namespace)
     record={'type':'SUNRISE_S1_A_DUAL_DB_RUNTIME_IDENTITY_UNREVIEWED',
             'captured_utc':datetime.now(timezone.utc).isoformat(),
@@ -306,6 +316,8 @@ def main():
             'on_patch_sha256':args.on_patch_sha256,
             **namespace,'services':services,'gateway':gateway,'dual_rpc':rpc,
             'classification':'IDENTITY_CAPTURE_NOT_TEST_RESULT'}
+    if external_target is not None:
+        record['external_target']=external_target
     destination.parent.mkdir(parents=True,exist_ok=True)
     with destination.open('x',encoding='utf-8') as stream:
         json.dump(record,stream,sort_keys=True,indent=2)
