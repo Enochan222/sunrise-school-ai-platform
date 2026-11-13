@@ -40,9 +40,6 @@ def git_identity(repo_root):
 def load_containers(context,project):
     if not re.fullmatch(r'[A-Za-z0-9_.-]{3,70}',project):
         raise ValueError('Unsafe or missing exclusive Compose project')
-    data=json.loads(command(['docker','--context',context,'ps','--all','--filter',
-                             'label=com.docker.compose.project='+project,
-                             '--format','{{json .}}']) or 'null') if False else None
     # Docker ps --format emits line-delimited JSON; use stable container IDs.
     raw=command(['docker','--context',context,'ps','--all','--no-trunc',
                  '--filter','label=com.docker.compose.project='+project,'--format','{{json .}}'])
@@ -72,9 +69,30 @@ def load_containers(context,project):
             host_ip=bind['HostIp']
             if not host_ip:raise RuntimeError('Missing host bind IP')
             exposed.append({'container_port':container_port,'host_ip':host_ip,'host_port':port})
+        expected_mount={'surrealdb':'/mydata','open_notebook':'/app/data'}[service]
+        mounts=container.get('Mounts',[])
+        matches=[m for m in mounts if m.get('Destination')==expected_mount]
+        if (len(matches)!=1 or matches[0].get('Type')!='volume'
+                or not isinstance(matches[0].get('Name'),str)
+                or not matches[0]['Name'].startswith(project+'_')):
+            raise RuntimeError('Missing/foreign/non-named persistent volume at '+expected_mount)
+        inspected=json.loads(command(['docker','--context',context,'image','inspect',image]))
+        if len(inspected)!=1 or inspected[0].get('Id')!=image:
+            raise RuntimeError('Immutable image identity could not be verified')
+        image_object=inspected[0]
+        digests=image_object.get('RepoDigests') or []
+        if not isinstance(digests,list) or any(
+                not isinstance(x,str) or not re.fullmatch(r'[^\s@]+@sha256:[a-f0-9]{64}',x)
+                for x in digests):
+            raise RuntimeError('Image registry digest provenance malformed')
         result[service]={'container_id':container['Id'],'image_id':image,
                          'image_name':container.get('Config',{}).get('Image'),
+                         'image_repo_digests':digests,
+                         'image_os':image_object.get('Os'),
+                         'image_arch':image_object.get('Architecture'),
                          'status':container.get('State',{}).get('Status'),
+                         'persistent_volume':matches[0]['Name'],
+                         'mount_destination':expected_mount,
                          'published_ports':exposed}
     if set(result)!=EXPECTED_SERVICES:
         raise RuntimeError('Compose services do not match expected pinned A-only runtime')
