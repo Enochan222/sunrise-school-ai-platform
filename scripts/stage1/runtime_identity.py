@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
-from urllib.parse import urlsplit
+import urllib.request
 
 COMMIT_RE=re.compile(r'^[0-9a-f]{40}$')
 EXPECTED_SERVICES={'surrealdb','open_notebook'}
@@ -99,10 +99,30 @@ def load_containers(context,project):
     return result
 
 
+def gateway_identity(url):
+    # Single explicitly configured private Gateway process; no redirected
+    # requests, DNS aliases or secondary HTTP origins accepted for cold backup.
+    if url!='http://127.0.0.1:8765':
+        raise ValueError('Gateway identity only from pinned loopback endpoint')
+    with urllib.request.urlopen(url+'/health',timeout=4) as response:
+        if response.status!=200:
+            raise RuntimeError('Gateway health unavailable for identity proof')
+        data=json.loads(response.read(65536))
+    if (data.get('gateway')!='running'
+            or not re.fullmatch(r'[a-f0-9]{32}',str(data.get('gateway_instance','')))
+            or not re.fullmatch(r'[a-f0-9]{64}',str(data.get('maintenance_path_sha256','')))
+            or not isinstance(data.get('mutations_in_flight'),int)):
+        raise RuntimeError('Gateway process or maintenance path unverified')
+    return {'instance_id':data['gateway_instance'],
+            'maintenance_path_sha256':data['maintenance_path_sha256'],
+            'health_url':url+'/health'}
+
+
 def main():
     p=argparse.ArgumentParser()
     p.add_argument('--context',required=True);p.add_argument('--project',required=True)
     p.add_argument('--source-root',type=Path,required=True)
+    p.add_argument('--gateway-url',default='http://127.0.0.1:8765')
     p.add_argument('--compose-file',type=Path,required=True)
     p.add_argument('--on-patch-sha256',required=True)
     p.add_argument('--surreal-namespace',required=True)
@@ -126,6 +146,7 @@ def main():
     if destination.exists():p.error('Identity output MUST NOT overwrite a prior record')
     sha,tree=git_identity(args.source_root)
     containers=load_containers(args.context,args.project)
+    gateway=gateway_identity(args.gateway_url)
     record={'type':'SUNRISE_S1_A_DOCKER_RUNTIME_IDENTITY_UNREVIEWED',
             'captured_utc':datetime.now(timezone.utc).isoformat(),
             'context':args.context,'project':args.project,
@@ -135,7 +156,8 @@ def main():
             'on_patch_sha256':args.on_patch_sha256,
             'surreal_namespace':args.surreal_namespace,'surreal_database':args.surreal_database,
             'on_namespace':args.on_namespace,'on_database':args.on_database,
-            'services':containers,'classification':'IDENTITY_CAPTURE_NOT_TEST_RESULT'}
+            'services':containers,'gateway':gateway,
+            'classification':'IDENTITY_CAPTURE_NOT_TEST_RESULT'}
     destination.parent.mkdir(parents=True,exist_ok=True)
     with destination.open('x',encoding='utf-8') as out:
         json.dump(record,out,sort_keys=True,indent=2)
