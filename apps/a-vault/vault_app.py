@@ -79,6 +79,8 @@ def build_app(cfg:Settings|None=None,native=None):
     allowed_schools=frozenset(cfg.allowed_schools())
     attempts=defaultdict(deque)
     attempt_lock=Lock()
+    maintenance_lock=Lock()
+    mutation_count=[0]
     app.state.store=store
     app.state.native=upstream
     # WP07: trusted local templates are served ONLY through existing Gateway routes.
@@ -172,7 +174,18 @@ def build_app(cfg:Settings|None=None,native=None):
         host=req.url.hostname
         if host not in ('127.0.0.1','localhost','testserver','::1'):
             return JSONResponse({'detail':'Loopback-only synthetic gateway'},status_code=403)
-        response=await call_next(req)
+        mutation=req.method.upper() not in ('GET','HEAD','OPTIONS')
+        if mutation:
+            with maintenance_lock:
+                if cfg.maintenance_file and Path(cfg.maintenance_file).exists():
+                    return JSONResponse({'detail':'A-only maintenance write freeze'},status_code=503)
+                mutation_count[0]+=1
+        try:
+            response=await call_next(req)
+        finally:
+            if mutation:
+                with maintenance_lock:
+                    mutation_count[0]-=1
         response.headers.update({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',
             'X-Frame-Options':'DENY','Referrer-Policy':'no-referrer',
             'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'"})
@@ -180,7 +193,12 @@ def build_app(cfg:Settings|None=None,native=None):
 
     @app.get('/health')
     def health():
-        return {'gateway':'running','native':'NOT_VERIFIED','stage':'LOCAL_SYNTHETIC_DEVELOPMENT','release':'NOT_APPROVED'}
+        with maintenance_lock:
+            active=mutation_count[0]
+        return {'gateway':'running','native':'NOT_VERIFIED',
+                'stage':'LOCAL_SYNTHETIC_DEVELOPMENT','release':'NOT_APPROVED',
+                'maintenance':bool(cfg.maintenance_file and Path(cfg.maintenance_file).exists()),
+                'mutations_in_flight':active}
 
     @app.get('/auth/login',response_class=HTMLResponse)
     def login_form():
