@@ -11,7 +11,7 @@ class GatewayError extends Error {
 }
 
 // Browser owns the signed HttpOnly session cookie. Session CSRF stays in JS
-// memory only; never store auth material in localStorage or URL parameters.
+// memory only; never persist auth material in browser storage or URL parameters.
 const api = (() => {
   let csrf = '';
   const shells = '/vault/v1/shells';
