@@ -314,7 +314,11 @@ def run_restore(config,output,source_sha,source_tree):
             or not isinstance(native.get('source_owner_count'),int)
             or native['source_owner_count']<1
             or native.get('verified_original_count')!=native['source_owner_count']
-            or not native.get('owned_source_graph_hash')):
+            or not native.get('owned_source_graph_hash')
+            or not isinstance(native.get('rights_retention_initial_version_sha256'),str)
+            or re.fullmatch(r'[a-f0-9]{64}',
+                native['rights_retention_initial_version_sha256']) is None
+            or native.get('rights_retention_initial_version_count')!=native['source_owner_count']):
         raise IncompleteAT('Independent restore and source-owner verification not proven')
     target=output/'S1-AT05.json'
     target.write_text(json.dumps({'at_id':'S1-AT05','status':'PASS',
@@ -338,7 +342,11 @@ def validate_restore_rights(config,output,source_sha,source_tree):
             or not isinstance(native.get('source_owner_count'),int)
             or native['source_owner_count']<1
             or native.get('verified_original_count')!=native['source_owner_count']
-            or not native.get('owned_source_graph_hash')):
+            or not native.get('owned_source_graph_hash')
+            or not isinstance(native.get('rights_retention_initial_version_sha256'),str)
+            or re.fullmatch(r'[a-f0-9]{64}',
+                native['rights_retention_initial_version_sha256']) is None
+            or native.get('rights_retention_initial_version_count')!=native['source_owner_count']):
         raise IncompleteAT('Post-restore rights/version/original data not verified')
     record=output/'S1-AT12.json'
     record.write_text(json.dumps({'at_id':'S1-AT12','status':'PASS',
