@@ -135,8 +135,16 @@ def admin_login_switch_logout_audit(args):
     secret=os.environ.get('VAULT_SESSION_SECRET')
     actor=os.environ.get('VAULT_ACTOR_ID')
     require(password and secret and actor,'Private synthetic Admin credentials unavailable')
+    identity=read_limited(args.runtime_identity,limit=1<<20)
+    trusted=identity.get('gateway',{})
+    ca=args.gateway_ca_file
+    require(ca.is_file() and not ca.is_symlink() and ca.stat().st_size<=1<<20
+            and hashlib.sha256(ca.read_bytes()).hexdigest()==trusted.get('tls_ca_sha256')
+            and trusted.get('tls_verified') is True
+            and trusted.get('origin')==args.gateway.rstrip('/'),
+            'AT07 Admin HTTPS origin/CA is not same attested Gateway')
     rpc=open_a_rpc()
-    with httpx.Client(base_url=args.gateway,verify=True,trust_env=False,
+    with httpx.Client(base_url=args.gateway,verify=str(ca),trust_env=False,
                       timeout=15,follow_redirects=False) as client:
         page=client.get('/auth/login')
         require(page.status_code==200,'Actual private Admin login page unavailable')
@@ -203,6 +211,7 @@ def admin_login_switch_logout_audit(args):
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--gateway',required=True)
+    parser.add_argument('--gateway-ca-file',required=True,type=Path)
     parser.add_argument('--runtime-identity',required=True,type=Path)
     parser.add_argument('--owner-attestation',required=True,type=Path)
     for name in ('context','project','source-sha','source-tree'):
