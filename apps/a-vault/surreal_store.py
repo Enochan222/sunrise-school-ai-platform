@@ -347,9 +347,18 @@ class SurrealStore:
         return self.shell(school_id,shell_id)
 
     def add_session(self,sid,school_id,csrf,seconds=3600):
+        # Successful Admin login and session reservation must be durable together.
+        # Only an opaque session hash is audited, never the cookie or CSRF secret.
         rid=_record('vault_session',sid)
-        self.query('CREATE ONLY type::record($rid) CONTENT $doc;',rid=rid,
-                   doc={'sid_hash':_digest(sid),'school_id':school_id,'csrf':csrf,'expires':_now()+seconds})
+        audit=_record('vault_audit','admin_login',sid)
+        now=_now()
+        self.query('BEGIN TRANSACTION; CREATE ONLY type::record($rid) CONTENT $doc; '
+                   'CREATE ONLY type::record($audit) CONTENT $event; COMMIT TRANSACTION;',
+                   rid=rid,audit=audit,
+                   doc={'sid_hash':_digest(sid),'school_id':school_id,'csrf':csrf,
+                        'expires':now+seconds},
+                   event={'kind':'admin_login','actor_id':self.actor_id,'school_id':school_id,
+                          'session_hash':_digest(sid),'created_at':now})
 
     def session(self,sid,school_id=None):
         rid=_record('vault_session',sid)
@@ -362,31 +371,47 @@ class SurrealStore:
             rid=rid,school=school_id,now=_now()))
 
     def switch_school(self,sid,old_school,new_school,old_csrf,new_csrf,actor_id):
-        # One compare-and-set of the active session is authoritative.
-        # A stale/replayed CSRF cannot flip school; caller reads active school
-        # from this server-held record, NEVER from any browser header.
+        # Rotate session and audit atomically: no unaudited school change,
+        # including after a lost transaction ACK or concurrent CSRF replay.
         rid=_record('vault_session',sid)
-        results=self.query(
+        audit_id=_record('vault_audit','admin_school_switch',sid,new_school,new_csrf)
+        now=_now()
+        self.query(
+            'BEGIN TRANSACTION; '
+            'IF array::len((SELECT VALUE id FROM type::record($rid) '
+            'WHERE school_id=$old_school AND csrf=$old_csrf AND expires>$now)) != 1 '
+            '{ THROW "stale school session or csrf" }; '
             'UPDATE type::record($rid) SET school_id=$new_school,csrf=$new_csrf '
-            'WHERE school_id=$old_school AND csrf=$old_csrf AND expires>$now;',
-            rid=rid,new_school=new_school,new_csrf=new_csrf,old_school=old_school,
-            old_csrf=old_csrf,now=_now())
-        changed=results[-1] if results else None
-        if not isinstance(changed,list) or len(changed)!=1:
-            raise Indeterminate('Concurrent school switch or stale CSRF; session must be rechecked')
+            'WHERE school_id=$old_school AND csrf=$old_csrf AND expires>$now; '
+            'CREATE ONLY type::record($audit) CONTENT $event; COMMIT TRANSACTION;',
+            rid=rid,audit=audit_id,new_school=new_school,new_csrf=new_csrf,
+            old_school=old_school,old_csrf=old_csrf,now=now,
+            event={'kind':'admin_school_switch','actor_id':actor_id,
+                   'previous_school':old_school,'active_school':new_school,
+                   'session_hash':_digest(sid),'created_at':now})
         confirmed=self.session(sid,new_school)
         if not confirmed or confirmed.get('csrf')!=new_csrf:
             raise Indeterminate('School context rotation not durably verified')
-        # Audit has no raw cookie or CSRF; an audit failure blocks normal success.
-        audit_id=_record('vault_audit',sid,new_school,new_csrf)
-        self.query('CREATE ONLY type::record($rid) CONTENT $doc;',rid=audit_id,
-            doc={'kind':'admin_school_switch','actor_id':actor_id,
-                 'previous_school':old_school,'active_school':new_school,
-                 'session_hash':_digest(sid),'created_at':_now()})
         return {'school_id':new_school,'csrf':new_csrf}
 
     def del_session(self,sid):
-        self.query('DELETE type::record($rid);',rid=_record('vault_session',sid))
+        row=self.session(sid)
+        if not row:
+            raise Indeterminate('Logout session not found; cannot prove audited revocation')
+        rid=_record('vault_session',sid)
+        audit=_record('vault_audit','admin_logout',sid)
+        self.query('BEGIN TRANSACTION; '
+                   'IF array::len((SELECT VALUE id FROM type::record($rid) '
+                   'WHERE school_id=$school AND expires>$now)) != 1 '
+                   '{ THROW "logout session changed" }; '
+                   'CREATE ONLY type::record($audit) CONTENT $event; '
+                   'DELETE type::record($rid); COMMIT TRANSACTION;',
+                   rid=rid,audit=audit,school=row['school_id'],now=_now(),
+                   event={'kind':'admin_logout','actor_id':self.actor_id,
+                          'school_id':row['school_id'],'session_hash':_digest(sid),
+                          'created_at':_now()})
+        if self.session(sid):
+            raise Indeterminate('Logout session revocation unconfirmed')
 
     def _material_key_owner(self,school_id,actor,key):
         # Formal unique scope: School + Actor + Kind + Key, not Shell.
@@ -502,8 +527,16 @@ class SurrealStore:
            'state':'PENDING','created_at':_now()}
         sid=_record('source_owner',source_id)
         try:
-            self.query('BEGIN TRANSACTION; CREATE ONLY type::record($sid) CONTENT $material; '
-                       'UPDATE type::record($opid) SET status="COMMITTED",source_id=$source_id,updated_at=time::unix(); '
+            # A concurrent finish cannot attach a second SourceOwner to one
+            # operation. Receipt and PENDING/QUARANTINED state are guarded
+            # inside the same transaction as the immutable SourceOwner create.
+            self.query('BEGIN TRANSACTION; '
+                       'IF (SELECT VALUE native_source_id FROM type::record($opid) '
+                       'WHERE status IN ["PENDING", "QUARANTINED"])[0] != $source_id '
+                       '{ THROW "material operation receipt or state changed" }; '
+                       'CREATE ONLY type::record($sid) CONTENT $material; '
+                       'UPDATE type::record($opid) SET status="COMMITTED",source_id=$source_id,updated_at=time::unix() '
+                       'WHERE status IN ["PENDING", "QUARANTINED"] AND native_source_id=$source_id; '
                        'COMMIT TRANSACTION;',sid=sid,material=m,opid=opid,source_id=source_id)
         except SurrealUnavailable as e:
             raise Indeterminate('Source ownership transaction uncertain') from e
