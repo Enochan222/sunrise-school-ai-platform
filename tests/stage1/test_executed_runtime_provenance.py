@@ -31,11 +31,11 @@ def test_runtime_binding_rejects_missing_or_wrong_source(monkeypatch,tmp_path):
     digest=inspect(ROOT,path,a,b)
     assert len(digest)==64
     guard(ROOT,path,a,b,digest)
-    with pytest.raises(RuntimeError,match='revision'):
+    with pytest.raises(RuntimeError,match='Git SHA/tree mismatch'):
         inspect(ROOT,path,'d'*40,b)
-    with pytest.raises(RuntimeError,match='revision'):
+    with pytest.raises(RuntimeError,match='Git SHA/tree mismatch'):
         inspect(ROOT,path,a,'d'*40)
-    with pytest.raises(RuntimeError,match='revision'):
+    with pytest.raises(RuntimeError,match='Git SHA/tree mismatch'):
         inspect(ROOT,path,'a'*39,b)
 
 
