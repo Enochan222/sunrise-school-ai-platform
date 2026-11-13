@@ -257,11 +257,18 @@ def build_app(cfg:Settings|None=None,native=None):
         p=credentials(req,permission='vault.materials.read')
         s=get_owned_shell(p,shell_id)
         material_rows=store.list_materials(p['school_id'],shell_id)
-        # Live revalidate each recorded native source before showing metadata.
+        # Live revalidate every Native source before returning any metadata.
+        # Status is a conservative read-only view of the pinned Native Worker,
+        # not a durable "READY" claim from the upload receipt.
+        safe_rows=[]
         for m in material_rows:
-            try: await upstream.ensure_owned(m['source_id'],s['notebook_id'])
+            try:
+                src=await upstream.ensure_owned(m['source_id'],s['notebook_id'])
+                view=dict(m)
+                view['state']=Native.processing_state(src)
+                safe_rows.append(view)
             except (NativeUnavailable,NativeOwnershipError) as e:return_error(e)
-        return {'materials':material_rows}
+        return {'materials':safe_rows}
 
     @app.post('/vault/v1/shells/{shell_id}/materials',status_code=201)
     async def upload_material(req:Request,shell_id:str,file:UploadFile=File(...),
