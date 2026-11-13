@@ -32,8 +32,12 @@ def test_compose_two_engines_with_distinct_volume_and_secret_trust_domains():
     assert 'ws://on_db:8000/rpc' in source
     assert 'a_db_data:' in source and 'on_db_data:' in source
     assert 'a_db_private:' in source and 'on_db_private:' in source
-    assert '127.0.0.1::8000' in source
-    assert '127.0.0.1::5055' in source
+    # Physical DB and Native may not publish directly; only separately
+    # scoped, loopback-bound relays may have host listeners.
+    assert '  a_relay:' in source and '  on_relay:' in source
+    assert '  native_relay:' in source
+    assert 'com.docker.network.bridge.host_binding_ipv4' in source
+    assert '"127.0.0.1"' in source
     assert '127.0.0.1:8000:8000' not in source
     assert '127.0.0.1:5055:5055' not in source
 
@@ -42,7 +46,7 @@ def test_bootstrap_must_require_exclusive_new_project():
     source=read('native_runtime_prepare.sh')
     for token in ('VAULT_EXCLUSIVE_SYNTHETIC_PROJECT',
                   'A_SURREAL_PASSWORD','ON_SURREAL_PASSWORD',
-                  'docker volume create','-p "$project"','on_db','a_db'):
+                  'volume','-p "$project"','on_db','a_db'):
         assert token in source
     assert 'chmod 777' not in source
     assert 'docker volume prune' not in source
