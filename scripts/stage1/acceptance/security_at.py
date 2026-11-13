@@ -28,7 +28,7 @@ def ensure(condition,reason):
 def negative_startups():
     import tempfile
     base=os.environ.copy()
-    keys=('OPEN_NOTEBOOK_PASSWORD','VAULT_NATIVE_PASSWORD','VAULT_ENCRYPTION_KEY',
+    keys=('VAULT_NATIVE_PASSWORD','VAULT_ENCRYPTION_KEY',
           'VAULT_SESSION_SECRET','VAULT_SURREAL_PASSWORD','VAULT_SURREAL_USER')
     for key in keys:
         env=base.copy()
@@ -64,6 +64,30 @@ def negative_startups():
         try: Settings(**{**base_args,**patch}).validate()
         except ValueError:continue
         raise AssertionError('Example/weak secret accepted')
+
+
+def native_compose_secret_preflight(args):
+    # Direct Native/Surreal runtime secret checks belong to the actual pinned
+    # private Compose definition, not the A Gateway process. A missing ON
+    # password never affects A Gateway startup by itself.
+    if not args.native_compose_file or not args.native_compose_file.is_file():
+        raise RuntimeError('Exact private Native Compose required for AT08')
+    fixed=['docker','--context',args.context,'compose','-p',args.project,
+           '-f',str(args.native_compose_file),'config','--quiet']
+    baseline=os.environ.copy()
+    first=subprocess.run(fixed,env=baseline,capture_output=True,text=True,timeout=30)
+    if first.returncode!=0:
+        raise RuntimeError('Baseline pinned private Compose config cannot be proven')
+    tested=[]
+    for key in ('OPEN_NOTEBOOK_PASSWORD','OPEN_NOTEBOOK_ENCRYPTION_KEY',
+                'SURREAL_USER','SURREAL_PASSWORD'):
+        altered=baseline.copy();altered.pop(key,None)
+        result=subprocess.run(fixed,env=altered,capture_output=True,text=True,timeout=30)
+        # An unrelated Docker outage is not proof of secret fail-start.
+        if result.returncode==0 or key not in (result.stdout+result.stderr):
+            raise AssertionError('Native Compose missing-'+key+' startup gate not demonstrable')
+        tested.append(key)
+    return tested
 
 
 def public_port_denials(args):
@@ -112,6 +136,7 @@ def main():
     p=argparse.ArgumentParser()
     p.add_argument('--at-id',required=True,choices=['S1-AT02','S1-AT07','S1-AT08','S1-AT09'])
     p.add_argument('--gateway',required=True)
+    p.add_argument('--native-compose-file',type=Path)  # required only for AT08
     for key in ('runtime-identity','context','project','source-sha','source-tree',
                 'target-private-ip','out'):
         p.add_argument('--'+key,required=True)
@@ -125,7 +150,13 @@ def main():
     try:
         if args.at_id=='S1-AT08':
             negative_startups()
-            report['missing_secrets_and_weak_sample_fail_start']=True
+            tested=native_compose_secret_preflight(args)
+            report['gateway_secret_fail_start']='PASS'
+            report['pinned_native_compose_required_secrets']=tested
+            report['direct_native_process_missing_secret_test']='NOT_RUN'
+            # Do not elevate Compose interpolation proof into a full Native
+            # process/runtime startup acceptance without independent evidence.
+            raise RuntimeError('AT08 remains PARTIAL: Native process secret fail-start evidence absent')
         else:
             report['private_ports']=public_port_denials(args)
             report.update(gateway_negative(args,args.at_id))
