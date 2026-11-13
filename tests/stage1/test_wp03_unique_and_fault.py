@@ -87,7 +87,7 @@ def test_fresh_concurrency_runtime_harness_has_three_independent_race_modes():
     assert "(len(operations),len(claims),len(shells))!=(1,1,0)" in source
     assert 'def native_lost_ack(' in source
     runner=(ROOT/'scripts/stage1/surreal_journal_smoke.py').read_text()
-    assert 'first_reservation_races(configuration,actor,secret or None)' in runner
+    assert 'first_reservation_races(configuration,actor,secret)' in runner
     assert 'native_lost_ack(configuration,actor' in runner
     assert "real_native_crash_after_create_before_journal_commit" in runner
 
