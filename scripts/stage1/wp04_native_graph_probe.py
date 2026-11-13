@@ -21,7 +21,8 @@ import sys
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'apps/a-vault'))
 from native import Native,checked_id
-from surreal_store import SurrealConfig,SurrealStore,RPC
+from surreal_store import SurrealConfig,SurrealStore
+from on_graph_viewer import attest_viewer,ViewerRPC
 
 
 def utc():
@@ -37,49 +38,36 @@ def configure():
 
 
 def native_graph_authority():
-    """Resolve Native reference graph from the captured, exclusive Docker service.
+    """ON Graph readback from its own physical DB and scoped VIEWER only.
 
-    Both A and ON database identities must be recorded as the same pinned
-    SurrealDB container *physical service* with separately explicit namespace
-    and database. A distinct SurrealDB physical service is NOT supported by
-    this candidate and fails closed rather than reading the A graph by mistake.
+    Native Graph read-only role must be independently authorized and verified.
+    Never alias ON to A credentials, root, address, namespace or cached records.
     """
-    names=('ON_GRAPH_WS_URL','ON_GRAPH_USER','ON_GRAPH_PASSWORD',
+    names=('ON_GRAPH_WS_URL','ON_GRAPH_VIEWER_USER','ON_GRAPH_VIEWER_PASSWORD',
            'ON_GRAPH_NAMESPACE','ON_GRAPH_DATABASE','ON_GRAPH_IDENTITY_FILE')
-    if any(not os.environ.get(n) for n in names):
-        raise RuntimeError('Native Graph DB identity missing; mutation denied')
-    identity_path=Path(os.environ['ON_GRAPH_IDENTITY_FILE'])
-    if not identity_path.is_file() or identity_path.is_symlink() or identity_path.stat().st_size>65536:
-        raise RuntimeError('Invalid private runtime identity file')
-    identity=json.loads(identity_path.read_text(encoding='utf-8'))
-    services=identity.get('services',{})
-    surreal=services.get('surrealdb',{})
-    if (identity.get('type')!='SUNRISE_S1_A_DOCKER_RUNTIME_IDENTITY_UNREVIEWED'
-            or identity.get('native_source_commit')!='5e285b7a2e435895c4ee99ad7e4b8d2af64c3239'
-            or identity.get('native_source_tree')!='2d101001de594c7d6a0e4aaeb8e85ac4c52980af'
-            or not identity.get('context') or not identity.get('project')
-            or not isinstance(services,dict)
-            or set(services)!={'surrealdb','open_notebook'}
-            or not re.fullmatch(r'[a-f0-9]{64}',str(surreal.get('container_id','')))
-            or not re.fullmatch(r'sha256:[a-f0-9]{64}',str(surreal.get('image_id','')))
-            or identity.get('surreal_namespace')!=os.environ['VAULT_SURREAL_NAMESPACE']
-            or identity.get('surreal_database')!=os.environ['VAULT_SURREAL_DATABASE']
-            or identity.get('on_namespace')!=os.environ['ON_GRAPH_NAMESPACE']
-            or identity.get('on_database')!=os.environ['ON_GRAPH_DATABASE']):
-        raise RuntimeError('A/ON DB namespace, source or physical container identity cannot be attested')
-    a=configure()
-    on=SurrealConfig(os.environ['ON_GRAPH_WS_URL'],os.environ['ON_GRAPH_USER'],
-                     os.environ['ON_GRAPH_PASSWORD'],
-                     os.environ['ON_GRAPH_NAMESPACE'],os.environ['ON_GRAPH_DATABASE']).validate()
-    if a.ws_url!=on.ws_url:
-        # No cross-address alias guessing: 127.0.0.1 and Docker DNS can be
-        # different servers. Supply a common trusted private RPC address.
-        raise RuntimeError('A and Native DB addresses differ: explicit reconciliation required')
-    if (a.user,a.password)!=(on.user,on.password):
-        raise RuntimeError('Native Graph read-only role must be independently authorized and verified')
-    # Do not instantiate an A SurrealStore on ON DB: it would mutate schema.
-    return RPC(on)
-
+    if any(not os.environ.get(k) for k in names):
+        raise RuntimeError('Attested independent ON Graph VIEWER missing')
+    a=configure().validate()
+    viewer_url=os.environ['ON_GRAPH_WS_URL']
+    if viewer_url==a.ws_url:
+        raise RuntimeError('ON Graph and A Journal must be different physical RPC endpoints')
+    identity=attest_viewer(os.environ['ON_GRAPH_IDENTITY_FILE'],viewer_url,
+                          os.environ['ON_GRAPH_VIEWER_USER'],
+                          os.environ['ON_GRAPH_VIEWER_PASSWORD'],
+                          os.environ['ON_GRAPH_NAMESPACE'],
+                          os.environ['ON_GRAPH_DATABASE'],a.ws_url,a.user,a.password)
+    if identity.get('source_commit')!=os.environ.get('VAULT_FIXED_SOURCE_SHA') or (
+            identity.get('source_tree')!=os.environ.get('VAULT_FIXED_SOURCE_TREE')):
+        raise RuntimeError('Graph Source revision differs from the fixed A runtime')
+    viewer=ViewerRPC(viewer_url,os.environ['ON_GRAPH_VIEWER_USER'],
+                     os.environ['ON_GRAPH_VIEWER_PASSWORD'],
+                     os.environ['ON_GRAPH_NAMESPACE'],
+                     os.environ['ON_GRAPH_DATABASE'])
+    # Actual scoped readback with VIEWER permissions, not a cached A query.
+    statement=viewer.query('SELECT id FROM reference LIMIT 1;')
+    if not isinstance(statement,list) or not isinstance(statement[-1],list):
+        raise RuntimeError('Native Graph VIEWER live readback unavailable')
+    return viewer
 
 def native_edges(graph_rpc,source_id):
     # Pinned ON graph: source -reference-> notebook; the Surreal reference.in
@@ -162,7 +150,7 @@ def main():
     parser.add_argument('--source-id',required=True);parser.add_argument('--notebook-id',required=True)
     parser.add_argument('--shell-id',required=True);parser.add_argument('--school-id',required=True)
     parser.add_argument('--expected-sha256',required=True)
-    parser.add_argument('--native-url',default='http://127.0.0.1:5055')
+    parser.add_argument('--native-url',required=True)
     parser.add_argument('--max-pdf-bytes',type=int,default=8*1024*1024)
     parser.add_argument('--out',type=Path,default=Path('wp04-graph-redacted.json'))
     args=parser.parse_args()
