@@ -40,10 +40,44 @@ def test_all_passing_component_claims_without_browser_restore_or_school_never_pa
     assert r.test_result('S1-AT01',data) is False
     data['results'].update({
         'gateway_restart_persistence':'PASS',
-        'school_b_separate_gateway_negative':'PASS',
+        'same_gateway_two_school_idor_negative':'PASS',
         'independent_backup_restore':'PASS',
         'browser_admin_journey':'PASS'})
     assert r.test_result('S1-AT01',data) is True
+
+
+
+def at15_same_gateway_evidence():
+    """Unit fixture only; never substitutes for executed HTTP/IDOR evidence."""
+    return {'at_id':'S1-AT15', 'status':'PASS',
+            'classification':'REAL_HTTP_AT_CANDIDATE_NOT_REVIEWED',
+            'checks':{name:'PASS' for name in (
+                'school_a_access',
+                'school_a_denies_school_b_shell',
+                'school_a_denies_school_b_materials',
+                'school_a_denies_school_b_original_download',
+                'forged_school_header_denied',
+                'csrf_rotated_on_switch',
+                'school_b_access',
+                'school_b_denies_school_a_shell')}}
+
+
+def test_at15_same_gateway_eight_executed_idor_checks_required():
+    fixture=at15_same_gateway_evidence()
+    assert r.test_result('S1-AT15',fixture) is True
+    for name in tuple(fixture['checks']):
+        incomplete=at15_same_gateway_evidence()
+        incomplete['checks'].pop(name)
+        assert r.test_result('S1-AT15',incomplete) is False
+    incomplete=at15_same_gateway_evidence()
+    incomplete['checks']['school_b_denies_school_a_shell']='NOT_RUN'
+    assert r.test_result('S1-AT15',incomplete) is False
+    unrelated=at15_same_gateway_evidence()
+    unrelated['classification']='UNRELATED_PASS'
+    assert r.test_result('S1-AT15',unrelated) is False
+    unrelated=at15_same_gateway_evidence()
+    unrelated['at_id']='S1-AT01'
+    assert r.test_result('S1-AT15',unrelated) is False
 
 
 def full_wp03_evidence():
