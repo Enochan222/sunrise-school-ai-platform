@@ -89,3 +89,29 @@ def test_wrong_image_registry_digest_refuses_to_create_container(monkeypatch):
     with pytest.raises(ValueError,match='registry digest'):
         mod.verify('default',immutable,expected)
     assert created==[]
+
+
+def test_uid_only_primary_gid_is_read_from_passwd_not_guessed():
+    mod=load()
+    passwd=b"nonroot:x:65532:12345:nonroot:/:/sbin/nologin\n"
+    group=b"nonroot:x:12345:\n"
+    assert mod.parse_identity('65532',passwd,group)==(65532,12345)
+
+
+def test_wrong_inspected_image_id_rejected_before_container_creation(monkeypatch):
+    mod=load()
+    requested='sha256:'+'a'*64
+    digest='sha256:'+'b'*64
+    calls=[]
+    def inspect(*args,**kwargs):
+        calls.append(args)
+        if args[3:5]!=('image','inspect'):
+            raise AssertionError('Image probe container must not be created')
+        return __import__('json').dumps([{
+            'Id':'sha256:'+'c'*64,
+            'RepoDigests':['surrealdb/surrealdb@'+digest],
+            'Config':{'User':'65532'}}])
+    monkeypatch.setattr(mod,'run',inspect)
+    with pytest.raises(ValueError,match='Image identity changed'):
+        mod.verify('default',requested,digest)
+    assert len(calls)==1
