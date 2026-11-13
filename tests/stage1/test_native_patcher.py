@@ -126,10 +126,10 @@ def test_pinned_native_entrypoint_missing_and_example_secrets_really_exit_fail_s
     import os
     import subprocess
 
-    pinned_shape='#!/bin/sh\nVENV_PY="/app/.venv/bin/python"\nexec /bin/true\n'
+    pinned_shape='#!/bin/sh\nVENV_PY="/app/.venv/bin/python"\nexec /bin/sh -c 'exit 0'\n'
     guarded=patcher.patch_entrypoint(pinned_shape)
     assert 'SUNRISE_NATIVE_SECRET_FAIL_START' in guarded
-    assert 'exec /bin/true' in guarded
+    assert 'exec /bin/sh -c 'exit 0'' in guarded
     with pytest.raises(ValueError,match='already patched'):
         patcher.patch_entrypoint(guarded)
 
