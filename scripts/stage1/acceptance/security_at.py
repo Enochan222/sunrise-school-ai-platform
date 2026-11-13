@@ -246,7 +246,9 @@ def main():
     if os.getenv('VAULT_RUNTIME_SYNTHETIC_CONFIRM')!='YES' or (
         os.getenv('VAULT_OBSERVER_ISOLATED_CONFIRM')!='YES'):
         p.error('External synthetic observer attestation required')
-    report={'at_id':args.at_id,'status':'NOT_RUN','started_utc':datetime.now(timezone.utc).isoformat()}
+    report={'at_id':args.at_id,'status':'NOT_RUN',
+            'source_commit':args.source_sha,'source_tree':args.source_tree,
+            'started_utc':datetime.now(timezone.utc).isoformat()}
     try:
         if args.at_id=='S1-AT08':
             negative_startups()
