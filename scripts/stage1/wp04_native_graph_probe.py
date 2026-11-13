@@ -23,6 +23,7 @@ sys.path.insert(0,str(ROOT/'apps/a-vault'))
 from native import Native,checked_id
 from surreal_store import SurrealConfig,SurrealStore
 from on_graph_viewer import attest_viewer,ViewerRPC
+from executed_runtime_provenance import inspect as inspect_runtime,guard as guard_runtime
 
 
 def utc():
@@ -153,6 +154,10 @@ def main():
     parser.add_argument('--native-url',required=True)
     parser.add_argument('--max-pdf-bytes',type=int,default=8*1024*1024)
     parser.add_argument('--out',type=Path,default=Path('wp04-graph-redacted.json'))
+    parser.add_argument('--runtime-identity',type=Path,
+                        default=os.getenv('VAULT_RUNTIME_IDENTITY_FILE'))
+    parser.add_argument('--source-sha',default=os.getenv('VAULT_FIXED_SOURCE_SHA'))
+    parser.add_argument('--source-tree',default=os.getenv('VAULT_FIXED_SOURCE_TREE'))
     args=parser.parse_args()
     if (os.environ.get('VAULT_RUNTIME_SYNTHETIC_CONFIRM')!='YES' or
             os.environ.get('VAULT_EXCLUSIVE_GRAPH_MUTATION')!='YES' or
@@ -164,12 +169,18 @@ def main():
     if (target.scheme!='http' or target.hostname not in ('127.0.0.1','localhost','::1')
             or target.username or target.password or target.path not in ('','/')):
         raise ValueError('Graph operator Native API must be a trusted loopback origin')
-    record={'start_utc':utc(),'component':'WP04_NATIVE_LINK_UNLINK_AND_A_OWNER',
+    if args.runtime_identity is None:
+        parser.error('Exact external runtime identity required for real Graph mutation')
+    runtime_sha=inspect_runtime(ROOT,args.runtime_identity,args.source_sha,args.source_tree)
+    record={'at_id':'S1-AT11','source_commit':args.source_sha,
+            'source_tree':args.source_tree,'runtime_identity_sha256':runtime_sha,
+            'start_utc':utc(),'component':'WP04_NATIVE_LINK_UNLINK_AND_A_OWNER',
             'status':'NOT_RUN','original_sha256':args.expected_sha256,'formal_S1_AT':'NOT_RUN'}
     try:
         asyncio.run(workflow(args,record))
         if record.get('recovery')=='MANUAL_QUARANTINE_REQUIRED':
             raise RuntimeError('Graph recovery failed; manual quarantine required')
+        guard_runtime(ROOT,args.runtime_identity,args.source_sha,args.source_tree,runtime_sha)
         record['status']='PASS'
     except Exception as exc:
         record['status']='FAIL';record['error_type']=type(exc).__name__
