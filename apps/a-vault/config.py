@@ -48,10 +48,21 @@ class Settings:
                 self.school_id not in schools or
                 any(not re.fullmatch(r'[A-Za-z0-9_-]{1,100}',school) for school in schools)):
             raise ValueError('Explicit trusted school allowlist required; no dynamic school discovery')
-        if self.maintenance_file and not os.path.isabs(self.maintenance_file):
-            raise ValueError('Maintenance flag path must be absolute when configured')
         if self.store_backend not in ('surreal','synthetic_sqlite'):
             raise ValueError('Unknown vault store backend')
+        # Formal Surreal runtime must have a host-visible write-freeze flag.
+        # Without it /health cannot bind Runtime Identity to Cold Capture.
+        # Synthetic SQLite remains a test-only local backend.
+        if self.store_backend == 'surreal' and not self.maintenance_file:
+            raise ValueError('VAULT_MAINTENANCE_FILE is required for Surreal runtime')
+        if self.maintenance_file:
+            from pathlib import Path
+            path = Path(self.maintenance_file)
+            if (not path.is_absolute() or path == path.parent
+                    or not path.parent.is_dir()
+                    or path.parent.is_symlink() or path.is_symlink()
+                    or (path.exists() and not path.is_file())):
+                raise ValueError('Maintenance flag needs a safe absolute path and existing directory')
         if self.store_backend == 'synthetic_sqlite':
             if not self.sqlite_file:
                 raise ValueError('Synthetic journal path required')
