@@ -109,6 +109,7 @@ def main():
     identities=[]
     rights_versions=[]
     searched=0
+    verified_worker_search=0
     for owner in owners:
         source=owner.get('source_id')
         notebook=owner.get('notebook_id')
@@ -139,6 +140,17 @@ def main():
         info=native('/api/sources/'+source)
         if info.get('id')!=source or info.get('notebooks')!=[notebook]:
             raise RuntimeError('Native Source owner readback mismatch')
+        if (info.get('status')=='completed'
+                and 'SUNRISE_SYNTHETIC_FRACTION_2026' in str(info.get('full_text') or '')):
+            search=native('/api/search',method='POST',body={
+                'query':'SUNRISE_SYNTHETIC_FRACTION_2026','type':'text',
+                'notebook_ids':[notebook],
+                'search_sources':True,'search_notes':False})
+            hits=search.get('results',[])
+            if search.get('search_type')!='text' or not isinstance(hits,list) or not any(
+                    isinstance(hit,dict) and hit.get('parent_id')==source for hit in hits):
+                raise RuntimeError('Real private Worker text search and source scope not restored')
+            verified_worker_search+=1
         pdf=native('/api/sources/'+source+'/download')
         if hashlib.sha256(pdf).hexdigest()!=owner['sha256']:
             raise RuntimeError('Native original PDF hash differs after isolated restore')
@@ -149,6 +161,8 @@ def main():
             owner['original_mime_type'],owner['approved_sharing'],
             owner['ai_usage_allowed'],owner['ai_usage']))
         searched+=1
+    if verified_worker_search<1:
+        raise RuntimeError('No restored synthetic Worker READY scoped text search demonstrated')
     result={'classification':'NATIVE_OWNER_READBACK_NOT_FORMAL_AT',
             'source_owner_count':len(owners),'shell_count':len(shells),
             'verified_original_count':searched,
@@ -157,6 +171,7 @@ def main():
                 sorted(rights_versions),ensure_ascii=False,
                 separators=(',',':')).encode('utf-8')).hexdigest(),
             'rights_retention_initial_version_count':len(rights_versions),
+            'worker_scoped_search_positive_count':verified_worker_search,
             'text_only_patch_attested':True,'external_ai_egress_test':'NOT_RUN'}
     print(json.dumps(result,sort_keys=True))
 
