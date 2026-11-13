@@ -462,8 +462,14 @@ class SurrealStore:
             raise Conflict('Different Native Source receipt for same operation')
         if old==source_id:return
         rid=_record('vault_operation',school_id,actor,'material',key,shell_id)
-        self.query('UPDATE type::record($rid) SET native_source_id=$source,updated_at=time::unix() '
-                   'WHERE status="PENDING" AND native_source_id=NONE;',rid=rid,source=source_id)
+        # Native receipt is initially JSON null (NULL in SurrealQL), not
+        # NONE. Refuse to overwrite an existing receipt under concurrency.
+        result=self.query('UPDATE type::record($rid) SET native_source_id=$source,updated_at=time::unix() '
+                   'WHERE status="PENDING" AND (native_source_id IS NONE OR native_source_id IS NULL);',
+                   rid=rid,source=source_id)
+        changes=result[-1] if result else None
+        if not isinstance(changes,list) or len(changes)!=1:
+            raise Indeterminate('Native receipt was not atomically claimed; inspect durable operation')
         after=self._operation(school_id,key,'material',shell_id,actor_id=actor)
         if not after or after.get('native_source_id')!=source_id:
             raise Indeterminate('Native Source receipt persistence is unconfirmed')
