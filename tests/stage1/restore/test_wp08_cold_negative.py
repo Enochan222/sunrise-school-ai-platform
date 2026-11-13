@@ -124,3 +124,34 @@ def test_safe_standalone_restore_bytes_match(cold_bundle,tmp_path):
     status=restore_isolated(cold_bundle,destination)
     assert status['result']=='ISOLATED_OFFLINE_COPY_NOT_DB_RESTORE_VERIFIED'
     assert (destination/'native'/'synthetic-original.pdf').read_bytes().startswith(b'%PDF-')
+
+
+def test_owned_identity_digest_order_independent():
+    # A SQL SELECT without ORDER BY may return the same durable owners in a
+    # different order after restart. That must not produce a false restore FAIL.
+    sys.path.insert(0,str(ROOT/'scripts/stage1/restore'))
+    from verify_native import owned_identity_digest
+    rows=[
+        ('source:synthetic-b','notebook:synthetic-b','b'*64),
+        ('source:synthetic-a','notebook:synthetic-a','a'*64),
+    ]
+    assert owned_identity_digest(rows)==owned_identity_digest(list(reversed(rows)))
+    assert owned_identity_digest(rows)!=owned_identity_digest(rows[:1])
+
+
+def test_owned_identity_digest_rejects_duplicate_source_identity():
+    sys.path.insert(0,str(ROOT/'scripts/stage1/restore'))
+    from verify_native import owned_identity_digest
+    with pytest.raises(RuntimeError,match='Duplicate/malformed'):
+        owned_identity_digest([
+            ('source:synthetic-a','notebook:synthetic-a','a'*64),
+            ('source:synthetic-a','notebook:synthetic-b','a'*64)])
+
+
+def test_owned_identity_digest_rejects_invalid_hash_and_shape():
+    sys.path.insert(0,str(ROOT/'scripts/stage1/restore'))
+    from verify_native import owned_identity_digest
+    with pytest.raises(RuntimeError,match='Duplicate/malformed'):
+        owned_identity_digest([('source:synthetic-a','notebook:synthetic-a','BAD')])
+    with pytest.raises(RuntimeError,match='Duplicate/malformed'):
+        owned_identity_digest([('source:synthetic-a',)])
