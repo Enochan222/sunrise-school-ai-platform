@@ -12,9 +12,13 @@ from html.parser import HTMLParser
 import hashlib
 import json
 import os
+import sys
 from pathlib import Path
 from urllib.parse import urlsplit
 import httpx
+
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from wp01_network_boundary_probe import verify_manifest
 
 
 class CSRF(HTMLParser):
@@ -107,7 +111,7 @@ def case_14(client,args,session):
     # Admin cookie could independently grant access to the same endpoint.
     # Use a fresh cookie-free HTTP client for every Service JWT probe.
     with httpx.Client(base_url=args.gateway,timeout=35,follow_redirects=False,
-                      trust_env=False,verify=True) as service_client:
+                      trust_env=False,verify=str(args.gateway_ca_file)) as service_client:
         allowed=service_client.get(
             urls,headers={'Authorization':'Bearer '+values['VAULT_TEST_SERVICE_A']})
         expect(allowed.status_code==200,'Valid scoped Service JWT materials read denied')
@@ -146,23 +150,39 @@ def main():
     for arg in ('school-a','school-b','shell-a','shell-b','source-a','source-b','query-a'):
         p.add_argument('--'+arg,required=True)
     p.add_argument('--gateway',required=True)
+    p.add_argument('--gateway-ca-file',required=True,type=Path)
+    p.add_argument('--runtime-identity',required=True,type=Path)
+    for field in ('context','project','source-sha','source-tree'):
+        p.add_argument('--'+field,required=True)
     p.add_argument('--at-id',required=True,choices=CASES)
     p.add_argument('--out',required=True,type=Path)
     args=p.parse_args()
     if os.getenv('VAULT_RUNTIME_SYNTHETIC_CONFIRM')!='YES':
         p.error('Exclusive synthetic test environment confirmation required')
     gateway=urlsplit(args.gateway)
-    if not (gateway.scheme=='https' or gateway.scheme=='http' and
-            gateway.hostname in ('127.0.0.1','localhost','::1')):
-        p.error('Only certificate-verified HTTPS or private local loopback allowed')
+    if not (gateway.scheme=='https' and gateway.hostname in ('127.0.0.1','localhost')
+            and gateway.port and gateway.path in ('','/') and not gateway.query
+            and not gateway.fragment and not gateway.username and not gateway.password):
+        p.error('Formal HTTP AT requires exactly one loopback HTTPS Gateway origin')
+    identity,_,identity_sha=verify_manifest(args.runtime_identity,args.context,
+        args.project,args.source_sha,args.source_tree)
+    trusted=identity.get('gateway',{})
+    ca=args.gateway_ca_file
+    if (not ca.is_file() or ca.is_symlink() or ca.stat().st_size>1<<20
+            or hashlib.sha256(ca.read_bytes()).hexdigest()!=trusted.get('tls_ca_sha256')
+            or trusted.get('origin')!=args.gateway.rstrip('/')):
+        p.error('HTTP AT Gateway TLS CA/origin does not match runtime identity')
     for value in (args.school_a,args.school_b):
         if not value.startswith('synthetic-'):p.error('Only synthetic schools permitted')
     report={'at_id':args.at_id,'status':'NOT_RUN',
         'started_utc':datetime.now(timezone.utc).isoformat(),
-        'classification':'REAL_HTTP_AT_CANDIDATE_NOT_REVIEWED'}
+        'classification':'REAL_HTTP_AT_CANDIDATE_NOT_REVIEWED',
+        'source_commit':args.source_sha,'source_tree':args.source_tree,
+        'gateway_tls_peer_sha256':trusted.get('tls_peer_sha256'),
+        'runtime_identity_sha256':identity_sha}
     try:
         with httpx.Client(base_url=args.gateway,timeout=35,follow_redirects=False,
-                          trust_env=False,verify=True) as client:
+                          trust_env=False,verify=str(args.gateway_ca_file)) as client:
             session=authenticate(client)
             CASES[args.at_id](client,args,session)
         report['status']='PASS'
