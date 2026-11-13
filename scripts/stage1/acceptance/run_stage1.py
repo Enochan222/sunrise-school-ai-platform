@@ -21,9 +21,11 @@ import sys
 ROOT=Path(__file__).resolve().parents[3]
 STAGE=ROOT/'scripts/stage1'
 AT_DIR=STAGE/'acceptance'
-RUN_ORDER=('S1-AT01','S1-AT02','S1-AT03','S1-AT04','S1-AT06',
+# Exercise the real HTTP journey before cold capture, but do not adjudicate
+# AT01 until AT04, AT05, AT15 and a genuine Chromium journey have completed.
+RUN_ORDER=('S1-AT02','S1-AT03','S1-AT04','S1-AT06',
            'S1-AT07','S1-AT08','S1-AT09','S1-AT10','S1-AT11',
-           'S1-AT14','S1-AT15','S1-AT05','S1-AT12','S1-AT13')
+           'S1-AT14','S1-AT15','S1-AT05','S1-AT12','S1-AT01','S1-AT13')
 CASES={
     'S1-AT01':(STAGE/'real_admin_journey.py','journey'),
     'S1-AT02':(AT_DIR/'security_at.py','security'),
@@ -207,6 +209,85 @@ def run_regular(at,config,output):
     return detail,hashlib.sha256(evidence.read_bytes()).hexdigest()
 
 
+def run_admin_preflight(config, output):
+    """Create actual synthetic material before cold capture; NEVER label this full AT01."""
+    diagnostic=output/'S1-AT01-native.json'
+    flags=config.get('case_flags',{}).get('S1-AT01')
+    step=subprocess_case(STAGE/'real_admin_journey.py',flags,diagnostic)
+    result=read_json(diagnostic)
+    required=('admin_login_and_private_session','surreal_durable_native_notebook_unique',
+              'same_key_replay_and_body_conflict','native_pdf_upload_original_sha',
+              'worker_extracted_synthetic_pdf','server_scoped_text_only_search',
+              'original_pdf_hash_and_authorization','archive_non_destructive',
+              'logout_session_revocation')
+    if (result.get('result')!='PARTIAL_PASSED_WITH_UNRUN_GATES'
+            or result.get('formal_s1_at01_15')!='NOT_RUN'
+            or any(result.get('results',{}).get(name)!='PASS' for name in required)):
+        raise IncompleteAT('Real native Admin preflight incomplete; never synthesize component PASS')
+    return step,hashlib.sha256(diagnostic.read_bytes()).hexdigest()
+
+
+def run_full_at01(config,output,source_sha,source_tree,case_reports,preflight):
+    """Bind independent actual restart/restore/school tests and real Chromium probe."""
+    if preflight is None:
+        raise IncompleteAT('Missing actual native journey preflight')
+    dependent=('S1-AT04','S1-AT05','S1-AT15')
+    records={}
+    for at in dependent:
+        if case_reports.get(at,{}).get('status')!='PASS':
+            raise IncompleteAT('AT01 prerequisite was not executed and passed: '+at)
+        record=read_json(output/(at+'.json'))
+        if record.get('at_id')!=at or record.get('status')!='PASS':
+            raise IncompleteAT('AT01 prerequisite evidence not a real PASS: '+at)
+        if at in ('S1-AT04','S1-AT05') and (
+                record.get('source_commit')!=source_sha
+                or record.get('source_tree')!=source_tree):
+            raise IncompleteAT('AT01 dependent evidence refers to different source revision')
+        records[at]=record
+    raw=read_json(output/'S1-AT01-native.json')
+    flags=config.get('case_flags',{}).get('S1-AT01')
+    browser_flags=config.get('browser_flags')
+    if not isinstance(flags,dict) or not isinstance(browser_flags,dict):
+        raise IncompleteAT('Explicit native and real Chromium browser scenarios required')
+    native_gateway=flags.get('--gateway','http://127.0.0.1:8765')
+    if browser_flags.get('--gateway','http://127.0.0.1:8765')!=native_gateway:
+        raise IncompleteAT('AT01 HTTP and Chromium probes target different Gateways')
+    requested={**browser_flags,'--source-sha':source_sha,'--source-tree':source_tree}
+    ui_path=output/'S1-AT01-browser.json'
+    browser_step=subprocess_case(STAGE/'browser_admin_journey.py',requested,ui_path)
+    ui=read_json(ui_path)
+    ui_checks=('real_browser_login_and_server_school','real_browser_shell_create',
+        'real_browser_pdf_upload_and_worker_status','real_browser_scoped_text_search',
+        'real_browser_original_pdf_download','real_browser_archive',
+        'real_browser_logout_revocation','no_uncaught_browser_script_errors')
+    if (ui.get('status')!='PASS' or ui.get('at_id')!='S1-AT01-BROWSER'
+            or ui.get('source_commit')!=source_sha
+            or ui.get('source_tree')!=source_tree
+            or any(ui.get('checks',{}).get(k)!='PASS' for k in ui_checks)):
+        raise IncompleteAT('Actual browser Admin journey missing or wrong revision')
+    results={**raw['results'],
+             'gateway_restart_persistence':'PASS',
+             'school_b_separate_gateway_negative':'PASS',
+             'independent_backup_restore':'PASS',
+             'browser_admin_journey':'PASS'}
+    record={'at_id':'S1-AT01','source_commit':source_sha,'source_tree':source_tree,
+        'result':'FULL_NATIVE_UI_HTTP_JOURNEY_PASS',
+        'formal_s1_at01_15':'S1-AT01_CANDIDATE_EXECUTED',
+        'results':results,'evidence_dependencies':{
+           'real_native_http_sha256':hashlib.sha256(
+                (output/'S1-AT01-native.json').read_bytes()).hexdigest(),
+           'real_browser_sha256':hashlib.sha256(ui_path.read_bytes()).hexdigest(),
+           **{at:hashlib.sha256((output/(at+'.json')).read_bytes()).hexdigest()
+              for at in dependent}},
+        'utc':timestamp(),'owner_UAT':'NOT_RUN','R01':'NOT_APPROVED'}
+    if not test_result('S1-AT01',record):
+        raise IncompleteAT('AT01 full candidate does not satisfy mandatory independent gates')
+    evidence=output/'S1-AT01.json'
+    evidence.write_text(json.dumps(record,indent=2,sort_keys=True)+'\n')
+    return {'real_http_preflight':preflight[0],
+            'browser':browser_step,'independent_cases':list(dependent)},hashlib.sha256(evidence.read_bytes()).hexdigest()
+
+
 def run_restore(config,output,source_sha,source_tree):
     capture=STAGE/'restore/cold_capture.py'
     restore=STAGE/'restore/isolated_restore.py'
@@ -290,11 +371,25 @@ def main():
             'cases':{at:{'status':'NOT_RUN'} for at in RUN_ORDER},
             'aggregate':'NOT_RUN','tests_executed':0,'owner_UAT':'NOT_RUN','R01':'NOT_APPROVED'}
     try:
+        preflight=None
+        if 'S1-AT01' in selected:
+            report['cases']['S1-AT01']={'status':'RUNNING_NATIVE_PREFLIGHT',
+                'start_utc':timestamp()}
+            try:
+                preflight=run_admin_preflight(config,args.output_dir)
+                report['cases']['S1-AT01']['status']='PENDING_INDEPENDENT_GATES'
+            except Exception as exc:
+                report['cases']['S1-AT01']={'status':'FAIL',
+                    'error_type':type(exc).__name__,'end_utc':timestamp()}
+                raise
         for at in RUN_ORDER:
             if at not in selected:continue
             report['cases'][at]={'status':'RUNNING','start_utc':timestamp()}
             try:
-                if at in CASES:
+                if at=='S1-AT01':
+                    steps,digest=run_full_at01(config,args.output_dir,
+                        args.source_sha,args.source_tree,report['cases'],preflight)
+                elif at in CASES:
                     steps,digest=run_regular(at,config,args.output_dir)
                 elif at=='S1-AT05':
                     steps,digest=run_restore(config,args.output_dir,args.source_sha,args.source_tree)
