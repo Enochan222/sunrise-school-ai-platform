@@ -44,6 +44,12 @@ class IncompleteAT(RuntimeError):
     pass
 
 
+class CaseFailure(IncompleteAT):
+    def __init__(self, reason, detail):
+        super().__init__(reason)
+        self.detail=detail
+
+
 def timestamp():
     return datetime.now(timezone.utc).isoformat()
 
@@ -67,7 +73,8 @@ def pairs(values):
 
 
 def subprocess_case(script,flags,destination,*,at_id=None,env_override=None,has_out=True):
-    if not script.resolve().is_relative_to(STAGE.resolve()) or not script.is_file():
+    if (not script.resolve().is_relative_to(STAGE.resolve())
+            or not script.is_file() or script.is_symlink()):
         raise IncompleteAT('Unrecognised or missing real Stage1 case implementation')
     cmd=[sys.executable,str(script)]
     if at_id:cmd.extend(['--at-id',at_id])
@@ -75,15 +82,28 @@ def subprocess_case(script,flags,destination,*,at_id=None,env_override=None,has_
     env=os.environ.copy()
     if env_override:env.update(env_override)
     if has_out:cmd.extend(['--out',str(destination)])
-    proc=subprocess.run(cmd,cwd=str(ROOT),env=env,capture_output=True,
-                        text=True,timeout=1500)
+    try:
+        proc=subprocess.run(cmd,cwd=str(ROOT),env=env,capture_output=True,
+                            text=True,timeout=1500)
+        stdout,stderr=proc.stdout,proc.stderr
+        exit_code=proc.returncode
+        timed_out=False
+    except subprocess.TimeoutExpired as error:
+        stdout=error.stdout or b''
+        stderr=error.stderr or b''
+        if isinstance(stdout,bytes):stdout=stdout.decode('utf-8',errors='replace')
+        if isinstance(stderr,bytes):stderr=stderr.decode('utf-8',errors='replace')
+        exit_code=124
+        timed_out=True
     detail={'command_path':str(script.relative_to(ROOT)),
+            # Never put operator-supplied positional values or secrets in evidence.
             'command_arguments_redacted':sorted(flags),
-            'exit_code':proc.returncode,
-            'stdout_sha256':hashlib.sha256(proc.stdout.encode()).hexdigest(),
-            'stderr_sha256':hashlib.sha256(proc.stderr.encode()).hexdigest(),
-            'started_output_utc':timestamp()}
-    if proc.returncode!=0:raise IncompleteAT('Case failed; exit code '+str(proc.returncode))
+            'exit_code':exit_code,'timed_out':timed_out,
+            'stdout_sha256':hashlib.sha256(stdout.encode()).hexdigest(),
+            'stderr_sha256':hashlib.sha256(stderr.encode()).hexdigest(),
+            'completed_utc':timestamp()}
+    if timed_out or exit_code!=0:
+        raise CaseFailure('Case execution did not complete successfully',detail)
     return detail
 
 
@@ -269,6 +289,7 @@ def main():
                 report['tests_executed']+=1
             except Exception as exc:
                 report['cases'][at]={'status':'FAIL','error_type':type(exc).__name__,
+                    'failure_detail':getattr(exc,'detail',None),
                     'end_utc':timestamp()}
                 raise
         all_pass=all(report['cases'][at]['status']=='PASS' for at in selected)
