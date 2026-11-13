@@ -27,8 +27,8 @@ from datetime import datetime, timezone
 
 MAX_FILE_BYTES = 1 << 30  # 1 GiB; purposefully bounded for synthetic WP08
 MAX_TOTAL_BYTES = 4 << 30
-REQUIRED_ROOTS = ('surreal', 'native', 'gateway')
-FORMAT = 'sunrise-a-cold-bundle-v1'
+REQUIRED_ROOTS = ('a_db', 'on_db', 'native', 'gateway')
+FORMAT = 'sunrise-a-dual-db-cold-bundle-v2'
 UPSTREAM = '5e285b7a2e435895c4ee99ad7e4b8d2af64c3239'
 HEX64 = re.compile(r'^[0-9a-f]{64}$')
 
@@ -50,7 +50,7 @@ def key_identities():
 def validate_cold_attestation(path):
     data = json.loads(Path(path).read_text(encoding='utf-8'))
     if not isinstance(data, dict) or not all(data.get(key) is True for key in
-            ('exclusive_synthetic_host', 'native_and_db_stopped', 'offline_volume_copy')):
+            ('exclusive_synthetic_host', 'a_and_on_and_native_stopped', 'offline_volume_copy')):
         raise BackupInvalid('Operator-attested exclusive offline export required')
     for key in ('docker_project', 'host_identity', 'snapshot_utc'):
         if not isinstance(data.get(key), str) or not data[key].strip():
@@ -79,10 +79,11 @@ def safe_members(folder):
             if size>MAX_FILE_BYTES or total>MAX_TOTAL_BYTES:
                 raise BackupInvalid('Synthetic snapshot size limit exceeded')
             members.append((relative,path,size))
-    if not any(name.startswith('surreal/') for name,_,_ in members):
-        raise BackupInvalid('SurrealDB data volume not included')
-    if not any(name.startswith('native/') for name,_,_ in members):
-        raise BackupInvalid('Native originals volume not included')
+    # Requiring ALL physical volume roots prevents a one-engine bundle from
+    # satisfying a two-engine restore, even when a source DB happened to be empty.
+    for root in REQUIRED_ROOTS:
+        if not any(name.startswith(root+'/') for name,_,_ in members):
+            raise BackupInvalid('Required dual DB/native/gateway recovery root empty: '+root)
     return members
 
 
@@ -105,7 +106,8 @@ def build(offline_dir,output,attestation_path,source_sha,source_tree,image_diges
         raise BackupInvalid('Explicit cold-volume snapshot confirmation required')
     attestation=validate_cold_attestation(attestation_path)
     members=safe_members(offline)
-    manifest={'format':FORMAT, 'created_utc':datetime.now(timezone.utc).isoformat(),
+    manifest={'format':FORMAT, 'topology':'DUAL_PHYSICAL_SURREALDB',
+        'physical_db_engines':2,'created_utc':datetime.now(timezone.utc).isoformat(),
         'stage':'A_ONLY_SYNTHETIC', 'upstream_commit':UPSTREAM,
         'source_commit':source_sha,'source_tree':source_tree,
         'surreal_image_digest':image_digest,'cold_operator_attestation':attestation,
@@ -165,7 +167,10 @@ def verify(path,compare_keys=True):
         if not meta or tar.getmember('manifest.json').size>(8<<20):
             raise BackupInvalid('Invalid manifest')
         manifest=json.load(meta)
-        if not isinstance(manifest,dict) or manifest.get('format')!=FORMAT or manifest.get('upstream_commit')!=UPSTREAM:
+        if (not isinstance(manifest,dict) or manifest.get('format')!=FORMAT
+                or manifest.get('topology')!='DUAL_PHYSICAL_SURREALDB'
+                or manifest.get('physical_db_engines')!=2
+                or manifest.get('upstream_commit')!=UPSTREAM):
             raise BackupInvalid('Wrong backup format or pinned source')
         rp=manifest.get('recovery_point_id')
         if rp is not None and (
@@ -195,6 +200,9 @@ def verify(path,compare_keys=True):
             if digest.hexdigest()!=expected_info['sha256']:
                 raise BackupInvalid('Archive content corrupted')
         if found!=set(expected):raise BackupInvalid('Missing archive inventory file')
+        for root in REQUIRED_ROOTS:
+            if not any(path.startswith(root+'/') for path in found):
+                raise BackupInvalid('Missing physical recovery volume: '+root)
         return manifest
 
 
