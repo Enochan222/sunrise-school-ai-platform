@@ -39,6 +39,24 @@ The Gateway defaults to `VAULT_STORE_BACKEND=surreal` and fails startup if `VAUL
 bash scripts/stage1/start_surreal_local.sh
 ```
 
-The new, genuinely native-dependent reservation/crash-window harness is `scripts/stage1/surreal_journal_smoke.py`. With the pinned private ON/DB/Worker stack actually up, configure the same A DB variables above, plus `OPEN_NOTEBOOK_PASSWORD` and `VAULT_RUNTIME_SYNTHETIC_CONFIRM=YES`, then run it from repo root. It forces child exit after real native Notebook Create but before A journal completion, opens a fresh A Store and attempts exact-marker recovery. **No network ACK-drop injection, DB process restart, Worker restart, complete graph link/unlink or isolated full restore is claimed.** This harness returned exit 69 (`RUNTIME_NOT_RUN`) in the Chat container. It must be executed/independently reviewed on a Docker-capable host.
+The new, genuinely native-dependent reservation/crash-window harness is `scripts/stage1/surreal_journal_smoke.py`. With the pinned private ON/DB/Worker stack actually up, configure the same A DB variables above, plus `OPEN_NOTEBOOK_PASSWORD` and `VAULT_RUNTIME_SYNTHETIC_CONFIRM=YES`, then run it from repo root. It forces child exit after real native Notebook Create but before A journal completion, opens a fresh A Store and attempts exact-marker recovery. **A separate real TCP downstream ACK-drop injector and fresh-first-reservation race harness are now implemented, but neither has been executed against pinned Native/SurrealDB; DB restart, Worker restart, complete graph link/unlink and isolated full restore remain NOT_RUN.** This harness returned exit 69 (`RUNTIME_NOT_RUN`) in the Chat container. It must be executed/independently reviewed on a Docker-capable host.
 
 Formal S1-AT01–15 remain NOT_RUN; preserve the current Draft PR and do not merge.
+
+## WP03 Builder B critical corrections (2026-11-13)
+
+The A SurrealDB journal now verifies exact UNIQUE index **table, index name, field list and field order**, using v2 INFO SQL strings or {sql: ...}; missing, extra, wrong-order and wrong-target definitions fail startup. Run the real v2 drift negative on an **exclusive synthetic Docker host** after setting private Surreal credentials and both `VAULT_RUNTIME_SYNTHETIC_CONFIRM=YES` and `VAULT_EXCLUSIVE_SCHEMA_PROBE=YES`:
+
+```bash
+python scripts/stage1/wp03_schema_drift_probe.py
+```
+
+`surreal_journal_smoke.py` additionally calls `wp03_races.py`: three **fresh** eight-client barrier races, then (when Native is available) exactly one winning Notebook Create with verified marker/replay. It separately tests native **post-ACK process death** and **real client-facing lost-ACK**, the latter using `native_ack_loss_probe.py` to complete upstream POST but drop the downstream HTTP response before any bytes are delivered. Both must read back the durable marker; they must not send a second POST. All native/SurrealDB cases remain NOT_RUN in the Docker-less Builder Chat.
+
+For an actual *private loopback, synthetic-only* Admin→Shell→Notebook→PDF→Worker→Text Search→Download→Archive→Logout probe after starting the real SurrealDB-backed Gateway and pinned Native worker, set `VAULT_RUNTIME_SYNTHETIC_CONFIRM=YES`, `VAULT_STORE_BACKEND=surreal`, and private `VAULT_ADMIN_PASSWORD` plus `OPEN_NOTEBOOK_PASSWORD`, then run:
+
+```bash
+python scripts/stage1/real_admin_journey.py --gateway http://127.0.0.1:8765
+```
+
+The probe explicitly leaves Gateway Restart, secondary School B gateway negative and isolated full Restore as NOT_RUN. It does not authorize public hosting, budget changes, Work checkout edits or R01.
