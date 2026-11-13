@@ -99,16 +99,24 @@ for short in a_db_data on_db_data; do
         -v "$volume:/target:rw" -v "$HERE/volume_owner_check.py:/helper.py:ro" \
         --entrypoint python "$native_image" /helper.py --mode write-probe --uid "$uid" --gid "$gid"
 done
-# Start both authentic, independent DB engines BEFORE ON API/Worker.
-docker --context "$context" compose -p "$project" -f "$compose" up -d --no-build a_db on_db
-port_of() {
-    local output host port
-    output="$(docker --context "$context" compose -p "$project" -f "$compose" port "$1" 8000)"
-    [[ "$output" =~ ^127\.0\.0\.1:[0-9]{1,5}$ ]] || exit 78
-    printf 'ws://%s/rpc' "$output"
+# DBs remain physically isolated on their own internal networks.
+# Dedicated no-secret relays alone attach the noninternal publish bridge.
+docker --context "$context" compose -p "$project" -f "$compose" up -d --no-build \
+    a_db on_db a_relay on_relay
+relay_port() {
+    local evidence service port
+    service="$1"
+    evidence="$(python "$HERE/loopback_port_contract.py" --context "$context" \
+        --project "$project" --compose-file "$compose" --service "$service")" || {
+        echo "Relay endpoint or Docker network failed attestation: $service" >&2; exit 78;
+    }
+    port="$(printf '%s' "$evidence" | python -c 'import json,sys;print(json.load(sys.stdin)["port"])')"
+    [[ "$port" =~ ^[0-9]{4,5}$ ]] || exit 78
+    printf '127.0.0.1:%s' "$port"
 }
-a_url="$(port_of a_db)"; on_url="$(port_of on_db)"
-[[ "$a_url" != "$on_url" ]] || exit 78
+a_port="$(relay_port a_db)"; on_port="$(relay_port on_db)"
+[[ "$a_port" != "$on_port" ]] || exit 78
+a_url="ws://$a_port/rpc"; on_url="ws://$on_port/rpc"
 export VAULT_RUNTIME_SYNTHETIC_CONFIRM=YES
 # Repeated attempts permitted ONLY for readiness, never automatic data reset.
 ready=NO
@@ -122,9 +130,10 @@ for _ in {1..30}; do
     sleep 2
 done
 [[ "$ready" == YES ]] || { echo "Dual DB RPC/Viewer readiness failed; leave project stopped for review" >&2; exit 78; }
-docker --context "$context" compose -p "$project" -f "$compose" up -d --no-build native
-# Dynamic measured endpoints are not secrets; operator must attest identities.
-native_port="$(docker --context "$context" compose -p "$project" -f "$compose" port native 5055)"
-[[ "$native_port" =~ ^127\.0\.0\.1:[0-9]{1,5}$ ]] || exit 78
+docker --context "$context" compose -p "$project" -f "$compose" up -d --no-build native native_relay
+# Dynamic measured endpoints are not secrets; direct Native bind is prohibited.
+native_port="$(relay_port native)"
+[[ "$native_port" =~ ^127\.0\.0\.1:[0-9]{4,5}$ ]] || exit 78
+[[ "$native_port" != "$a_port" && "$native_port" != "$on_port" ]] || exit 78
 printf 'DUAL_DB_SOURCE_READY_NOT_ACCEPTED a_db=%s on_db=%s native=http://%s\n' \
     "$a_url" "$on_url" "$native_port"
