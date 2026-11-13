@@ -246,6 +246,32 @@ def run_admin_preflight(config, output, source_sha, source_tree):
     return step,hashlib.sha256(diagnostic.read_bytes()).hexdigest()
 
 
+def run_browser_before_cold_capture(config,output,source_sha,source_tree):
+    """Run real Chromium while source Gateway/Worker remain alive."""
+    flags=config.get('browser_flags')
+    admin=config.get('case_flags',{}).get('S1-AT01')
+    if not isinstance(flags,dict) or not isinstance(admin,dict):
+        raise IncompleteAT('Real browser and Admin identity scenarios required')
+    for key in ('--gateway','--context','--project','--runtime-identity'):
+        if not flags.get(key) or flags[key]!=admin.get(key):
+            raise IncompleteAT('Browser does not target same Admin runtime identity')
+    if flags.get('--gateway-ca-file')!=admin.get('--ca-file'):
+        raise IncompleteAT('Browser and Admin HTTPS CA mismatch')
+    if any(flags.get(k,v)!=v for k,v in (
+            ('--source-sha',source_sha),('--source-tree',source_tree))):
+        raise IncompleteAT('Browser source revision differs')
+    flags={**flags,'--source-sha':source_sha,'--source-tree':source_tree}
+    path=output/'S1-AT01-browser.json'
+    step=subprocess_case(STAGE/'browser_admin_journey.py',flags,path)
+    result=read_json(path)
+    if (result.get('at_id')!='S1-AT01-BROWSER'
+            or result.get('source_commit')!=source_sha
+            or result.get('source_tree')!=source_tree
+            or result.get('status')!='PASS'):
+        raise IncompleteAT('Real Chromium did not pass before source cold stop')
+    return step,hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def run_full_at01(config,output,source_sha,source_tree,case_reports,preflight):
     """Bind independent actual restart/restore/school tests and real Chromium probe."""
     if preflight is None:
@@ -264,16 +290,9 @@ def run_full_at01(config,output,source_sha,source_tree,case_reports,preflight):
             raise IncompleteAT('AT01 dependent evidence refers to different source revision')
         records[at]=record
     raw=read_json(output/'S1-AT01-native.json')
-    flags=config.get('case_flags',{}).get('S1-AT01')
-    browser_flags=config.get('browser_flags')
-    if not isinstance(flags,dict) or not isinstance(browser_flags,dict):
-        raise IncompleteAT('Explicit native and real Chromium browser scenarios required')
-    native_gateway=flags.get('--gateway','http://127.0.0.1:8765')
-    if browser_flags.get('--gateway','http://127.0.0.1:8765')!=native_gateway:
-        raise IncompleteAT('AT01 HTTP and Chromium probes target different Gateways')
-    requested={**browser_flags,'--source-sha':source_sha,'--source-tree':source_tree}
     ui_path=output/'S1-AT01-browser.json'
-    browser_step=subprocess_case(STAGE/'browser_admin_journey.py',requested,ui_path)
+    if not ui_path.is_file():
+        raise IncompleteAT('Real Chromium evidence missing before source cold capture')
     ui=read_json(ui_path)
     ui_checks=('real_browser_login_and_server_school','real_browser_shell_create',
         'real_browser_pdf_upload_and_worker_status','real_browser_scoped_text_search',
@@ -304,7 +323,8 @@ def run_full_at01(config,output,source_sha,source_tree,case_reports,preflight):
     evidence=output/'S1-AT01.json'
     evidence.write_text(json.dumps(record,indent=2,sort_keys=True)+'\n')
     return {'real_http_preflight':preflight[0],
-            'browser':browser_step,'independent_cases':list(dependent)},hashlib.sha256(evidence.read_bytes()).hexdigest()
+            'browser_evidence_sha256':hashlib.sha256(ui_path.read_bytes()).hexdigest(),
+            'independent_cases':list(dependent)},hashlib.sha256(evidence.read_bytes()).hexdigest()
 
 
 def run_restore(config,output,source_sha,source_tree):
