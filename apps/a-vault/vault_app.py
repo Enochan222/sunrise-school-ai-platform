@@ -81,6 +81,9 @@ def build_app(cfg:Settings|None=None,native=None):
     attempt_lock=Lock()
     maintenance_lock=Lock()
     mutation_count=[0]
+    gateway_instance=secrets.token_hex(16)  # changes on every Gateway process start
+    maintenance_path_digest=(hashlib.sha256(
+        cfg.maintenance_file.encode('utf-8')).hexdigest() if cfg.maintenance_file else None)
     app.state.store=store
     app.state.native=upstream
     # WP07: trusted local templates are served ONLY through existing Gateway routes.
@@ -201,7 +204,9 @@ def build_app(cfg:Settings|None=None,native=None):
         return {'gateway':'running','native':'NOT_VERIFIED',
                 'stage':'LOCAL_SYNTHETIC_DEVELOPMENT','release':'NOT_APPROVED',
                 'maintenance':bool(cfg.maintenance_file and Path(cfg.maintenance_file).exists()),
-                'mutations_in_flight':active}
+                'mutations_in_flight':active,
+                'gateway_instance':gateway_instance,
+                'maintenance_path_sha256':maintenance_path_digest}
 
     @app.get('/auth/login',response_class=HTMLResponse)
     def login_form():
