@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from ipaddress import ip_address
 from urllib.parse import urlsplit
+import re
 import os
 
 
@@ -15,6 +16,7 @@ class Settings:
     sqlite_file: str
     native_url: str
     native_password: str
+    school_allowlist: tuple[str,...] = ()  # trusted server-side A/B school choices
     service_public_key: str = ""
     service_issuer: str = ""
     service_audience: str = ""
@@ -28,6 +30,9 @@ class Settings:
     surreal_namespace: str = 'open_notebook'
     surreal_database: str = 'open_notebook' 
 
+    def allowed_schools(self):
+        return self.school_allowlist or (self.school_id,)
+
     def validate(self):
         if not self.admin_hash.startswith('$argon2id$'):
             raise ValueError('VAULT_ADMIN_PASSWORD_HASH must be a real Argon2id hash')
@@ -37,6 +42,11 @@ class Settings:
             raise ValueError('Session and encryption secrets cannot be equal')
         if not self.school_id or not self.actor_id:
             raise ValueError('Server-held school and actor identities required')
+        schools=self.allowed_schools()
+        if (not 1<=len(schools)<=8 or len(set(schools))!=len(schools) or
+                self.school_id not in schools or
+                any(not re.fullmatch(r'[A-Za-z0-9_-]{1,100}',school) for school in schools)):
+            raise ValueError('Explicit trusted school allowlist required; no dynamic school discovery')
         if self.store_backend not in ('surreal','synthetic_sqlite'):
             raise ValueError('Unknown vault store backend')
         if self.store_backend == 'synthetic_sqlite':
@@ -67,6 +77,8 @@ def from_env():
     return Settings(admin_hash=os.environ['VAULT_ADMIN_PASSWORD_HASH'],session_secret=os.environ['VAULT_SESSION_SECRET'],
         encryption_key=os.environ['VAULT_ENCRYPTION_KEY'],school_id=os.environ['VAULT_SCHOOL_ID'],
         actor_id=os.environ['VAULT_ACTOR_ID'],sqlite_file=os.getenv('VAULT_SQLITE_FILE',''),
+        school_allowlist=tuple(v.strip() for v in os.getenv('VAULT_SCHOOL_ALLOWLIST',
+                                    os.environ['VAULT_SCHOOL_ID']).split(',')),
         native_url=os.environ['VAULT_NATIVE_URL'],native_password=os.environ['VAULT_NATIVE_PASSWORD'],
         service_public_key=os.environ.get('VAULT_SERVICE_PUBLIC_KEY_PEM','').replace('\\n','\n'),
         service_issuer=os.environ.get('VAULT_SERVICE_ISSUER',''),
