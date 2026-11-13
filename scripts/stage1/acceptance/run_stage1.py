@@ -99,8 +99,15 @@ def test_result(at,report):
             'same_key_replay_and_body_conflict','native_pdf_upload_original_sha',
             'worker_extracted_synthetic_pdf','server_scoped_text_only_search',
             'original_pdf_hash_and_authorization','archive_non_destructive','logout_session_revocation')
-        return (report.get('result')=='PARTIAL_PASSED_WITH_UNRUN_GATES' and
-                all(report.get('results',{}).get(key)=='PASS' for key in required))
+        # The existing real_admin_journey.py explicitly reports a PARTIAL
+        # journey with three NOT_RUN gates. A partial smoke must NEVER become
+        # a formal AT01 PASS merely because its component assertions passed.
+        return (report.get('result')=='FULL_NATIVE_UI_HTTP_JOURNEY_PASS' and
+                report.get('formal_s1_at01_15')=='S1-AT01_CANDIDATE_EXECUTED' and
+                all(report.get('results',{}).get(key)=='PASS' for key in required)
+                and all(report.get('results',{}).get(key)=='PASS' for key in (
+                    'gateway_restart_persistence','school_b_separate_gateway_negative',
+                    'independent_backup_restore','browser_admin_journey')))
     if at=='S1-AT06':
         r=report.get('results',{})
         return (report.get('status')=='PASS' and report.get('native_gate')=='PASS'
@@ -150,9 +157,15 @@ def run_restore(config,output):
     third=subprocess_case(start,native_flags,output/'ignored-native.json',has_out=False)
     workdir=Path(restore_flags['--workdir'])
     final=read_json(workdir/'native-readback-evidence.json')
+    native=final.get('native_readback',{})
     if (final.get('classification')!='ISOLATED_RESTORE_NATIVE_READBACK_NOT_AT_PASS'
             or final.get('db_inventories_equal') is not True
-            or final.get('native_readback',{}).get('text_only_patch_attested') is not True):
+            or final.get('native_owner_identity_matches_before_after') is not True
+            or native.get('text_only_patch_attested') is not True
+            or not isinstance(native.get('source_owner_count'),int)
+            or native['source_owner_count']<1
+            or native.get('verified_original_count')!=native['source_owner_count']
+            or not native.get('owned_source_graph_hash')):
         raise IncompleteAT('Independent restore and source-owner verification not proven')
     target=output/'S1-AT05.json'
     target.write_text(json.dumps({'at_id':'S1-AT05','status':'PASS',
@@ -169,6 +182,8 @@ def validate_restore_rights(config,output):
     result=read_json(workdir/'native-readback-evidence.json')
     native=result.get('native_readback',{})
     if (result.get('classification')!='ISOLATED_RESTORE_NATIVE_READBACK_NOT_AT_PASS'
+            or result.get('native_owner_identity_matches_before_after') is not True
+            or result.get('db_inventories_equal') is not True
             or not isinstance(native.get('source_owner_count'),int)
             or native['source_owner_count']<1
             or native.get('verified_original_count')!=native['source_owner_count']
@@ -252,8 +267,14 @@ def main():
                 report['cases'][at]={'status':'FAIL','error_type':type(exc).__name__,
                     'end_utc':timestamp()}
                 raise
-        report['aggregate']='ALL_SELECTED_PASS' if all(
-            report['cases'][at]['status']=='PASS' for at in selected) else 'FAIL'
+        all_pass=all(report['cases'][at]['status']=='PASS' for at in selected)
+        full_coverage=(len(selected)==len(RUN_ORDER) and set(selected)==set(RUN_ORDER))
+        # A successful subset is diagnostic evidence, not the full 15-AT gate.
+        report['aggregate']=(
+            'ALL_15_LOCAL_CASES_PASS_REVIEW_PENDING' if all_pass and full_coverage
+            else 'SELECTED_CASES_PASS_NOT_FULL_STAGE' if all_pass
+            else 'FAIL')
+        report['formal_acceptance']='REVIEW_PENDING' if all_pass and full_coverage else 'NOT_RUN'
     except Exception:
         report['aggregate']='FAIL'
         raise
@@ -261,7 +282,9 @@ def main():
         report['finished_utc']=timestamp()
         (args.output_dir/'stage1-at-run.json').write_text(
             json.dumps(report,sort_keys=True,indent=2)+'\n')
-    raise SystemExit(0 if report['aggregate']=='ALL_SELECTED_PASS' else 1)
+    raise SystemExit(0 if report['aggregate'] in (
+        'ALL_15_LOCAL_CASES_PASS_REVIEW_PENDING',
+        'SELECTED_CASES_PASS_NOT_FULL_STAGE') else 1)
 
 
 if __name__=='__main__':main()
