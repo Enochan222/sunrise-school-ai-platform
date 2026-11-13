@@ -70,9 +70,13 @@ class Native:
             except (httpx.RequestError, httpx.HTTPStatusError) as e:
                 raise NativeUnavailable('Native Open Notebook request unavailable or rejected') from e
 
-    async def create_notebook(self, name: str) -> str:
+    async def create_notebook(self, name: str, marker: str | None = None) -> str:
+        if marker is not None and (not isinstance(marker,str) or
+                not re.fullmatch(r'sunrise-a-op-v1:[a-f0-9]{64}',marker)):
+            raise NativeOwnershipError('Invalid reserved Notebook creation marker')
+        description = marker if marker is not None else 'Sunrise A synthetic private notebook'
         r = await self._request('POST', '/api/notebooks',
-                                json={'name': name, 'description': 'Sunrise A synthetic private notebook'})
+                                json={'name': name, 'description': description})
         try:
             data = r.json()
             if not isinstance(data, dict):
@@ -80,6 +84,32 @@ class Native:
             return checked_id(data['id'], 'notebook')
         except (ValueError, TypeError, KeyError, NativeOwnershipError) as e:
             raise NativeUnavailable('Native notebook receipt invalid') from e
+
+    async def find_notebooks_by_marker(self, marker: str) -> list[str]:
+        # Marker is an operation identity, NOT a title-based heuristic.
+        if not isinstance(marker,str) or not re.fullmatch(r'sunrise-a-op-v1:[a-f0-9]{64}',marker):
+            raise NativeOwnershipError('Invalid native creation marker')
+        response=await self._request('GET','/api/notebooks')
+        try:
+            notebooks=response.json()
+            if not isinstance(notebooks,list) or len(notebooks)>10000:
+                raise ValueError('Unbounded or invalid notebook readback')
+            candidates=[]
+            for n in notebooks:
+                if not isinstance(n,dict):
+                    raise ValueError('Invalid notebook list entry')
+                if n.get('description') == marker:
+                    candidates.append(checked_id(n.get('id'),'notebook'))
+            if len(candidates)!=len(set(candidates)) or len(candidates)>1:
+                raise NativeOwnershipError('Duplicate native notebook creation marker')
+            for nb in candidates:
+                readback=(await self._request('GET',f'/api/notebooks/{nb}')).json()
+                if (not isinstance(readback,dict) or readback.get('id')!=nb or
+                        readback.get('description')!=marker):
+                    raise NativeOwnershipError('Native Notebook marker readback mismatch')
+            return candidates
+        except (ValueError,TypeError,KeyError) as e:
+            raise NativeUnavailable('Malformed native Notebook marker readback') from e
 
     async def upload_pdf(self, nb_id: str, data: bytes, filename: str, title: str) -> dict:
         checked_id(nb_id, 'notebook')
