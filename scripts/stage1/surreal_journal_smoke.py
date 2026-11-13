@@ -7,6 +7,7 @@ Recovered mapping must equal exact marker ID. Never retry native creation.
 This is a candidate script, NOT_RUN until its JSON evidence exists.
 """
 from __future__ import annotations
+import argparse
 import asyncio
 import hashlib
 import json
@@ -26,6 +27,7 @@ from surreal_store import SurrealStore,SurrealConfig,SurrealUnavailable
 from store import Conflict,Indeterminate
 from native import Native
 from wp03_races import first_reservation_races,native_lost_ack
+from executed_runtime_provenance import inspect as inspect_runtime,guard as guard_runtime
 
 
 def now():return datetime.now(timezone.utc).isoformat()
@@ -54,15 +56,27 @@ async def recover_native(store,school,key,details,secret):
 
 
 def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--runtime-identity',type=Path,
+                        default=os.getenv('VAULT_RUNTIME_IDENTITY_FILE'))
+    parser.add_argument('--source-sha',default=os.getenv('VAULT_FIXED_SOURCE_SHA'))
+    parser.add_argument('--source-tree',default=os.getenv('VAULT_FIXED_SOURCE_TREE'))
+    args=parser.parse_args()
     if os.getenv('VAULT_RUNTIME_SYNTHETIC_CONFIRM')!='YES':
         print('RUNTIME_NOT_RUN: synthetic Docker runtime confirmation required',file=sys.stderr)
         raise SystemExit(69)
+    if args.runtime_identity is None:
+        parser.error('Exact external runtime identity required for real journal execution')
+    runtime_sha=inspect_runtime(ROOT,args.runtime_identity,args.source_sha,args.source_tree)
     # Resolve ON secret ONCE before any optional Native side effect. Never log its value.
     secret = os.environ.get('OPEN_NOTEBOOK_PASSWORD') or None
     configuration=cfg();school='synthetic-a-'+secrets.token_hex(5)
     actor='synthetic-actor';key='ackcrash_'+secrets.token_hex(8)
     details={'academic_year':'2026','grade':'P4','subject':'Mathematics','curriculum_stream':'synthetic'}
-    log={'start_utc':now(),'category':'NATIVE_SURREALDB_REAL_RUNTIME',
+    log={'start_utc':now(),'at_id':'S1-AT06',
+         'source_commit':args.source_sha,'source_tree':args.source_tree,
+         'runtime_identity_sha256':runtime_sha,
+         'category':'NATIVE_SURREALDB_REAL_RUNTIME',
          'staging_database':configuration.database,'school':school,'actor':actor,
          'results':{},'s1_at01_15':'NOT_RUN'}
     try:
@@ -152,6 +166,7 @@ os._exit(97)
             log['results']['cross_school_shell_negative']='PASS'
             log['notebook_id_sha256']=hashlib.sha256(recovered['notebook_id'].encode()).hexdigest()
             log['native_gate']='PASS'
+            guard_runtime(ROOT,args.runtime_identity,args.source_sha,args.source_tree,runtime_sha)
             log['status']='PASS'
     except Exception as error:
         log['status']='FAIL'
