@@ -7,3 +7,4 @@ itsdangerous==2.2.0
 python-multipart==0.0.29
 PyJWT==2.13.0
 pydantic==2.13.5
+websockets==16.0
