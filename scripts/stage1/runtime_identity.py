@@ -280,6 +280,10 @@ def main():
     destination=args.out.absolute()
     require(not destination.exists(),'Runtime identity overwrite refused')
     sha,tree=git_identity(args.source_root)
+    relay_source=Path(__file__).parent/'loopback_relay.py'
+    require(relay_source.is_file() and not relay_source.is_symlink(),
+            'Repository-owned private TCP relay source missing')
+    relay_source_sha256=hashlib.sha256(relay_source.read_bytes()).hexdigest()
     services=load_containers(args.context,args.project)
     namespace={'surreal_namespace':args.surreal_namespace,
                'surreal_database':args.surreal_database,
@@ -298,6 +302,7 @@ def main():
             'native_source_commit':EXPECTED_NATIVE_COMMIT,
             'native_source_tree':EXPECTED_NATIVE_TREE,
             'compose_sha256':hashlib.sha256(args.compose_file.read_bytes()).hexdigest(),
+            'loopback_relay_source_sha256':relay_source_sha256,
             'on_patch_sha256':args.on_patch_sha256,
             **namespace,'services':services,'gateway':gateway,'dual_rpc':rpc,
             'classification':'IDENTITY_CAPTURE_NOT_TEST_RESULT'}
