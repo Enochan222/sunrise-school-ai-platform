@@ -143,6 +143,27 @@ def inventory_at_freeze(args,identity):
     return inventory
 
 
+def native_readback_at_freeze(args,identity):
+    # Prove every A SourceOwner against Native link and original PDF BEFORE
+    # stop. This readback is allowed on the isolated worker host only.
+    # Follow it with a fresh DB inventory (Native may touch last_viewed).
+    code=(Path(__file__).parent/'verify_native.py').read_text(encoding='utf-8')
+    cid=identity['services']['open_notebook']['container_id']
+    raw=docker(args.context,'exec','-e','VAULT_RUNTIME_SYNTHETIC_CONFIRM=YES',
+               '-e','VAULT_SURREAL_NAMESPACE='+os.environ['VAULT_SURREAL_NAMESPACE'],
+               '-e','VAULT_SURREAL_DATABASE='+os.environ['VAULT_SURREAL_DATABASE'],
+               '-e','ON_GRAPH_NAMESPACE='+os.environ['ON_GRAPH_NAMESPACE'],
+               '-e','ON_GRAPH_DATABASE='+os.environ['ON_GRAPH_DATABASE'],
+               cid,'python','-c',code)
+    proof=json.loads(raw)
+    if (proof.get('classification')!='NATIVE_OWNER_READBACK_NOT_FORMAL_AT'
+            or proof.get('text_only_patch_attested') is not True
+            or not isinstance(proof.get('source_owner_count'),int)
+            or proof.get('verified_original_count')!=proof['source_owner_count']):
+        raise BackupInvalid('SourceOwner/Original Native pre-snapshot proof incomplete')
+    return proof
+
+
 def stop_project(args,identity):
     ids={service:value['container_id'] for service,value in identity['services'].items()}
     # Stop only the pinned, already inspected isolated Compose project.
@@ -157,7 +178,7 @@ def stop_project(args,identity):
             raise BackupInvalid('Container identity changed after stop')
 
 
-def copy_volumes(args,identity,staging,inventory):
+def copy_volumes(args,identity,staging,inventory,native_readback):
     # docker cp can read a known stopped container's volume-mounted path.
     mapping={'surrealdb':('surreal','/mydata/.'),
              'open_notebook':('native','/app/data/.')}
@@ -170,6 +191,8 @@ def copy_volumes(args,identity,staging,inventory):
             raise BackupInvalid('Captured volume empty; cannot establish integrity')
     (staging/'gateway').mkdir()
     (staging/'gateway'/'db-inventory.json').write_text(json.dumps(inventory,sort_keys=True)+'\n')
+    (staging/'gateway'/'native-pre-capture-readback.json').write_text(
+        json.dumps(native_readback,sort_keys=True)+'\n')
     (staging/'gateway'/'cold-recovery-point.json').write_text(json.dumps({
         'recovery_point':args.recovery_point,
         'source_commit':args.source_sha,
@@ -208,11 +231,15 @@ def main():
     # Intentionally leave write freeze active on any failure after this point.
     check_gateway_frozen(args)
     drain(args)
+    native_readback=native_readback_at_freeze(args,identity)
+    # Recheck pending worker/journal states after the native readback:
+    # a new change during verification invalidates the snapshot barrier.
+    drain(args)
     inventory=inventory_at_freeze(args,identity)
     stop_project(args,identity)
     with tempfile.TemporaryDirectory(prefix='sunrise-a-cold-') as staging_text:
         staging=Path(staging_text)
-        copy_volumes(args,identity,staging,inventory)
+        copy_volumes(args,identity,staging,inventory,native_readback)
         attestation=staging.parent/(staging.name+'-attestation.json')
         attestation.write_text(json.dumps({
             'exclusive_synthetic_host':True,'native_and_db_stopped':True,
