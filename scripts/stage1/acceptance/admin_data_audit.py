@@ -148,6 +148,13 @@ def admin_login_switch_logout_audit(args):
         require(response.status_code==200
                 and response.json().get('authenticated') is True,
                 'Real synthetic Admin login failed')
+        session_cookies=[h for h in response.headers.get_list('set-cookie')
+                         if h.startswith('sunrise_a_sid=')]
+        require(len(session_cookies)==1
+                and 'secure' in session_cookies[0].lower()
+                and 'httponly' in session_cookies[0].lower()
+                and 'samesite=strict' in session_cookies[0].lower(),
+                'HTTPS Admin login did not set Secure HttpOnly SameSite=Strict session cookie')
         signed_sid=client.cookies.get('sunrise_a_sid')
         require(bool(signed_sid),'Authenticated browser session cookie absent')
         sid=URLSafeTimedSerializer(secret,salt='sunrise-a-session').loads(
