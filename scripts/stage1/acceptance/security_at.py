@@ -90,6 +90,62 @@ def native_compose_secret_preflight(args):
     return tested
 
 
+
+def native_process_secret_fail_start(args):
+    """Run the *attested image entrypoint* on an isolated, networkless process.
+
+    A Docker Compose --quiet config rejection alone does not prove Native
+    process safety. Baseline entrypoint must exec /bin/true; each missing
+    secret must exit with the specific patched-entrypoint error. No API,
+    Worker, SurrealDB or external network starts during these probes.
+    """
+    identity,_,_=verify_manifest(args.runtime_identity,args.context,args.project,
+                                 args.source_sha,args.source_tree)
+    image=identity['services']['open_notebook']['image_id']
+    required=('OPEN_NOTEBOOK_PASSWORD','OPEN_NOTEBOOK_ENCRYPTION_KEY',
+              'SURREAL_USER','SURREAL_PASSWORD')
+    if any(not os.getenv(k) for k in required):
+        raise RuntimeError('Pinned Native process smoke requires operator secrets in private env')
+    base=['docker','--context',args.context,'run','--rm','--network','none',
+          '--security-opt','no-new-privileges','--pids-limit','64',
+          '--entrypoint','/app/scripts/docker-entrypoint.sh',
+          '-e','OPEN_NOTEBOOK_PASSWORD_FILE=',
+          '-e','OPEN_NOTEBOOK_ENCRYPTION_KEY_FILE=',
+          '-e','OPEN_NOTEBOOK_ENABLE_DOCLING=false',
+          '-e','OPEN_NOTEBOOK_ENABLE_CRAWL4AI=false']
+    for key in required:
+        base.extend(['-e',key])
+    # -e KEY inherits a value from the local operator env, NEVER its text in
+    # command arguments. The Docker image is pinned to the exact identity.
+    def invoke(key=None,value=None):
+        cmd=base.copy()
+        if key:
+            cmd.extend(['-e',key+'='+value])
+        cmd.extend([image,'/bin/true'])
+        proc=subprocess.run(cmd,capture_output=True,text=True,timeout=90)
+        return proc.returncode,proc.stdout+proc.stderr
+    status,output=invoke()
+    if status!=0 or 'Starting Open Notebook.' not in output:
+        raise AssertionError('Baseline attested Native entrypoint did not run successfully')
+    completed=[]
+    for key in required:
+        status,output=invoke(key,'')
+        if status!=78 or 'SUNRISE_NATIVE_SECRET_FAIL_START: '+key not in output:
+            raise AssertionError('Pinned Native process did not fail-start missing '+key)
+        completed.append(key)
+    for key,value in (('OPEN_NOTEBOOK_PASSWORD','password'),
+                      ('OPEN_NOTEBOOK_ENCRYPTION_KEY','changeme'),
+                      ('SURREAL_PASSWORD','root:root')):
+        status,output=invoke(key,value)
+        if status!=78 or 'SUNRISE_NATIVE_SECRET_FAIL_START: '+key not in output:
+            raise AssertionError('Pinned Native process accepted example secret '+key)
+    return {'image_id':image,'baseline_entrypoint':'PASS',
+            'missing_secret_rejected':completed,
+            'weak_example_secret_rejected':True,
+            'network':'none','native_api_worker_started':False}
+
+
+
 def public_port_denials(args):
     identity,mappings,_=verify_manifest(args.runtime_identity,args.context,args.project,
                                          args.source_sha,args.source_tree)
@@ -172,11 +228,8 @@ def main():
             tested=native_compose_secret_preflight(args)
             report['gateway_secret_fail_start']='PASS'
             report['pinned_native_compose_required_secrets']=tested
-            report['direct_native_process_missing_secret_test']='NOT_RUN'
-            report['status']='PARTIAL_NEEDS_NATIVE_PROCESS_FAIL_START'
-            # Compose variable interpolation is useful evidence, but cannot
-            # prove that the pinned Native process rejects example passwords.
-            raise SystemExit(2)
+            report['direct_native_process_missing_secret_test']=native_process_secret_fail_start(args)
+            report['status']='PASS'
         else:
             report['private_ports']=public_port_denials(args)
             report.update(gateway_negative(args,args.at_id))
