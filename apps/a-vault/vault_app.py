@@ -174,7 +174,10 @@ def build_app(cfg:Settings|None=None,native=None):
         host=req.url.hostname
         if host not in ('127.0.0.1','localhost','testserver','::1'):
             return JSONResponse({'detail':'Loopback-only synthetic gateway'},status_code=403)
-        mutation=req.method.upper() not in ('GET','HEAD','OPTIONS')
+        # GET /materials may cause pinned Native last_viewed_at DB writes.
+        # During cold capture freeze *all* routes except the read-only /health
+        # barrier, including reads, before snapshotting the shared ON DB.
+        mutation=req.url.path!='/health'
         if mutation:
             with maintenance_lock:
                 if cfg.maintenance_file and Path(cfg.maintenance_file).exists():
