@@ -99,7 +99,37 @@ def validate(root, check_manifest=True):
  adrs=list((root/'docs/decisions').glob('ADR-*.md'))
  ck(sorted(int(p.name.split('-')[1]) for p in adrs)==list(range(11,23)),'new ADR011..022 only (legacy GitHub ADRs untouched)')
  ck((root/'.github/CODEOWNERS').read_text().endswith('* @Enochan222\n'),'new repo CODEOWNERS owner matches')
- ck(not list((root/'.github/workflows').glob('*.yml')) and not list((root/'.github/workflows').glob('*.yaml')), 'no GitHub Actions workflows retained')
+ # Historical D08 remains unchanged; only two Owner-approved Stage1 workflow files are permitted.
+ wfdir=root/'.github/workflows'
+ present={p.name for p in wfdir.iterdir() if p.is_file()} if wfdir.exists() else set()
+ permitted={'stage1-light.yml','stage1-native-integration.yml'}
+ ck(present.issubset(permitted),'only approved Stage1 workflow names allowed')
+ ck(not present or (root/'docs/decisions/STAGE1_LIMITED_CI_ADDENDUM.md').is_file(),'Stage1 CI addendum present')
+ for name in sorted(present):
+  body=(wfdir/name).read_text(encoding='utf-8')
+  normalized=[line.strip() for line in body.splitlines()]
+  ck(bool(re.search(r'(?m)^permissions:\s*\n\s{2}contents:\s*read\s*$',body)),'read-only root token permissions')
+  ck(not re.search(r'(?m)^\s*[-\w]+:\s*write\s*(?:#.*)?$',body) and not re.search(r'(?m)^\s*permissions:\s*write-all\b',body),'no token write scope')
+  ck(not re.search(r'\$\{\{\s*secrets\.',body),'no GitHub Secrets interpolation')
+  ck(bool(re.search(r'(?m)^\s*persist-credentials:\s*false\s*$',body)),'checkout credentials not persisted')
+  forbidden=r'(?m)^\s*(?:push|schedule|pull_request_target|workflow_call|repository_dispatch|workflow_run)\s*:'
+  ck(not re.search(forbidden,body),'no forbidden event triggers')
+  uses=[line.split('uses:',1)[1].strip().split('#')[0].strip() for line in normalized if line.startswith('uses:') or line.startswith('- uses:')]
+  ck(bool(uses) and all(re.fullmatch(r'actions/(checkout|setup-python)@[0-9a-f]{40}',v) for v in uses),'only approved immutable action references')
+  ck(bool(re.search(r'(?m)^\s*runs-on:\s*ubuntu-24\.04\s*$',body)),'Ubuntu 24.04 runner')
+  times=re.findall(r'(?m)^\s*timeout-minutes:\s*(\d+)\s*$',body)
+  ck(bool(times) and all(0<int(t)<=(5 if name=='stage1-light.yml' else 30) for t in times),'job timeouts bounded')
+  events=[]
+  active=False
+  for line in body.splitlines():
+   if line=='on:':active=True;continue
+   if active and line and not line[0].isspace():active=False
+   if active:
+    event=re.match(r'^  ([\w-]+):',line)
+    if event:events.append(event.group(1))
+  ck(events==(['pull_request'] if name=='stage1-light.yml' else ['workflow_dispatch']),'exact authorized event mode')
+  if name=='stage1-light.yml':
+   ck('!github.event.pull_request.draft' in body and 'cancel-in-progress: true' in body and 'paths:' in normalized,'skip Draft and restrict paths/concurrency')
  ck('GitHub Actions' in load('docs/delivery/NEW_REPO_STAGE0.md') and 'DISABLED' in load('README.md'), 'current No-Actions operating contract present')
  for f in ('AGENTS.md','README.md','INSTRUCTIONS.md','docs/delivery/HANDOVER.md','docs/delivery/PROJECT_STATUS.md'):
   ck('v0.5' in load(f) or 'v0.7' in load(f),f'{f} clear version')
