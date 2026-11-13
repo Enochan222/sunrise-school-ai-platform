@@ -1,0 +1,104 @@
+name: Stage 1 A - Manual Native Integration
+on:
+  workflow_dispatch:
+    inputs:
+      target_ref:
+        description: 'Exact reviewed tested 40-hex Git SHA'
+        type: string
+        required: true
+      surreal_digest:
+        description: 'Compatible approved SurrealDB v2.3.10 image 64-hex SHA256 digest'
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: stage1-native-${{ inputs.target_ref }}
+  cancel-in-progress: false
+jobs:
+  native:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Validate requested revision and image digest
+        shell: bash
+        env:
+          TARGET_REF: ${{ inputs.target_ref }}
+          SURREAL_DIGEST: ${{ inputs.surreal_digest }}
+        run: |
+          set -Eeuo pipefail
+          [[ "$TARGET_REF" =~ ^[0-9a-f]{40}$ ]] || { echo 'Expected a full commit SHA'; exit 2; }
+          [[ "$SURREAL_DIGEST" =~ ^[0-9a-f]{64}$ ]] || { echo 'Expected a full image digest'; exit 2; }
+          echo "WORKFLOW_SHA=$GITHUB_SHA REQUESTED_SHA=$TARGET_REF UTC=$(date -u +%FT%TZ)"
+      - name: Checkout reviewed Stage 1 SHA
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # reviewed v4.2.2
+        with:
+          ref: ${{ inputs.target_ref }}
+          persist-credentials: false
+      - name: Python 3.12 driver
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # reviewed v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Pinned real Native Runtime smoke (NO deployment)
+        shell: bash
+        env:
+          SOURCE_PIN: 5e285b7a2e435895c4ee99ad7e4b8d2af64c3239
+          TREE_PIN: 2d101001de594c7d6a0e4aaeb8e85ac4c52980af
+          TARGET_REF: ${{ inputs.target_ref }}
+          SURREAL_DIGEST: ${{ inputs.surreal_digest }}
+        run: |
+          set -Eeuo pipefail
+          [[ "$TARGET_REF" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid reviewed SHA'; exit 2; }
+          [[ "$(git rev-parse HEAD)" == "$TARGET_REF" ]] || { echo 'Tested git SHA mismatch'; exit 2; }
+          [[ "$SURREAL_DIGEST" =~ ^[0-9a-f]{64}$ ]] || { echo 'Missing immutable SurrealDB digest'; exit 2; }
+          echo "TESTED_SHA=$TARGET_REF UTC=$(date -u +%FT%TZ)"
+          SURREAL_USER="sunrise_$(python -c 'import secrets; print(secrets.token_hex(5))')"
+          SURREAL_PASSWORD="$(python -c 'import secrets; print(secrets.token_urlsafe(42))')"
+          OPEN_NOTEBOOK_PASSWORD="$(python -c 'import secrets; print(secrets.token_urlsafe(42))')"
+          OPEN_NOTEBOOK_ENCRYPTION_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
+          for value in "$SURREAL_PASSWORD" "$OPEN_NOTEBOOK_PASSWORD" "$OPEN_NOTEBOOK_ENCRYPTION_KEY"; do echo "::add-mask::$value"; done
+          export SURREAL_USER SURREAL_PASSWORD OPEN_NOTEBOOK_PASSWORD OPEN_NOTEBOOK_ENCRYPTION_KEY
+          export ON_SOURCE_DIR="$RUNNER_TEMP/on-verified"
+          export ON_PATCHED_DIR="$RUNNER_TEMP/on-patched"
+          COMPOSE="scripts/stage1/compose.native.synthetic.yml"
+          OVERRIDE="$RUNNER_TEMP/surreal-immutable-override.yml"
+          IMAGE="surrealdb/surrealdb@sha256:$SURREAL_DIGEST"
+          trap 'docker compose -f "$COMPOSE" -f "$OVERRIDE" down --volumes --remove-orphans >/dev/null 2>&1 || true' EXIT
+          git clone --quiet https://github.com/lfnovo/open-notebook.git "$ON_SOURCE_DIR"
+          git -C "$ON_SOURCE_DIR" checkout --quiet --detach "$SOURCE_PIN"
+          [[ "$(git -C "$ON_SOURCE_DIR" rev-parse HEAD)" == "$SOURCE_PIN" ]]
+          [[ "$(git -C "$ON_SOURCE_DIR" rev-parse HEAD^{tree})" == "$TREE_PIN" ]]
+          bash scripts/stage1/prepare_native_checkout.sh
+          echo "PINNED_SOURCE_AND_PATCH_PROVENANCE=VERIFIED"
+          cat "$ON_PATCHED_DIR/.sunrise-patch-provenance.json"
+          sha256sum scripts/stage1/{patch_pinned_native.py,prepare_native_checkout.sh,native_runtime_smoke.py,compose.native.synthetic.yml}
+          docker pull "$IMAGE"
+          docker run --rm --network none "$IMAGE" version | tee "$RUNNER_TEMP/surreal-version.txt"
+          grep -F '2.3.10' "$RUNNER_TEMP/surreal-version.txt"
+          printf 'services:\n  surrealdb:\n    image: surrealdb/surrealdb@sha256:%s\n' "$SURREAL_DIGEST" > "$OVERRIDE"
+          docker compose -f "$COMPOSE" -f "$OVERRIDE" config --quiet
+          docker compose -f "$COMPOSE" -f "$OVERRIDE" up --build -d
+          docker image inspect sunrise-on-s1-v1.15.1-text-only:local --format '{{.Id}}'
+          docker image inspect "$IMAGE" --format '{{.Id}} {{json .RepoDigests}}'
+          READY=0
+          for attempt in $(seq 1 80); do
+            if curl --silent --fail http://127.0.0.1:5055/health >/dev/null 2>&1; then READY=1; break; fi
+            sleep 3
+          done
+          [[ "$READY" == 1 ]] || { echo 'FAIL: ON API startup/migration'; exit 1; }
+          python -m pip install --disable-pip-version-check -r apps/a-vault/requirements-dev.txt
+          python scripts/stage1/native_runtime_smoke.py --host http://127.0.0.1:5055 --out "$RUNNER_TEMP/native-runtime-redacted.json"
+          python - "$RUNNER_TEMP/native-runtime-redacted.json" <<'PY'
+          import json,sys
+          x=json.load(open(sys.argv[1],encoding='utf-8'))
+          if x['status']!='PASS':raise SystemExit('Native smoke reported FAIL')
+          # Source readback is not a Graph Link/Unlink or School IDOR negative test.
+          tests=dict(x['runtime_tests'])
+          if tests.pop('graph_owner_readback',None)=='PASS':tests['owner_readback_partial']='PASS (partial only)'
+          for name in ['actual_link_unlink_negative','ack_loss_crash_injection','worker_retry_fault_injection','independent_restore','owner_uat']:
+              tests[name]='NOT_RUN'
+          print('RUNTIME_PROBE_RESULTS='+json.dumps(tests,ensure_ascii=False,sort_keys=True))
+          print('START_UTC='+x.get('start_utc','')+' END_UTC='+x.get('end_utc',''))
+          print('PDF_SHA256='+x.get('pdf_sha256','')+' SOURCE_PIN='+x.get('source_pin',''))
+          PY
