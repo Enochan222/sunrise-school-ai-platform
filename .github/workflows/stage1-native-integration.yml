@@ -118,6 +118,40 @@ jobs:
           observed=result.get('results',{})
           if result.get('status')!='PASS' or any(observed.get(k)!='PASS' for k in required):
               raise SystemExit('WP03 real DB and Native smoke incomplete or FAIL')
+          # The original seven flat PASS flags are necessary, not sufficient.
+          # Reject absent/malformed nested race and real lost-ACK evidence.
+          import re
+          modes={'same_key_same_body','different_key_same_scope','same_key_different_body'}
+          races=observed.get('fresh_first_reservation_races')
+          if not isinstance(races,dict) or set(races)!=modes:
+              raise SystemExit('WP03 missing three fresh first-reservation race modes')
+          for mode in sorted(modes):
+              item=races[mode]
+              if not isinstance(item,dict):
+                  raise SystemExit('WP03 malformed race mode: '+mode)
+              counts=item.get('outcomes')
+              if (not isinstance(counts,dict) or
+                  set(counts)-{'FRESH','REPLAY','CONFLICT','INDETERMINATE'} or
+                  any(type(v) is not int or v<0 for v in counts.values()) or
+                  counts.get('FRESH')!=1 or counts.get('REPLAY',0)!=0 or
+                  sum(counts.values())!=8):
+                  raise SystemExit('WP03 first-claim count/race violated: '+mode)
+              for key in ('durable_operations','durable_scope_claims',
+                          'durable_shells','native_create_posts'):
+                  if type(item.get(key)) is not int or item[key]!=1:
+                      raise SystemExit('WP03 native durable race result incomplete: '+mode+'.'+key)
+          ack=observed.get('real_native_lost_ack_tcp')
+          if (not isinstance(ack,dict) or
+              type(ack.get('native_create_posts')) is not int or
+              ack['native_create_posts']!=1 or
+              ack.get('client_received_post_ack') is not False or
+              type(ack.get('persisted_mapping_count')) is not int or
+              ack['persisted_mapping_count']!=1 or
+              not isinstance(ack.get('original_notebook_sha256'),str) or
+              not re.fullmatch('[a-f0-9]{64}',ack['original_notebook_sha256'])):
+              raise SystemExit('WP03 genuine TCP lost-ACK recovery not proven')
+          print('WP03_FRESH_RACES_VALIDATED='+','.join(sorted(modes)))
+          print('WP03_TCP_LOST_ACK_VALIDATED=TRUE')
           print('WP03_REAL_RUNTIME_RESULTS='+json.dumps({k:observed[k] for k in sorted(required)}))
           print('WP03_START_UTC='+result.get('start_utc','')+
                 ' END_UTC='+result.get('end_utc',''))
