@@ -4,6 +4,7 @@ Source-only authoring during Owner's coding-only sprint; DO NOT claim PASS
 until this file is run on a reviewer-approved exact tested SHA.
 """
 from html.parser import HTMLParser
+from dataclasses import replace
 from pathlib import Path
 import sys
 
@@ -122,3 +123,49 @@ def test_session_logout_revokes_admin_route(client):
     assert out.status_code==200
     assert client.get('/admin').status_code==401
 
+
+
+def test_trusted_two_school_switch_is_server_held_and_rotates_csrf(tmp_path):
+    cfg=replace(settings(tmp_path),
+        school_allowlist=('synthetic-a','synthetic-b'))
+    with TestClient(build_app(cfg,native=object())) as client:
+        response,controls=login_form(client)
+        accepted=client.post('/auth/login',headers={'Accept':'application/json'},
+            data={'csrf':controls.inputs['csrf']['value'],
+                  'password':'synthetic-ui-secret'})
+        assert accepted.status_code==200
+        before=client.get('/auth/me').json()
+        assert before['school_id']=='synthetic-a'
+        assert set(before['available_schools'])=={'synthetic-a','synthetic-b'}
+        assert client.get('/auth/me',
+            headers={'X-School-ID':'synthetic-b'}).json()['school_id']=='synthetic-a'
+        ui=client.get('/admin')
+        assert ui.status_code==200
+        html=Controls();html.feed(ui.text)
+        assert {'switch-school','school-choice','switch-school-submit'}.issubset(html.ids)
+        bad=client.post('/auth/school',
+            headers={'X-CSRF-Token':before['csrf_token']},json={'school_id':'evil'})
+        assert bad.status_code==403
+        assert client.get('/auth/me').json()['school_id']=='synthetic-a'
+        changed=client.post('/auth/school',
+            headers={'X-CSRF-Token':before['csrf_token']},json={'school_id':'synthetic-b'})
+        assert changed.status_code==200
+        switched=client.get('/auth/me').json()
+        assert switched['school_id']=='synthetic-b'
+        assert switched['csrf_token']!=before['csrf_token']
+        assert client.post('/auth/school',
+            headers={'X-CSRF-Token':before['csrf_token']},
+            json={'school_id':'synthetic-a'}).status_code==403
+        assert client.get('/auth/me',
+            headers={'X-School-ID':'synthetic-a'}).json()['school_id']=='synthetic-b'
+        assert client.get('/vault/v1/shells').json()=={'shells':[]}
+        assert client.post('/auth/logout',
+            headers={'X-CSRF-Token':switched['csrf_token']}).status_code==200
+        assert client.get('/admin').status_code==401
+
+
+def test_unapproved_school_allowlist_fails_app_start(tmp_path):
+    cfg=replace(settings(tmp_path),
+        school_allowlist=('synthetic-b',))
+    with pytest.raises(ValueError):
+        build_app(cfg,native=object())
