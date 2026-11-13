@@ -71,7 +71,12 @@ def main():
         raise BackupInvalid('Native source/graph/original readback not proven: '+str(last))
     before=json.loads((args.workdir/'gateway'/'native-pre-capture-readback.json').read_text())
     identity_fields=('source_owner_count','shell_count','verified_original_count',
-                     'owned_source_graph_hash','text_only_patch_attested')
+                     'owned_source_graph_hash','rights_retention_initial_version_sha256',
+                     'rights_retention_initial_version_count','text_only_patch_attested')
+    if (not isinstance(output.get('rights_retention_initial_version_sha256'),str)
+            or len(output['rights_retention_initial_version_sha256'])!=64
+            or output.get('rights_retention_initial_version_count')!=output.get('source_owner_count')):
+        raise BackupInvalid('Native restored rights/version inventory incomplete')
     if (before.get('classification')!='NATIVE_OWNER_READBACK_NOT_FORMAL_AT'
             or any(before.get(key)!=output.get(key) for key in identity_fields)):
         raise BackupInvalid('Native original PDF/graph/source ownership differs from source recovery point')
