@@ -115,6 +115,18 @@ def gateway_negative(args,at):
         ensure(base.hostname in ('127.0.0.1','localhost','::1'),'Unencrypted gateway is never remote')
     with httpx.Client(base_url=args.gateway,verify=True,trust_env=False,
                       follow_redirects=False,timeout=10) as c:
+        # Bind HTTPS/loopback observer result to the actual private Gateway
+        # instance captured alongside the Docker Compose project.
+        manifest=json.loads(args.runtime_identity.read_text(encoding='utf-8'))
+        instance=manifest.get('gateway',{}).get('instance_id')
+        if not isinstance(instance,str) or len(instance)!=32:
+            raise RuntimeError('Missing captured Gateway instance identity')
+        health=c.get('/health')
+        ensure(health.status_code==200,'Gateway health endpoint is unavailable')
+        result=health.json()
+        ensure(result.get('gateway')=='running' and
+               result.get('gateway_instance')==instance,
+               'Observed HTTP endpoint is not the attested private Gateway process')
         # Authenticated API must never leak an anonymous school or Source.
         for path in ('/vault/v1/shells','/vault/v1/shells/foreign',
                      '/vault/v1/shells/foreign/materials','/admin'):
@@ -129,7 +141,14 @@ def gateway_negative(args,at):
             for path in ('/api/notebooks','/api/search'):
                 denied=c.post(path,json={'invalid':True})
                 ensure(denied.status_code in (401,403,404),'Raw Native POST available')
-        return {'gateway_https_verified':base.scheme=='https','anonymous_denied':True}
+            for path in ('/api/notebooks/synthetic-nonexistent',
+                         '/api/notebooks/synthetic-nonexistent/sources/synthetic-nonexistent',
+                         '/api/sources/synthetic-nonexistent'):
+                denied=c.delete(path)
+                ensure(denied.status_code in (401,403,404),'Raw Native DELETE available')
+        return {'gateway_https_verified':base.scheme=='https',
+                'gateway_instance_attested':True,'anonymous_denied':True,
+                'raw_native_get_post_delete_negative':at in ('S1-AT02','S1-AT09')}
 
 
 def main():
@@ -160,6 +179,11 @@ def main():
         else:
             report['private_ports']=public_port_denials(args)
             report.update(gateway_negative(args,args.at_id))
+        if args.at_id=='S1-AT07':
+            report['unique_admin_full_login_audit']='NOT_RUN'
+            report['real_student_data_absence_audit']='NOT_RUN'
+            report['status']='PARTIAL_NEEDS_INDEPENDENT_DATA_AND_ADMIN_AUDIT'
+            raise SystemExit(2)
         report['status']='PASS'
     except Exception as error:
         report['status']='FAIL';report['error_type']=type(error).__name__
