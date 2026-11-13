@@ -23,9 +23,10 @@ STAGE=ROOT/'scripts/stage1'
 AT_DIR=STAGE/'acceptance'
 # Exercise the real HTTP journey before cold capture, but do not adjudicate
 # AT01 until AT04, AT05, AT15 and a genuine Chromium journey have completed.
-RUN_ORDER=('S1-AT02','S1-AT03','S1-AT04','S1-AT06',
+RUN_ORDER=('S1-AT02','S1-AT03','S1-AT06',
            'S1-AT07','S1-AT08','S1-AT09','S1-AT10','S1-AT11',
-           'S1-AT14','S1-AT15','S1-AT05','S1-AT12','S1-AT01','S1-AT13')
+           'S1-AT14','S1-AT15','S1-AT04','S1-AT05',
+           'S1-AT12','S1-AT01','S1-AT13')
 CASES={
     'S1-AT01':(STAGE/'real_admin_journey.py','journey'),
     'S1-AT02':(AT_DIR/'security_at.py','security'),
@@ -209,10 +210,15 @@ def run_regular(at,config,output):
     return detail,hashlib.sha256(evidence.read_bytes()).hexdigest()
 
 
-def run_admin_preflight(config, output):
+def run_admin_preflight(config, output, source_sha, source_tree):
     """Create actual synthetic material before cold capture; NEVER label this full AT01."""
     diagnostic=output/'S1-AT01-native.json'
     flags=config.get('case_flags',{}).get('S1-AT01')
+    if not isinstance(flags,dict) or any(
+            flags.get(k,expected)!=expected for k,expected in (
+                ('--source-sha',source_sha),('--source-tree',source_tree))):
+        raise IncompleteAT('Native Admin source identity missing or inconsistent')
+    flags={**flags,'--source-sha':source_sha,'--source-tree':source_tree}
     step=subprocess_case(STAGE/'real_admin_journey.py',flags,diagnostic)
     result=read_json(diagnostic)
     required=('admin_login_and_private_session','surreal_durable_native_notebook_unique',
@@ -221,6 +227,8 @@ def run_admin_preflight(config, output):
               'original_pdf_hash_and_authorization','archive_non_destructive',
               'logout_session_revocation')
     if (result.get('result')!='PARTIAL_PASSED_WITH_UNRUN_GATES'
+            or result.get('source_commit')!=source_sha
+            or result.get('source_tree')!=source_tree
             or result.get('formal_s1_at01_15')!='NOT_RUN'
             or any(result.get('results',{}).get(name)!='PASS' for name in required)):
         raise IncompleteAT('Real native Admin preflight incomplete; never synthesize component PASS')
@@ -384,7 +392,7 @@ def main():
             report['cases']['S1-AT01']={'status':'RUNNING_NATIVE_PREFLIGHT',
                 'start_utc':timestamp()}
             try:
-                preflight=run_admin_preflight(config,args.output_dir)
+                preflight=run_admin_preflight(config,args.output_dir,args.source_sha,args.source_tree)
                 report['cases']['S1-AT01']['status']='PENDING_INDEPENDENT_GATES'
             except Exception as exc:
                 report['cases']['S1-AT01']={'status':'FAIL',
