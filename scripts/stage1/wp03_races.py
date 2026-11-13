@@ -16,7 +16,7 @@ from native import Native
 from native_ack_loss_probe import create_and_drop_ack
 
 
-def first_reservation_races(configuration,actor,workers=8):
+def first_reservation_races(configuration,actor,secret=None,workers=8):
     evidence={}
     for mode in ('same_key_same_body','different_key_same_scope','same_key_different_body'):
         school='synthetic-first-race-'+secrets.token_hex(8)
@@ -52,8 +52,37 @@ def first_reservation_races(configuration,actor,workers=8):
         persisted=journal.operation(school,winner[1],'shell')
         if persisted['shell_id']!=winner[3] or persisted['payload_sha']!=_digest(winner[2]):
             raise AssertionError('First-claim winner does not match durable journal')
+        verified_native_posts=0
+        mapped_shells=0
+        if secret:
+            # Only the one durable FIRST claimant is permitted to create upstream.
+            marker=persisted['marker']
+            native=Native('http://127.0.0.1:5055',secret)
+            async def create_once():
+                notebook=await native.create_notebook('SYNTHETIC FIRST CLAIM '+mode,marker=marker)
+                identities=await native.find_notebooks_by_marker(marker)
+                if identities!=[notebook]:
+                    raise AssertionError('Native marker is not exclusively linked to first claim')
+                return notebook
+            notebook=asyncio.run(create_once())
+            confirmed=journal.complete_shell(school,winner[1],
+                {'shell_id':persisted['shell_id'],'school_id':school,**winner[2]},notebook)
+            if confirmed['notebook_id']!=notebook:
+                raise AssertionError('First claimant Notebook mapping corrupt')
+            mapped_shells=1
+            verified_native_posts=1
+            # Retry the originally disputed operations after creation; no request
+            # may become a fresh claimant or generate a second native side effect.
+            for status,key,body,_ in outcomes:
+                if status=='FRESH':continue
+                try:
+                    replay,created=journal.start_shell(school,key,body)
+                    if created or replay['notebook_id']!=notebook:
+                        raise AssertionError('Another native claim was granted after commit')
+                except Conflict:
+                    continue
         evidence[mode]={'outcomes':dict(verdicts),'durable_operations':1,'durable_scope_claims':1,
-                        'durable_shells':0,'native_create_posts':0}
+                        'durable_shells':mapped_shells,'native_create_posts':verified_native_posts}
     return evidence
 
 
