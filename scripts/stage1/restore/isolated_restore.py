@@ -306,6 +306,10 @@ def main():
     target_volumes=set(target_after['volumes'].values())
     if source_volumes & target_volumes:
         raise BackupInvalid('Independent target reused source persistent volume')
+    source_network_ids={identity['services'][service]['network_id']
+                        for service in ('a_db','on_db','native')}
+    if source_network_ids & set(target_after['network_ids'].values()):
+        raise BackupInvalid('Independent target shares source physical Docker network ID')
     summary={'utc':datetime.now(timezone.utc).isoformat(),
         'recovery_point':manifest['recovery_point_id'],
         'source_commit':args.source_sha,'source_tree':args.source_tree,
