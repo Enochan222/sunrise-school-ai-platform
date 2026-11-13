@@ -127,6 +127,11 @@ def build_app(cfg:Settings|None=None,native=None):
         if not s:raise HTTPException(404,'Shell not found')
         return s
 
+    def material_actor_options(principal):
+        # Formal A SurrealDB operation identity follows verified JWT subject;
+        # legacy SQLite is exclusively a synthetic fixture without service IAM.
+        return {'actor_id':principal['actor_id']} if isinstance(store,SurrealStore) else {}
+
     def return_error(e):
         if isinstance(e,Conflict): raise HTTPException(409,str(e))
         if isinstance(e,(Indeterminate,NativeUnavailable)): raise HTTPException(503,'Native operation not confirmed; fail closed')
@@ -289,7 +294,7 @@ def build_app(cfg:Settings|None=None,native=None):
         if not ID_RE.fullmatch(key):raise HTTPException(400,'Idempotency-Key required for upload')
         fingerprint=hashlib.sha256(json.dumps([digest,title,license,retention,name],separators=(',',':')).encode()).hexdigest()
         try:
-            receipt_old,is_new=store.start_material(p['school_id'],shell_id,key,fingerprint)
+            receipt_old,is_new=store.start_material(p['school_id'],shell_id,key,fingerprint,**material_actor_options(p))
         except (Conflict,Indeterminate) as e:return_error(e)
         if not is_new:
             return JSONResponse({'source_id':receipt_old['source_id'],'sha256':receipt_old['sha256'],
@@ -299,13 +304,13 @@ def build_app(cfg:Settings|None=None,native=None):
             source_id=receipt['id']
             # Do not expose uncertain source if ownership cannot be confirmed.
             await upstream.ensure_owned(source_id,s['notebook_id'])
-            store.finish_material(p['school_id'],shell_id,key,source_id,title,digest,name,license,retention)
+            store.finish_material(p['school_id'],shell_id,key,source_id,title,digest,name,license,retention,**material_actor_options(p))
             return {'source_id':source_id,'sha256':digest,'state':'SUBMITTED_NATIVE_PROCESSING','version':1}
         except (NativeUnavailable,NativeOwnershipError) as e:
-            store.quarantine_material(p['school_id'],shell_id,key)
+            store.quarantine_material(p['school_id'],shell_id,key,**material_actor_options(p))
             return_error(e)
         except Exception as e:
-            store.quarantine_material(p['school_id'],shell_id,key)
+            store.quarantine_material(p['school_id'],shell_id,key,**material_actor_options(p))
             raise HTTPException(503,'Source mapping unconfirmed; manual reconciliation required') from e
 
     @app.get('/vault/v1/shells/{shell_id}/materials/{source_id}/download')
