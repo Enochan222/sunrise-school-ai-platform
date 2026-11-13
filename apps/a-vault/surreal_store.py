@@ -33,6 +33,7 @@ DEFINE TABLE IF NOT EXISTS vault_operation SCHEMALESS;
 DEFINE TABLE IF NOT EXISTS vault_scope_claim SCHEMALESS;
 DEFINE TABLE IF NOT EXISTS source_owner SCHEMALESS;
 DEFINE TABLE IF NOT EXISTS vault_session SCHEMALESS;
+DEFINE TABLE IF NOT EXISTS vault_audit SCHEMALESS;
 DEFINE INDEX IF NOT EXISTS shell_scope_unique ON TABLE content_shell FIELDS school_id, academic_year, grade, subject, curriculum_stream UNIQUE;
 DEFINE INDEX IF NOT EXISTS shell_notebook_unique ON TABLE content_shell FIELDS notebook_id UNIQUE;
 DEFINE INDEX IF NOT EXISTS op_key_unique ON TABLE vault_operation FIELDS school_id, actor_id, kind, idempotency_key UNIQUE;
@@ -100,7 +101,7 @@ def _digest(*parts):
 
 def _record(table, *parts):
     # Record IDs are built only from fixed table names and SHA-256 hex, never user text.
-    assert table in ('content_shell','vault_operation','vault_scope_claim','source_owner','vault_session')
+    assert table in ('content_shell','vault_operation','vault_scope_claim','source_owner','vault_session','vault_audit')
     return f'{table}:{_digest(*parts)}'
 
 
@@ -350,11 +351,39 @@ class SurrealStore:
         self.query('CREATE ONLY type::record($rid) CONTENT $doc;',rid=rid,
                    doc={'sid_hash':_digest(sid),'school_id':school_id,'csrf':csrf,'expires':_now()+seconds})
 
-    def session(self,sid,school_id):
+    def session(self,sid,school_id=None):
         rid=_record('vault_session',sid)
-        row=self._first(self.query('SELECT * FROM type::record($rid) WHERE school_id=$school AND expires>$now;',
-                rid=rid,school=school_id,now=_now()))
-        return row
+        if school_id is None:
+            return self._first(self.query(
+                'SELECT * FROM type::record($rid) WHERE expires>$now;',
+                rid=rid,now=_now()))
+        return self._first(self.query(
+            'SELECT * FROM type::record($rid) WHERE school_id=$school AND expires>$now;',
+            rid=rid,school=school_id,now=_now()))
+
+    def switch_school(self,sid,old_school,new_school,old_csrf,new_csrf,actor_id):
+        # One compare-and-set of the active session is authoritative.
+        # A stale/replayed CSRF cannot flip school; caller reads active school
+        # from this server-held record, NEVER from any browser header.
+        rid=_record('vault_session',sid)
+        results=self.query(
+            'UPDATE type::record($rid) SET school_id=$new_school,csrf=$new_csrf '
+            'WHERE school_id=$old_school AND csrf=$old_csrf AND expires>$now;',
+            rid=rid,new_school=new_school,new_csrf=new_csrf,old_school=old_school,
+            old_csrf=old_csrf,now=_now())
+        changed=results[-1] if results else None
+        if not isinstance(changed,list) or len(changed)!=1:
+            raise Indeterminate('Concurrent school switch or stale CSRF; session must be rechecked')
+        confirmed=self.session(sid,new_school)
+        if not confirmed or confirmed.get('csrf')!=new_csrf:
+            raise Indeterminate('School context rotation not durably verified')
+        # Audit has no raw cookie or CSRF; an audit failure blocks normal success.
+        audit_id=_record('vault_audit',sid,new_school,new_csrf)
+        self.query('CREATE ONLY type::record($rid) CONTENT $doc;',rid=audit_id,
+            doc={'kind':'admin_school_switch','actor_id':actor_id,
+                 'previous_school':old_school,'active_school':new_school,
+                 'session_hash':_digest(sid),'created_at':_now()})
+        return {'school_id':new_school,'csrf':new_csrf}
 
     def del_session(self,sid):
         self.query('DELETE type::record($rid);',rid=_record('vault_session',sid))
