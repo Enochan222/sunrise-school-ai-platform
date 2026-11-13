@@ -66,8 +66,13 @@ def inspect_port_pair(service, backend, relay, project, native_image):
     require(relay.get("Config", {}).get("Cmd")
             == ["--role", service, "--listen", str(port)],
             "Unexpected relay destination/command")
-    require(not any(x.get("Type") == "volume" for x in relay.get("Mounts", [])),
-            "Relay must not inherit database or Native volumes")
+    mounts=relay.get("Mounts") or []
+    require(len(mounts)==1 and mounts[0].get("Type")=="bind"
+            and mounts[0].get("Destination")=="/relay.py"
+            and mounts[0].get("RW") is False,
+            "Relay may only mount immutable source-owned proxy script")
+    require("ALL" in (relay.get("HostConfig",{}).get("CapDrop") or []),
+            "Relay must drop all Linux capabilities")
     bindings = relay.get("NetworkSettings", {}).get("Ports") or {}
     require(set(k for k,v in bindings.items() if v) == {port_name},
             "Relay missing/extra dynamic host binding")
