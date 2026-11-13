@@ -148,3 +148,36 @@ def test_cold_bundle_digest_is_streamed_not_loaded_whole(tmp_path,monkeypatch):
     # The archive is deliberately larger than the reader's 1 MiB chunk.
     assert len(payload)>1024*1024
     assert r.sha256_file(target)==expected
+
+
+def test_service_jwt_probe_uses_cookie_free_client(monkeypatch):
+    # AT14 must not accidentally authorize a JWT through an existing Admin
+    # session cookie. This test is a local fixture, NOT real HTTP acceptance.
+    from types import SimpleNamespace
+    import http_boundaries as h
+    monkeypatch.setenv('VAULT_TEST_SERVICE_A','synthetic-allow')
+    monkeypatch.setenv('VAULT_TEST_SERVICE_WRONG_SCOPE','synthetic-wrong-scope')
+    monkeypatch.setenv('VAULT_TEST_SERVICE_FOREIGN_SCHOOL','synthetic-foreign')
+    admin=object()
+    monkeypatch.setattr(h,'authorized_materials',lambda client,shell: (
+        [] if client is admin else (_ for _ in ()).throw(AssertionError('Wrong client'))))
+    calls=[]
+    class CookieFree:
+        def __init__(self,**kwargs):
+            assert kwargs['trust_env'] is False
+            assert kwargs['follow_redirects'] is False
+        def __enter__(self):return self
+        def __exit__(self,*exc):return False
+        def get(self,path,headers):
+            assert path=='/vault/v1/shells/shell-a/materials'
+            assert set(headers)=={'Authorization'}
+            calls.append(headers['Authorization'])
+            return SimpleNamespace(status_code=(
+                200 if headers['Authorization']=='Bearer synthetic-allow' else 403))
+    monkeypatch.setattr(h.httpx,'Client',CookieFree)
+    session={'school_id':'synthetic-a'}
+    args=SimpleNamespace(school_a='synthetic-a',shell_a='shell-a',
+                         gateway='http://127.0.0.1:8080')
+    assert h.case_14(admin,args,session) is session
+    assert calls==['Bearer synthetic-allow','Bearer synthetic-wrong-scope',
+                   'Bearer synthetic-foreign']
