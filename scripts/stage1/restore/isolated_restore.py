@@ -125,6 +125,11 @@ def inspect_isolation(args,env):
             raise BackupInvalid('Target resource belongs to another project')
         if any(x for x in info.get('HostConfig',{}).get('PortBindings',{}).values() if x):
             raise BackupInvalid('Restore target publishes private port: REFUSE START')
+        expected_mount={'surrealdb':'/mydata','open_notebook':'/app/data'}[service]
+        mounts=[m for m in info.get('Mounts',[]) if m.get('Destination')==expected_mount]
+        if (len(mounts)!=1 or mounts[0].get('Type')!='volume' or
+                not str(mounts[0].get('Name','')).startswith(args.project+'_')):
+            raise BackupInvalid('Restore target volume not isolated/newly project-named')
         networks=info.get('NetworkSettings',{}).get('Networks') or {}
         if len(networks)!=1 or not all(args.project in key for key in networks):
             raise BackupInvalid('Restore target has unexpected/bridged Docker network')
@@ -165,8 +170,10 @@ def main():
         p.error('Exclusive synthetic isolated restore not authorized')
     if not PROJECT.fullmatch(args.project) or not args.workdir.is_absolute():
         p.error('New scoped target project and absolute staging location required')
-    if not args.context or not args.compose_file.is_file() or args.compose_file.is_symlink():
-        p.error('Explicit Docker context and private Compose file required')
+    trusted_compose=Path(__file__).parent/'compose.isolated.yml'
+    if (not args.context or not args.compose_file.is_file() or args.compose_file.is_symlink()
+            or args.compose_file.resolve()!=trusted_compose.resolve()):
+        p.error('Only repository-owned immutable isolated Restore Compose is allowed')
     manifest=verify(args.bundle,compare_keys=True)
     if (manifest.get('recovery_point_id') is None or
             manifest.get('source_commit')!=args.source_sha or
