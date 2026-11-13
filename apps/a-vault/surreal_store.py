@@ -41,6 +41,54 @@ DEFINE INDEX IF NOT EXISTS source_id_unique ON TABLE source_owner FIELDS source_
 '''
 
 
+# Exact, ordered A-only index contracts; an index with the correct name but
+# different columns MUST NOT be allowed to satisfy fail-start attestation.
+EXPECTED_INDEXES = {
+    'content_shell': {
+        'shell_scope_unique': ('school_id', 'academic_year', 'grade', 'subject', 'curriculum_stream'),
+        'shell_notebook_unique': ('notebook_id',),
+    },
+    'vault_operation': {
+        'op_key_unique': ('school_id', 'actor_id', 'kind', 'idempotency_key'),
+    },
+    'vault_scope_claim': {
+        'scope_key_unique': ('school_id', 'scope_key'),
+    },
+    'source_owner': {
+        'source_id_unique': ('source_id',),
+    },
+}
+
+# SurrealDB v2 INFO FOR TABLE can return either SQL strings or {"sql": ...}
+# for each index, depending on server/client representation.
+_INDEX_SQL_RE = re.compile(
+    r'\s*DEFINE\s+INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?'
+    r'(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s+ON\s+(?:TABLE\s+)?'
+    r'(?P<table>[A-Za-z_][A-Za-z0-9_]*)\s+'
+    r'(?:FIELDS|COLUMNS)\s+(?P<fields>[A-Za-z_][A-Za-z0-9_]*'
+    r'(?:\s*,\s*[A-Za-z_][A-Za-z0-9_]*)*)\s+UNIQUE\s*;?\s*',
+    re.IGNORECASE,
+)
+
+
+def verify_unique_index_definitions(table: str, indexes: dict) -> None:
+    """Reject altered table/name/order/columns/uniqueness or unrecognised SQL.
+
+    Never perform a silent ALTER/OVERWRITE migration over a drifted index.
+    Follow this with actual v2 duplicate-insert and commit-conflict probes.
+    """
+    expected = EXPECTED_INDEXES.get(table)
+    if expected is None or not isinstance(indexes, dict) or set(indexes) != set(expected):
+        raise SurrealUnavailable('A unique indexes missing, extra or altered: ' + str(table))
+    for name, fields in expected.items():
+        definition=indexes[name]
+        sql=definition.get('sql') if isinstance(definition,dict) else definition
+        match=_INDEX_SQL_RE.fullmatch(sql) if isinstance(sql,str) else None
+        if (match is None or match.group('table') != table or match.group('name') != name
+                or tuple(re.split(r'\s*,\s*',match.group('fields'))) != fields):
+            raise SurrealUnavailable(f'A unique index definition mismatch: {table}.{name}')
+
+
 class SurrealUnavailable(Indeterminate):
     """Connection/transaction acknowledgement uncertain; never blindly resend."""
 
@@ -169,19 +217,12 @@ class SurrealStore:
 
     def migrate(self):
         self.rpc.query(SCHEMA)
-        # Fail-start on drift/absence of durable unique indexes.
-        for table, expected in (
-            ('content_shell',('shell_scope_unique','shell_notebook_unique')),
-            ('vault_operation',('op_key_unique',)),
-            ('vault_scope_claim',('scope_key_unique',)),
-            ('source_owner',('source_id_unique',))):
+        # Check full v2 schema identity, not simply the index name/UNIQUE substring.
+        for table in EXPECTED_INDEXES:
             res=self.rpc.query(f'INFO FOR TABLE {table};')
             if not res or not isinstance(res[-1],dict):
                 raise SurrealUnavailable('Cannot inspect A unique indexes')
-            indexes=res[-1].get('indexes')
-            if not isinstance(indexes,dict) or any(name not in indexes or
-                    'UNIQUE' not in str(indexes[name]).upper() for name in expected):
-                raise SurrealUnavailable(f'A unique indexes unverified: {table}')
+            verify_unique_index_definitions(table,res[-1].get('indexes'))
 
     @staticmethod
     def _validate_key(school,key):
