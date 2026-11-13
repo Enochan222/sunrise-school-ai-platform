@@ -53,6 +53,7 @@ def fixture(service="a_db"):
         "PortBindings":{f"{port}/tcp":[{"HostIp":"127.0.0.1","HostPort":""}]},
         "ReadonlyRootfs":True,
         "SecurityOpt":["no-new-privileges:true"],
+        "CapDrop":["ALL"],
     })
     relay_doc["Config"].update({
         "Entrypoint":["/app/.venv/bin/python","-I","/relay.py"],
@@ -79,7 +80,8 @@ def test_only_loopback_relay_published_and_private_service_unpublished(service):
     "relay_off_private_network","relay_wrong_private_network_id",
     "relay_wrong_publishing_network","relay_wrong_image",
     "relay_wrong_project","relay_wrong_destination",
-    "relay_root_writable","relay_volume_mount","relay_wrong_entrypoint",
+    "relay_root_writable","relay_volume_mount","relay_script_writable",
+    "relay_capabilities","relay_wrong_entrypoint",
     "relay_wrong_service","backend_stopped","relay_stopped",
 ))
 def test_host_port_identity_and_network_fail_closed(change):
@@ -121,6 +123,10 @@ def test_host_port_identity_and_network_fail_closed(change):
         relay["HostConfig"]["ReadonlyRootfs"]=False
     elif change=="relay_volume_mount":
         relay["Mounts"]=[{"Type":"volume","Destination":"/mydata","RW":True}]
+    elif change=="relay_script_writable":
+        relay["Mounts"][0]["RW"]=True
+    elif change=="relay_capabilities":
+        relay["HostConfig"]["CapDrop"]=[]
     elif change=="relay_wrong_entrypoint":
         relay["Config"]["Entrypoint"]=["/bin/sh"]
     elif change=="relay_wrong_service":
