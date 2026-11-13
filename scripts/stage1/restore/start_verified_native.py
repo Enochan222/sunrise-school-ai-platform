@@ -67,7 +67,11 @@ def main():
     before=json.loads((args.workdir/'gateway'/'native-pre-capture-readback.json').read_text())
     identity_fields=('source_owner_count','shell_count','verified_original_count',
                      'owned_source_graph_hash','rights_retention_initial_version_sha256',
-                     'rights_retention_initial_version_count','text_only_patch_attested')
+                     'rights_retention_initial_version_count',
+                     'worker_scoped_search_positive_count','text_only_patch_attested')
+    if not isinstance(output.get('worker_scoped_search_positive_count'),int) or (
+            output['worker_scoped_search_positive_count']<1):
+        raise BackupInvalid('Restored Worker/Scope/Search evidence missing')
     if (not isinstance(output.get('rights_retention_initial_version_sha256'),str)
             or len(output['rights_retention_initial_version_sha256'])!=64
             or output.get('rights_retention_initial_version_count')!=output.get('source_owner_count')):
