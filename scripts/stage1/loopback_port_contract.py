@@ -58,8 +58,16 @@ def inspect_port_pair(service, backend, relay, project, native_image):
             and SHA.fullmatch(str(native_image)) is not None,
             "Relay image differs from pinned built Native image")
     require(relay.get("HostConfig", {}).get("ReadonlyRootfs") is True
-            and relay.get("HostConfig", {}).get("SecurityOpt") is not None,
+            and "no-new-privileges:true" in (
+                relay.get("HostConfig", {}).get("SecurityOpt") or []),
             "Relay not running with immutable filesystem/security controls")
+    relay_user=relay.get("Config",{}).get("User","")
+    require(re.fullmatch(r"[1-9][0-9]*:[1-9][0-9]*",relay_user) is not None
+            and all(0 < int(v) <= 65534 for v in relay_user.split(":")),
+            "Relay may not execute with root or unknown UID/GID")
+    if service in ("a_db","on_db"):
+        require(backend.get("Config",{}).get("User")==relay_user,
+                "Relay and physical database primary UID/GID mismatch")
     require(relay.get("Config", {}).get("Entrypoint")
             == ["/app/.venv/bin/python", "-I", "/relay.py"],
             "Unexpected relay executable")
@@ -125,6 +133,10 @@ def verify(context,project,compose_file,service):
                 and network.get("Driver")=="bridge"
                 and network.get("Labels",{}).get("com.docker.compose.project")==project,
                 "Wrong private/publish Docker network")
+        if leaf=="loopback_publish":
+            require(network.get("Options",{}).get(
+                "com.docker.network.bridge.host_binding_ipv4")=="127.0.0.1",
+                "Publishing network does not force local-only default binding")
         expected=proof["private_network_id" if internal else "publish_network_id"]
         require(network.get("Id")==expected,"Network ID mismatch")
     compose_port=run(context,*cmd,"port",relay,str(TARGETS[service][3]))
