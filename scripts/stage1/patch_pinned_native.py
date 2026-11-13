@@ -118,6 +118,43 @@ async def sunrise_patch_status():
     return replace_once(source, anchor, marker + anchor, "native patch attestation")
 
 
+def patch_entrypoint(source: str) -> str:
+    """Fail before launching *any* pinned Native API/Worker process without secrets.
+
+    Upstream PasswordAuthMiddleware skips all authentication when its password
+    is missing. The private Sunrise image must never enter supervisord in that
+    state. Docker secret-file values are honoured, but an invalid file fails.
+    """
+    marker = 'VENV_PY="/app/.venv/bin/python"\n'
+    guard = r'''# Sunrise A-only fail-start guard. Never print secret values.
+sunrise_secret_fail() {
+    echo "SUNRISE_NATIVE_SECRET_FAIL_START: $1" >&2
+    exit 78
+}
+
+sunrise_require_secret() {
+    key="$1"; file="$2"; value="$3"; minimum="$4"
+    if [ -n "$file" ]; then
+        [ -f "$file" ] && [ -r "$file" ] || sunrise_secret_fail "$key"
+        value="$(cat "$file")" || sunrise_secret_fail "$key"
+    fi
+    [ "${#value}" -ge "$minimum" ] || sunrise_secret_fail "$key"
+    case "$value" in *[![:print:]]*) sunrise_secret_fail "$key";; esac
+    lower="$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')"
+    case "$lower" in password|password123|root:root|changeme|admin|secret|test|example)
+        sunrise_secret_fail "$key";;
+    esac
+}
+
+sunrise_require_secret "OPEN_NOTEBOOK_PASSWORD" "${OPEN_NOTEBOOK_PASSWORD_FILE:-}" "${OPEN_NOTEBOOK_PASSWORD:-}" 16
+sunrise_require_secret "OPEN_NOTEBOOK_ENCRYPTION_KEY" "${OPEN_NOTEBOOK_ENCRYPTION_KEY_FILE:-}" "${OPEN_NOTEBOOK_ENCRYPTION_KEY:-}" 32
+sunrise_require_secret "SURREAL_USER" "" "${SURREAL_USER:-}" 3
+sunrise_require_secret "SURREAL_PASSWORD" "" "${SURREAL_PASSWORD:-}" 24
+
+'''
+    return replace_once(source, marker, guard + marker, "Native Docker entrypoint secret fail-start")
+
+
 def patch_checkout(root: Path) -> list[str]:
     edits = [
         ("open_notebook/domain/notebook.py",
@@ -125,6 +162,7 @@ def patch_checkout(root: Path) -> list[str]:
         ("api/routers/sources.py", patch_retry),
         ("api/routers/notebooks.py", patch_graph),
         ("api/main.py", patch_main),
+        ("scripts/docker-entrypoint.sh", patch_entrypoint),
     ]
     originals = [(root / path, (root / path).read_text(encoding="utf-8"), fn)
                  for path, fn in edits]
