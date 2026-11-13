@@ -207,7 +207,7 @@ def run_regular(at,config,output):
     return detail,hashlib.sha256(evidence.read_bytes()).hexdigest()
 
 
-def run_restore(config,output):
+def run_restore(config,output,source_sha,source_tree):
     capture=STAGE/'restore/cold_capture.py'
     restore=STAGE/'restore/isolated_restore.py'
     start=STAGE/'restore/start_verified_native.py'
@@ -224,6 +224,9 @@ def run_restore(config,output):
     final=read_json(workdir/'native-readback-evidence.json')
     native=final.get('native_readback',{})
     if (final.get('classification')!='ISOLATED_RESTORE_NATIVE_READBACK_NOT_AT_PASS'
+            or final.get('source_commit')!=source_sha
+            or final.get('source_tree')!=source_tree
+            or final.get('target_project')!=restore_flags.get('--project')
             or final.get('db_inventories_equal') is not True
             or final.get('native_owner_identity_matches_before_after') is not True
             or native.get('text_only_patch_attested') is not True
@@ -242,11 +245,13 @@ def run_restore(config,output):
     return {'steps':[first,second,third]},hashlib.sha256(target.read_bytes()).hexdigest()
 
 
-def validate_restore_rights(config,output):
+def validate_restore_rights(config,output,source_sha,source_tree):
     workdir=Path(config['restore_flags']['restore']['--workdir'])
     result=read_json(workdir/'native-readback-evidence.json')
     native=result.get('native_readback',{})
     if (result.get('classification')!='ISOLATED_RESTORE_NATIVE_READBACK_NOT_AT_PASS'
+            or result.get('source_commit')!=source_sha
+            or result.get('source_tree')!=source_tree
             or result.get('native_owner_identity_matches_before_after') is not True
             or result.get('db_inventories_equal') is not True
             or not isinstance(native.get('source_owner_count'),int)
@@ -292,9 +297,9 @@ def main():
                 if at in CASES:
                     steps,digest=run_regular(at,config,args.output_dir)
                 elif at=='S1-AT05':
-                    steps,digest=run_restore(config,args.output_dir)
+                    steps,digest=run_restore(config,args.output_dir,args.source_sha,args.source_tree)
                 elif at=='S1-AT12':
-                    steps,digest=validate_restore_rights(config,args.output_dir)
+                    steps,digest=validate_restore_rights(config,args.output_dir,args.source_sha,args.source_tree)
                 elif at=='S1-AT13':
                     # Actual local regression is an independent command, not
                     # the current runner's own self-reported PASS tally.
