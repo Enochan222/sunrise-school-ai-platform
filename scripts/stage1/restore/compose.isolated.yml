@@ -1,0 +1,38 @@
+# WP08 isolated synthetic restore only · IMPLEMENTED_UNTESTED
+# NO host-published ports. No public ON API/UI/DB access. New project volumes.
+services:
+  surrealdb:
+    image: ${SURREAL_RESTORE_IMAGE:?exact inspected immutable image ID required}
+    command: ["start","--log","warn","--user","${SURREAL_USER:?required}","--pass","${SURREAL_PASSWORD:?required}","rocksdb:/mydata/mydatabase.db"]
+    volumes: [surreal_data:/mydata]
+    networks: [restore_private]
+    restart: "no"
+    security_opt: ["no-new-privileges:true"]
+  open_notebook:
+    image: ${ON_RESTORE_IMAGE:?exact inspected pinned image ID required}
+    environment:
+      OPEN_NOTEBOOK_PASSWORD: ${OPEN_NOTEBOOK_PASSWORD:?required}
+      OPEN_NOTEBOOK_ENCRYPTION_KEY: ${OPEN_NOTEBOOK_ENCRYPTION_KEY:?required}
+      SURREAL_URL: ws://surrealdb:8000/rpc
+      SURREAL_USER: ${SURREAL_USER:?required}
+      SURREAL_PASSWORD: ${SURREAL_PASSWORD:?required}
+      SURREAL_NAMESPACE: ${ON_GRAPH_NAMESPACE:?required}
+      SURREAL_DATABASE: ${ON_GRAPH_DATABASE:?required}
+      OPEN_NOTEBOOK_ENABLE_DOCLING: "false"
+      OPEN_NOTEBOOK_ENABLE_CRAWL4AI: "false"
+      OPEN_NOTEBOOK_WORKER_MAX_TASKS: "1"
+      HTTP_PROXY: ""
+      HTTPS_PROXY: ""
+      ALL_PROXY: ""
+      NO_PROXY: "surrealdb,open_notebook,localhost,127.0.0.1"
+    volumes: [native_data:/app/data]
+    networks: [restore_private]
+    depends_on: [surrealdb]
+    restart: "no"
+    security_opt: ["no-new-privileges:true"]
+networks:
+  restore_private:
+    internal: true
+volumes:
+  surreal_data: {}
+  native_data: {}
