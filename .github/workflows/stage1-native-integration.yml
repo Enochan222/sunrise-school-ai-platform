@@ -88,6 +88,43 @@ jobs:
           done
           [[ "$READY" == 1 ]] || { echo 'FAIL: ON API startup/migration'; exit 1; }
           python -m pip install --disable-pip-version-check -r apps/a-vault/requirements-dev.txt
+          # Run WP03 in this SAME shell on the already started private services.
+          # Temporary credentials need not persist across Github Actions steps.
+          # A journal namespace/database stays isolated from native Open Notebook.
+          for file in apps/a-vault/surreal_store.py scripts/stage1/surreal_journal_smoke.py; do
+            [[ -f "$file" ]] || { echo "WP03 reviewed target lacks $file"; exit 2; }
+          done
+          export VAULT_RUNTIME_SYNTHETIC_CONFIRM=YES
+          export VAULT_SURREAL_WS_URL=ws://127.0.0.1:8000/rpc
+          export VAULT_SURREAL_USER="$SURREAL_USER"
+          export VAULT_SURREAL_PASSWORD="$SURREAL_PASSWORD"
+          export VAULT_SURREAL_NAMESPACE="sunrise_stage1_a"
+          export VAULT_SURREAL_DATABASE="journal_wp03_${GITHUB_RUN_ID}"
+          export VAULT_JOURNAL_EVIDENCE="$RUNNER_TEMP/wp03-journal-redacted.json"
+          echo "WP03_JOURNAL_START_UTC=$(date -u +%FT%TZ) TESTED_SHA=$TARGET_REF"
+          python scripts/stage1/surreal_journal_smoke.py
+          python - "$VAULT_JOURNAL_EVIDENCE" <<'PY_WP03'
+          import json,sys
+          with open(sys.argv[1],encoding='utf-8') as f: result=json.load(f)
+          required={
+              'real_surrealdb_unique_operation_reservation',
+              'different_body_conflict',
+              'same_key_concurrent_no_second_reservation',
+              'real_native_crash_after_create_before_journal_commit',
+              'marker_reconciliation_unique_mapping',
+              'same_key_replay_original_notebook',
+              'cross_school_shell_negative',
+          }
+          observed=result.get('results',{})
+          if result.get('status')!='PASS' or any(observed.get(k)!='PASS' for k in required):
+              raise SystemExit('WP03 real DB and Native smoke incomplete or FAIL')
+          print('WP03_REAL_RUNTIME_RESULTS='+json.dumps({k:observed[k] for k in sorted(required)}))
+          print('WP03_START_UTC='+result.get('start_utc','')+
+                ' END_UTC='+result.get('end_utc',''))
+          print('WP03_NATIVE_ID_SHA256='+result.get('notebook_id_sha256',''))
+          PY_WP03
+          sha256sum "$VAULT_JOURNAL_EVIDENCE"
+          echo "WP03_JOURNAL_END_UTC=$(date -u +%FT%TZ)"
           python scripts/stage1/native_runtime_smoke.py --host http://127.0.0.1:5055 --out "$RUNNER_TEMP/native-runtime-redacted.json"
           python - "$RUNNER_TEMP/native-runtime-redacted.json" <<'PY'
           import json,sys
