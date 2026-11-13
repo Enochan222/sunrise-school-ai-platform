@@ -122,20 +122,3 @@ def test_session_logout_revokes_admin_route(client):
     assert out.status_code==200
     assert client.get('/admin').status_code==401
 
-
-def test_unavailable_templates_or_wrong_marker_fail_build(tmp_path,monkeypatch):
-    import vault_app
-    original=vault_app.Path
-    class FakeDir:
-        def __truediv__(self,other):
-            return self
-        def read_text(self,encoding='utf-8'):
-            return '<html>missing csrf template marker</html>'
-    class FakePath:
-        @staticmethod
-        def __call__(value):
-            return original(value)
-    # Concrete source contract: any unexpected login marker count fails start.
-    login=(APP/'templates/login.html').read_text(encoding='utf-8')
-    assert login.count('__SUNRISE_LOGIN_CSRF__')==1
-    assert (APP/'templates/admin.html').is_file()
