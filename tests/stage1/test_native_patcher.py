@@ -119,3 +119,40 @@ async def vector_search():
     ))
     assert len(calls) == 1
     assert len(result) == 2
+
+
+def test_pinned_native_entrypoint_missing_and_example_secrets_really_exit_fail_start():
+    """Future source fixture: exercise POSIX guard without Docker/API/worker."""
+    import os
+    import subprocess
+
+    pinned_shape='#!/bin/sh\nVENV_PY="/app/.venv/bin/python"\nexec /bin/true\n'
+    guarded=patcher.patch_entrypoint(pinned_shape)
+    assert 'SUNRISE_NATIVE_SECRET_FAIL_START' in guarded
+    assert 'exec /bin/true' in guarded
+    with pytest.raises(ValueError,match='already patched'):
+        patcher.patch_entrypoint(guarded)
+
+    values={'OPEN_NOTEBOOK_PASSWORD':'synthetic-native-password-strong',
+            'OPEN_NOTEBOOK_ENCRYPTION_KEY':'synthetic-encryption-key-at-least-32-characters',
+            'SURREAL_USER':'synthetic',
+            'SURREAL_PASSWORD':'synthetic-db-password-strong'}
+    baseline={**os.environ,**values,'OPEN_NOTEBOOK_PASSWORD_FILE':'',
+              'OPEN_NOTEBOOK_ENCRYPTION_KEY_FILE':''}
+    good=subprocess.run(['/bin/sh','-c',guarded],env=baseline,
+                        capture_output=True,text=True,timeout=10)
+    assert good.returncode==0
+    for missing in values:
+        env=baseline.copy()
+        env.pop(missing)
+        result=subprocess.run(['/bin/sh','-c',guarded],env=env,
+                              capture_output=True,text=True,timeout=10)
+        assert result.returncode==78
+        assert 'SUNRISE_NATIVE_SECRET_FAIL_START: '+missing in result.stderr
+    for key,weak in [('OPEN_NOTEBOOK_PASSWORD','password'),
+                     ('OPEN_NOTEBOOK_ENCRYPTION_KEY','changeme'),
+                     ('SURREAL_PASSWORD','root:root')]:
+        result=subprocess.run(['/bin/sh','-c',guarded],env={**baseline,key:weak},
+                              capture_output=True,text=True,timeout=10)
+        assert result.returncode==78
+        assert 'SUNRISE_NATIVE_SECRET_FAIL_START: '+key in result.stderr
