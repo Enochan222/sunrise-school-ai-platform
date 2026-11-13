@@ -121,7 +121,9 @@ def build_app(cfg:Settings|None=None,native=None):
                     options={'require':['sub','iss','aud','exp','iat','nbf','jti','school_id','scope']},leeway=5)
                 if (claims['school_id']!=cfg.school_id or not permission or
                     not isinstance(claims['scope'],str) or permission not in claims['scope'].split() or
-                    not isinstance(claims['sub'],str) or not claims['sub'] or
+                    not isinstance(claims['sub'],str) or not claims['sub'].strip() or
+                    len(claims['sub'])>256 or
+                    any(unicodedata.category(c)=='Cc' for c in claims['sub']) or
                     not isinstance(claims['jti'],str) or not claims['jti'] or
                     claims['exp']-claims['iat']>300):
                     raise HTTPException(403,'Service scope denied')
