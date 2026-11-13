@@ -94,7 +94,7 @@ def main():
         require((git_id('HEAD'),git_id('HEAD^{tree}'))==(args.source_sha,args.source_tree),
             'Git source SHA/tree mismatch')
         require(not args.out.exists(),'Browser evidence overwrite refused')
-        except Exception as error:
+    except Exception as error:
         category=classify_failure(str(error))
         evidence={'at_id':'S1-AT01-BROWSER','status':'FAIL',
             'source_commit':args.source_sha,'source_tree':args.source_tree,
