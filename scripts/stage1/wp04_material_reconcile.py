@@ -21,6 +21,7 @@ sys.path.insert(0,str(ROOT/'apps/a-vault'))
 from native import Native,NativeUnavailable,checked_id
 from surreal_store import SurrealConfig,SurrealStore
 from store import Indeterminate
+from wp04_native_graph_probe import native_graph_authority,require_exact_edge
 
 
 def when():
@@ -50,6 +51,10 @@ async def reconcile(args):
     native=Native(args.native_url,os.environ['OPEN_NOTEBOOK_PASSWORD'],
                   text_only_verified=False,max_download_bytes=args.max_pdf_bytes)
     source=await native.ensure_owned(source_id,args.notebook_id)
+    # Reconciliation must observe the actual ON edge through a separately
+    # attested read-only Graph VIEWER, not the A Journal or an ON root login.
+    graph_rpc=native_graph_authority()
+    require_exact_edge(graph_rpc,source_id,args.notebook_id,1)
     raw=await native.original(source_id,metadata['sha256'])
     if hashlib.sha256(raw).hexdigest()!=metadata['sha256']:
         raise Indeterminate('Native original PDF differs from durable operation')
@@ -76,7 +81,7 @@ def main():
     p=argparse.ArgumentParser()
     for name in ('school-id','shell-id','notebook-id','actor-id','key'):
         p.add_argument('--'+name,required=True)
-    p.add_argument('--native-url',default='http://127.0.0.1:5055')
+    p.add_argument('--native-url',required=True)
     p.add_argument('--max-pdf-bytes',type=int,default=8*1024*1024)
     p.add_argument('--out',type=Path,required=True)
     args=p.parse_args()
