@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   stage1-light:
-    if: ${{ !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository }}
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
