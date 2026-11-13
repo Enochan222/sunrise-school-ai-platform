@@ -55,6 +55,16 @@ def same_origin(url: str, allowed_origin: str) -> bool:
         return False
 
 
+
+def valid_admin_login_redirect(status: int, location: str) -> bool:
+    """HTML Admin login must produce exactly the Gateway's relative 303 target.
+
+    Do not accept a 200 API JSON response as a browser login, redirects to
+    external origins, query-bearing URLs or unexpected relative destinations.
+    """
+    return type(status) is int and status == 303 and location == '/admin'
+
+
 def http_category(path: str,status: int) -> str:
     if status==401:
         return 'LOGIN_AUTH_401' if path=='/auth/login' else 'HTTP_401'
