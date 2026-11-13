@@ -1,7 +1,7 @@
 # Sunrise Stage 1 [A] — WORKBOARD (authoritative engineering progress index)
 
 **Repository:** `Enochan222/sunrise-school-ai-platform`  
-**Reviewer progress snapshot checked against main:** `8f7df63158dc4d26331dc7ee3334e7fe568629c8` (check newer live `main` and PR heads before acting).  
+**Reviewer progress snapshot checked against main:** `8f7df63158dc4d26331dc7ee3334e7fe568629c8` (check newer live `main` and PR heads before acting).
 **Source of requirements:** [Stage 1 official card](../stages/STAGE_01.md), [S0 decisions](../decisions/STAGE0_APPROVAL_DECISIONS.md), [candidate API inventory](../architecture/API_INVENTORY.json); [Implementation Plan v1.1](IMPLEMENTATION_PLAN.md) defines implementation sequence, not a replacement for formal requirements.  
 **Evidence policy:** [Evidence README](evidence/README.md). **Collaboration / QA:** [Docs PR Handoff](DOCS_PR_HANDOFF.md).
 
