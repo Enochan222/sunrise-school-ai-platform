@@ -93,7 +93,9 @@ def tls_gateway_identity(url,ca_file):
             'maintenance_path_sha256':record['maintenance_path_sha256'],
             'health_url':url.rstrip('/')+'/health','origin':url.rstrip('/'),
             'tls_verified':True,'tls_peer_sha256':hashlib.sha256(peer).hexdigest(),
-            'tls_ca_sha256':hashlib.sha256(ca.read_bytes()).hexdigest()}
+            'tls_ca_sha256':hashlib.sha256(ca.read_bytes()).hexdigest(),
+            'maintenance':record.get('maintenance'),
+            'mutations_in_flight':record['mutations_in_flight']}
 
 
 def load_containers(context,project):
