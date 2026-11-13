@@ -122,6 +122,27 @@ def drain(args):
     raise BackupInvalid('Worker/Journals not drained at selected recovery point')
 
 
+def inventory_at_freeze(args,identity):
+    # Execute an additive *read-only* bounded inventory in the pinned ON
+    # container, not via a publicly forwarded DB port. No secrets in command
+    # flags: the container already has its private SURREAL_* env.
+    image_script=(Path(__file__).parent/'db_inventory.py').read_text()
+    native_container=identity['services']['open_notebook']['container_id']
+    names={'VAULT_RUNTIME_SYNTHETIC_CONFIRM':'YES',
+           'VAULT_SURREAL_NAMESPACE':os.environ['VAULT_SURREAL_NAMESPACE'],
+           'VAULT_SURREAL_DATABASE':os.environ['VAULT_SURREAL_DATABASE'],
+           'ON_GRAPH_NAMESPACE':os.environ['ON_GRAPH_NAMESPACE'],
+           'ON_GRAPH_DATABASE':os.environ['ON_GRAPH_DATABASE']}
+    env_flags=[]
+    for name,value in names.items():
+        env_flags.extend(['-e',name+'='+value])
+    raw=docker(args.context,'exec',*env_flags,native_container,'python','-c',image_script)
+    inventory=json.loads(raw)
+    if inventory.get('classification')!='DB_INVENTORY_ONLY_NOT_ACCEPTANCE':
+        raise BackupInvalid('Cannot prove A and Native DB inventory before stopping')
+    return inventory
+
+
 def stop_project(args,identity):
     ids={service:value['container_id'] for service,value in identity['services'].items()}
     # Stop only the pinned, already inspected isolated Compose project.
@@ -136,7 +157,7 @@ def stop_project(args,identity):
             raise BackupInvalid('Container identity changed after stop')
 
 
-def copy_volumes(args,identity,staging):
+def copy_volumes(args,identity,staging,inventory):
     # docker cp can read a known stopped container's volume-mounted path.
     mapping={'surrealdb':('surreal','/mydata/.'),
              'open_notebook':('native','/app/data/.')}
@@ -148,6 +169,7 @@ def copy_volumes(args,identity,staging):
         if not any(target.rglob('*')):
             raise BackupInvalid('Captured volume empty; cannot establish integrity')
     (staging/'gateway').mkdir()
+    (staging/'gateway'/'db-inventory.json').write_text(json.dumps(inventory,sort_keys=True)+'\n')
     (staging/'gateway'/'cold-recovery-point.json').write_text(json.dumps({
         'recovery_point':args.recovery_point,
         'source_commit':args.source_sha,
@@ -186,10 +208,11 @@ def main():
     # Intentionally leave write freeze active on any failure after this point.
     check_gateway_frozen(args)
     drain(args)
+    inventory=inventory_at_freeze(args,identity)
     stop_project(args,identity)
     with tempfile.TemporaryDirectory(prefix='sunrise-a-cold-') as staging_text:
         staging=Path(staging_text)
-        copy_volumes(args,identity,staging)
+        copy_volumes(args,identity,staging,inventory)
         attestation=staging.parent/(staging.name+'-attestation.json')
         attestation.write_text(json.dumps({
             'exclusive_synthetic_host':True,'native_and_db_stopped':True,
