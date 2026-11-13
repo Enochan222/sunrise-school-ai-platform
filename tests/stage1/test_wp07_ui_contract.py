@@ -169,3 +169,16 @@ def test_unapproved_school_allowlist_fails_app_start(tmp_path):
         school_allowlist=('synthetic-b',))
     with pytest.raises(ValueError):
         build_app(cfg,native=object())
+
+
+def test_surreal_school_switch_audit_record_is_supported_by_v2_binding():
+    # This previously raised ValueError before any SurrealDB RPC:
+    # vault_audit was created by the migration but absent from _RECORD_ID.
+    from surreal_store import _record,prepare_surreal_v2
+    record=_record('vault_audit','synthetic-session','synthetic-b','new-csrf')
+    query,params=prepare_surreal_v2(
+        'CREATE ONLY type::record($rid) CONTENT $doc;',
+        {'rid':record,'doc':{'kind':'admin_school_switch'}})
+    assert 'type::thing($rid_table, $rid_key)' in query
+    assert params['rid_table']=='vault_audit'
+    assert params['rid_key']==record.split(':',1)[1]
