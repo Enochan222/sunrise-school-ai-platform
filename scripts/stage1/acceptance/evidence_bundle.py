@@ -78,7 +78,7 @@ def sanitize(data):
             return [scrub(value) for value in node]
         return node
     if structured is not None:
-        text=json.dumps(scrub(structured),ensure_ascii=False,sort_keys=True,indent=2)+'\\n'
+        text=json.dumps(scrub(structured),ensure_ascii=False,sort_keys=True,indent=2)+'\n'
     # Fail on suspicious residual token forms that automatic redaction
     # did not safely recognize. No raw dump of hidden data.
     if (PRIVATE_KEY.search(text) or JWT.search(text) or
