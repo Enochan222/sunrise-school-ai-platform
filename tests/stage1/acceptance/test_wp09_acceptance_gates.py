@@ -46,23 +46,78 @@ def test_all_passing_component_claims_without_browser_restore_or_school_never_pa
     assert r.test_result('S1-AT01',data) is True
 
 
-def test_ackloss_requires_real_journal_status_and_native_gate():
-    valid={'status':'PASS','native_gate':'PASS',
-        'results':{key:'PASS' for key in (
-            'real_surrealdb_unique_operation_reservation',
-            'different_body_conflict',
-            'same_key_concurrent_no_second_reservation',
-            'real_native_crash_after_create_before_journal_commit',
-            'marker_reconciliation_unique_mapping',
-            'same_key_replay_original_notebook')}}
-    valid['results']['real_native_lost_ack_tcp']={
-        'native_create_posts':1,'client_received_post_ack':False}
+def full_wp03_evidence():
+    races={}
+    for mode in ('same_key_same_body','different_key_same_scope','same_key_different_body'):
+        races[mode]={'outcomes':{'FRESH':1,'CONFLICT':7},
+                     'durable_operations':1,'durable_scope_claims':1,
+                     'durable_shells':1,'native_create_posts':1}
+    result={key:'PASS' for key in (
+        'real_surrealdb_unique_operation_reservation',
+        'different_body_conflict',
+        'same_key_concurrent_no_second_reservation',
+        'real_native_crash_after_create_before_journal_commit',
+        'marker_reconciliation_unique_mapping',
+        'same_key_replay_original_notebook',
+        'cross_school_shell_negative')}
+    result['fresh_first_reservation_races']=races
+    result['real_native_lost_ack_tcp']={
+        'native_create_posts':1,'client_received_post_ack':False,
+        'persisted_mapping_count':1,'original_notebook_sha256':'b'*64}
+    return {'status':'PASS','native_gate':'PASS',
+            'notebook_id_sha256':'a'*64,'results':result}
+
+
+def test_ackloss_requires_complete_native_mapping_and_gate():
+    valid=full_wp03_evidence()
     assert r.test_result('S1-AT06',valid) is True
     valid['native_gate']='NOT_RUN'
     assert r.test_result('S1-AT06',valid) is False
     valid['native_gate']='PASS'
     valid['results']['real_native_lost_ack_tcp']['native_create_posts']=2
     assert r.test_result('S1-AT06',valid) is False
+
+
+@pytest.mark.parametrize('missing',[
+    'fresh_first_reservation_races','real_native_lost_ack_tcp',
+    'cross_school_shell_negative'])
+def test_wp03_missing_critical_evidence_never_passes(missing):
+    claim=full_wp03_evidence()
+    claim['results'].pop(missing)
+    assert r.test_result('S1-AT06',claim) is False
+
+
+@pytest.mark.parametrize('field,bad',[
+    ('persisted_mapping_count',0),
+    ('original_notebook_sha256','not-a-hash'),
+    ('client_received_post_ack',True),
+    ('native_create_posts',True)])
+def test_wp03_invalid_tcp_lost_ack_cannot_pass(field,bad):
+    claim=full_wp03_evidence()
+    claim['results']['real_native_lost_ack_tcp'][field]=bad
+    assert r.test_result('S1-AT06',claim) is False
+
+
+@pytest.mark.parametrize('mutation',[
+    ('same_key_same_body','outcomes',{'FRESH':0,'CONFLICT':8}),
+    ('different_key_same_scope','outcomes',{'FRESH':1,'REPLAY':1,'CONFLICT':6}),
+    ('same_key_different_body','native_create_posts',2),
+    ('same_key_same_body','durable_scope_claims',0),
+    ('same_key_same_body','outcomes',{'FRESH':True,'CONFLICT':7})])
+def test_wp03_nested_first_race_invalid_cannot_pass(mutation):
+    claim=full_wp03_evidence()
+    mode,field,value=mutation
+    claim['results']['fresh_first_reservation_races'][mode][field]=value
+    assert r.test_result('S1-AT06',claim) is False
+
+
+def test_wp03_wrong_nested_mode_or_missing_notebook_identity_cannot_pass():
+    claim=full_wp03_evidence()
+    claim['results']['fresh_first_reservation_races'].pop('same_key_same_body')
+    assert r.test_result('S1-AT06',claim) is False
+    claim=full_wp03_evidence()
+    claim.pop('notebook_id_sha256')
+    assert r.test_result('S1-AT06',claim) is False
 
 
 def test_native_graph_must_have_link_unlink_duplicate_and_hash():
