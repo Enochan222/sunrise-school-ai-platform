@@ -91,3 +91,30 @@ def test_live_surreal_not_misreported_as_pass_when_unavailable(monkeypatch):
     smoke=ROOT/'scripts/stage1/surreal_journal_smoke.py'
     assert smoke.is_file() and 'RUNTIME_NOT_RUN' in smoke.read_text()
     assert 'os._exit(97)' in smoke.read_text()
+
+
+def test_pinned_surreal_v2_thing_constructor_bound_table_and_key():
+    from surreal_store import prepare_surreal_v2
+    record=_record('content_shell','synthetic-school','test-id')
+    sql,params=prepare_surreal_v2('BEGIN TRANSACTION; CREATE ONLY type::record($rid) CONTENT $doc; '
+        'SELECT * FROM type::record($rid); COMMIT TRANSACTION;',
+        {'rid':record,'doc':{'school_id':'synthetic-school'}})
+    assert 'type::record' not in sql
+    assert sql.count('type::thing($rid_table, $rid_key)')==2
+    assert params['rid_table']=='content_shell'
+    assert len(params['rid_key'])==64
+    assert params['rid_table']+':'+params['rid_key']==record
+    assert params['doc']['school_id']=='synthetic-school'
+    for malicious in ['source:foreign','content_shell:123',"content_shell:123'; DELETE source_owner; --",'']:
+        with pytest.raises(ValueError):prepare_surreal_v2('SELECT * FROM type::record($rid)',{'rid':malicious})
+    with pytest.raises(ValueError):prepare_surreal_v2('SELECT * FROM type::record($rid)',{})
+    with pytest.raises(ValueError):prepare_surreal_v2('SELECT * FROM type::record($rid)',{'rid':record,'rid_key':'collision'})
+    with pytest.raises(ValueError):prepare_surreal_v2('CREATE ONLY type::record($rid,$wrong)',{})
+
+
+def test_v2_transaction_uses_block_if_throw_not_then_braces():
+    from pathlib import Path
+    code=(ROOT/'apps/a-vault/surreal_store.py').read_text()
+    assert 'THEN { THROW' not in code
+    assert 'IF (SELECT VALUE status' in code
+    assert '{ THROW "unexpected shell operation state" }' in code
