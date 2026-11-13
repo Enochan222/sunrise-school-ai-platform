@@ -86,11 +86,18 @@ def safe_members(folder):
     return members
 
 
-def build(offline_dir,output,attestation_path,source_sha,source_tree,image_digest):
+def build(offline_dir,output,attestation_path,source_sha,source_tree,image_digest,
+          *,recovery_point_id=None,key_escrow_reference=None,runtime_identity_sha256=None):
     if not re.fullmatch(r'[0-9a-f]{40}',source_tree) or not re.fullmatch(r'[0-9a-f]{40}',source_sha):
         raise BackupInvalid('Exact source SHA/tree required')
     if not re.fullmatch(r'sha256:[a-f0-9]{64}',image_digest):
         raise BackupInvalid('Verified immutable Surreal image digest required')
+    if any(v is not None for v in (recovery_point_id,key_escrow_reference,runtime_identity_sha256)):
+        if (not re.fullmatch(r'[A-Za-z0-9_-]{8,90}',str(recovery_point_id or '')) or
+            not isinstance(key_escrow_reference,str) or
+            not key_escrow_reference.startswith('offline-escrow:') or
+            not HEX64.fullmatch(str(runtime_identity_sha256 or ''))):
+            raise BackupInvalid('Formal cold capture requires recovery point, escrow reference and runtime identity hash')
     offline=Path(offline_dir).resolve();dest=Path(output).absolute()
     if dest.exists() or offline==dest or offline in dest.parents:
         raise BackupInvalid('Destination must be new and outside offline snapshot')
@@ -102,6 +109,8 @@ def build(offline_dir,output,attestation_path,source_sha,source_tree,image_diges
         'stage':'A_ONLY_SYNTHETIC', 'upstream_commit':UPSTREAM,
         'source_commit':source_sha,'source_tree':source_tree,
         'surreal_image_digest':image_digest,'cold_operator_attestation':attestation,
+        'recovery_point_id':recovery_point_id,'external_key_escrow_reference':key_escrow_reference,
+        'runtime_identity_sha256':runtime_identity_sha256,
         'required_external_key_sha256':key_identities(),'files':{}}
     dest.parent.mkdir(parents=True,exist_ok=True)
     # Temporary artifact is outside input dir; never leave a misleading final archive.
@@ -158,6 +167,12 @@ def verify(path,compare_keys=True):
         manifest=json.load(meta)
         if not isinstance(manifest,dict) or manifest.get('format')!=FORMAT or manifest.get('upstream_commit')!=UPSTREAM:
             raise BackupInvalid('Wrong backup format or pinned source')
+        rp=manifest.get('recovery_point_id')
+        if rp is not None and (
+                not re.fullmatch(r'[A-Za-z0-9_-]{8,90}',str(rp)) or
+                not str(manifest.get('external_key_escrow_reference','')).startswith('offline-escrow:') or
+                not HEX64.fullmatch(str(manifest.get('runtime_identity_sha256','')))):
+            raise BackupInvalid('Incomplete formal recovery-point/escrow/runtime metadata')
         expected=manifest.get('files')
         if not isinstance(expected,dict):raise BackupInvalid('Missing backup inventory')
         if compare_keys and manifest.get('required_external_key_sha256')!=key_identities():
