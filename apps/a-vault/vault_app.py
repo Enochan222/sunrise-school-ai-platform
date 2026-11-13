@@ -155,6 +155,18 @@ def build_app(cfg:Settings|None=None,native=None):
     def admin_only(p):
         if p['service']:raise HTTPException(403,'Admin only')
 
+    def revalidate_response_principal(req,first,permission=None):
+        # A school-switch/CSRF rotation or JWT expiry while waiting on the
+        # private Native API must not release stale-school content. Check again
+        # immediately before constructing the client response's first byte.
+        current=credentials(req,permission=permission)
+        if (current['school_id']!=first['school_id'] or
+                current['actor_id']!=first['actor_id'] or
+                current['service']!=first['service'] or
+                current['csrf']!=first['csrf']):
+            raise HTTPException(403,'Session school or credential changed during read')
+        return current
+
     def get_owned_shell(p,shell_id):
         s=store.shell(p['school_id'],shell_id)
         if not s:raise HTTPException(404,'Shell not found')
@@ -345,6 +357,7 @@ def build_app(cfg:Settings|None=None,native=None):
                 view['state']=Native.processing_state(src)
                 safe_rows.append(view)
             except (NativeUnavailable,NativeOwnershipError) as e:return_error(e)
+        revalidate_response_principal(req,p,permission='vault.materials.read')
         return {'materials':safe_rows}
 
     @app.post('/vault/v1/shells/{shell_id}/materials',status_code=201)
@@ -414,6 +427,7 @@ def build_app(cfg:Settings|None=None,native=None):
             # Double-check ownership before first byte; no streaming any native bytes.
             await upstream.ensure_owned(source_id,s['notebook_id'])
         except (NativeUnavailable,NativeOwnershipError) as e:return_error(e)
+        revalidate_response_principal(req,p,permission='vault.materials.read')
         return Response(payload,media_type='application/pdf',headers={'Content-Disposition':"attachment; filename=source.pdf"})
 
     @app.post('/vault/v1/shells/{shell_id}/search')
@@ -434,6 +448,7 @@ def build_app(cfg:Settings|None=None,native=None):
             try:await upstream.ensure_owned(source_id,s['notebook_id'])
             except (NativeUnavailable,NativeOwnershipError) as e:return_error(e)
             safe.append({'source_id':source_id,'title':m['title'],'relevance':hit.get('relevance')})
+        revalidate_response_principal(req,p,permission='vault.search.read')
         return {'results':safe,'total_count':len(safe),'search_type':'text'}
 
     @app.get('/admin',response_class=HTMLResponse)
