@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from urllib.parse import urlsplit
 import re
 import sys
 
@@ -47,6 +48,10 @@ def main():
             not os.environ.get('OPEN_NOTEBOOK_PASSWORD')):
         print('RUNTIME_NOT_RUN: explicit private synthetic retry authorization missing',file=sys.stderr)
         raise SystemExit(69)
+    parsed=urlsplit(args.native_url)
+    if (parsed.scheme!='http' or parsed.hostname not in ('127.0.0.1','localhost','::1')
+            or parsed.username or parsed.password or parsed.path not in ('','/')):
+        raise ValueError('Retry operator Native API must be local loopback only')
     if not re.fullmatch(r'[a-f0-9]{64}',args.expected_sha256):
         raise ValueError('Expected original PDF SHA-256 invalid')
     evidence={'start_utc':stamp(),'category':'PINNED_NATIVE_FAILED_JOB_RETRY',
