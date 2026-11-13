@@ -23,14 +23,15 @@ def cold_bundle(tmp_path,monkeypatch):
     monkeypatch.setenv('OPEN_NOTEBOOK_ENCRYPTION_KEY','N'*48)
     monkeypatch.setenv('VAULT_ENCRYPTION_KEY','V'*48)
     offline=tmp_path/'input'
-    for name in ('surreal','native','gateway'):
+    for name in ('a_db','on_db','native','gateway'):
         (offline/name).mkdir(parents=True)
-    (offline/'surreal'/'database.db').write_bytes(b'SYNTHETIC_SURREAL_DATA')
+    (offline/'a_db'/'database.db').write_bytes(b'SYNTHETIC_A_JOURNAL_DATA')
+    (offline/'on_db'/'database.db').write_bytes(b'SYNTHETIC_ON_GRAPH_DATA')
     (offline/'native'/'synthetic-original.pdf').write_bytes(b'%PDF-1.4\nSYNTHETIC\n%%EOF')
     (offline/'gateway'/'recovery.json').write_text('{"synthetic": true}')
     attest=tmp_path/'attestation.json'
     attest.write_text(json.dumps({'exclusive_synthetic_host':True,
-        'native_and_db_stopped':True,'offline_volume_copy':True,
+        'a_and_on_and_native_stopped':True,'offline_volume_copy':True,
         'docker_project':'sunrise-s1-native-synthetic',
         'host_identity':'synthetic-docker-context',
         'snapshot_utc':'2026-11-14T00:00:00+00:00'}))
@@ -39,7 +40,7 @@ def cold_bundle(tmp_path,monkeypatch):
         recovery_point_id='synthetic_point_01',
         key_escrow_reference='offline-escrow:synthetic-test',
         runtime_identity_sha256='d'*64)
-    assert result['files']==3
+    assert result['files']==4
     assert verify(out)['recovery_point_id']=='synthetic_point_01'
     return out
 
@@ -100,7 +101,7 @@ def test_wrong_or_missing_external_key_rejected(cold_bundle,monkeypatch):
 
 def test_missing_archive_member_rejected(cold_bundle,tmp_path):
     target=tmp_path/'missing-sql.tar'
-    repack(cold_bundle,target,skip='payload/surreal/database.db')
+    repack(cold_bundle,target,skip='payload/a_db/database.db')
     with pytest.raises(BackupInvalid):
         verify(target)
 
