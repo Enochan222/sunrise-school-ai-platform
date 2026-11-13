@@ -61,6 +61,24 @@ def sanitize(data):
     text=JWT.sub('[REDACTED_JWT]',text)
     text=AUTH_HEADER.sub('[REDACTED_HTTP_CREDENTIAL_HEADER]',text)
     text=SECRET_LINE.sub(lambda m:m.group('prefix')+'[REDACTED_SECRET]',text)
+    # Parse structured JSON evidence recursively: flat log-regex-only
+    # filtering would miss {"authorization":"Bearer ..."} or nested tokens.
+    try:
+        structured=json.loads(text)
+    except json.JSONDecodeError:
+        structured=None
+    sensitive_key=re.compile(
+        r'(?i)(?:password|secret|token|authorization|cookie|api[_-]?key|private[_-]?key|credential)')
+    def scrub(node):
+        if isinstance(node,dict):
+            return {key:('[REDACTED_STRUCTURED_SECRET]' if sensitive_key.search(key)
+                         else scrub(value))
+                    for key,value in node.items()}
+        if isinstance(node,list):
+            return [scrub(value) for value in node]
+        return node
+    if structured is not None:
+        text=json.dumps(scrub(structured),ensure_ascii=False,sort_keys=True,indent=2)+'\\n'
     # Fail on suspicious residual token forms that automatic redaction
     # did not safely recognize. No raw dump of hidden data.
     if (PRIVATE_KEY.search(text) or JWT.search(text) or
@@ -146,6 +164,12 @@ def verify(path):
             raise ValueError('Empty or duplicate evidence archive')
         if any(x.is_dir() or x.file_size>MAX_FILE for x in records):
             raise ValueError('Unknown evidence member type/size')
+        for member in records:
+            name=member.filename
+            if (name.startswith('/') or '..' in Path(name).parts or '\\\\' in name
+                    or not SAFE_FILE.fullmatch(name) or
+                    ((member.external_attr>>16)&0o170000)==0o120000):
+                raise ValueError('Evidence archive contains traversal/symlink/unsafe member')
         if zipf.testzip() is not None:raise ValueError('Archive CRC check failed')
         manifest=json.loads(zipf.read('MANIFEST.json'))
         if manifest.get('classification')!='REDACTED_CANDIDATE_REVIEW_REQUIRED_NOT_ACCEPTANCE':
