@@ -99,8 +99,19 @@ def restore_env(identity):
     env['ON_RESTORE_IMAGE']=services['native']['image_id']
     for service,prefix in (('a_db','A'),('on_db','ON')):
         user=services[service].get('container_user','')
-        if not re.fullmatch(r'[1-9][0-9]*:[1-9][0-9]*',user):
-            raise BackupInvalid('Pinned physical DB nonroot user not attested')
+        primary=services[service].get('image_verified_primary_user')
+        declared=services[service].get('image_declared_user')
+        if (not isinstance(user,str)
+                or not re.fullmatch(r'[1-9][0-9]*:[1-9][0-9]*',user)
+                or user!=primary
+                or not isinstance(declared,str)
+                or not re.fullmatch(r'(?:[1-9][0-9]*|[1-9][0-9]*:[1-9][0-9]*)',declared)
+                or int(user.split(':')[0])>65534
+                or int(user.split(':')[1])>65534
+                or declared.split(':',1)[0]!=user.split(':',1)[0]):
+            raise BackupInvalid('Restored DB UID/GID must match independently attested image account')
+        if ':' in declared and declared!=user:
+            raise BackupInvalid('Image declared primary GID differs from tested source')
         env[prefix+'_RESTORE_UID'],env[prefix+'_RESTORE_GID']=user.split(':')
     required=('A_SURREAL_USER','A_SURREAL_PASSWORD','A_SURREAL_NAMESPACE',
               'A_SURREAL_DATABASE','ON_SURREAL_USER','ON_SURREAL_PASSWORD',
