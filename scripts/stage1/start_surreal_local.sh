@@ -30,13 +30,16 @@ project="$VAULT_SYNTHETIC_PROJECT"
 ctx="$VAULT_DOCKER_CONTEXT"
 [[ "$project" =~ ^sunrise-s1-[a-z0-9-]{8,40}$ ]] || exit 78
 lookup() {
-    local output
-    output="$(docker --context "$ctx" compose -p "$project" -f "$compose" port "$1" "$2")"
-    [[ "$output" =~ ^127\.0\.0\.1:[0-9]{1,5}$ ]] || exit 78
-    printf '%s' "$output"
+    local evidence value
+    evidence="$(python "$HERE/loopback_port_contract.py" \
+        --context "$ctx" --project "$project" --compose-file "$compose" \
+        --service "$1")" || exit 78
+    value="$(printf '%s' "$evidence" | python -c 'import json,sys;print(json.load(sys.stdin)["port"])')"
+    [[ "$value" =~ ^[0-9]{4,5}$ ]] || exit 78
+    printf '127.0.0.1:%s' "$value"
 }
-a_rpc="ws://$(lookup a_db 8000)/rpc"
-native_http="http://$(lookup native 5055)"
+a_rpc="ws://$(lookup a_db)/rpc"
+native_http="http://$(lookup native)"
 [[ -z "${VAULT_SURREAL_WS_URL:-}" || "$VAULT_SURREAL_WS_URL" == "$a_rpc" ]] || exit 78
 [[ -z "${VAULT_NATIVE_URL:-}" || "$VAULT_NATIVE_URL" == "$native_http" ]] || exit 78
 export VAULT_SURREAL_WS_URL="$a_rpc"
