@@ -59,7 +59,7 @@ def main():
         drain(args)
         before=inventory_at_freeze(args,identity)
         stop_project(args,identity)
-        compose(args,'start','a_db','on_db')
+        compose(args,'start','a_db','on_db','a_relay','on_relay')
         after=None
         for _ in range(30):
             try:
@@ -70,7 +70,7 @@ def main():
         if (after is None or before!=after or
                 after.get('distinct_engines') is not True):
             raise RuntimeError('Two physical DB journal/index inventories changed during restart')
-        compose(args,'start','native')
+        compose(args,'start','native','native_relay')
         after_readback=None
         for _ in range(30):
             try:
