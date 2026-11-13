@@ -14,6 +14,7 @@ ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'apps/a-vault'))
 from native import Native,NativeUnavailable
 from surreal_store import SurrealStore,_record
+from store import Indeterminate, Conflict
 
 
 @pytest.mark.parametrize(('payload','expected'),[
@@ -48,7 +49,11 @@ def test_source_owner_preserves_rights_and_ai_disabled_for_authenticated_service
     journal=SurrealStore.__new__(SurrealStore)
     journal.actor_id='synthetic-admin'
     journal._operation=lambda school,key,kind,scope,actor_id=None: {
-        'status':'PENDING','actor_id':actor_id}
+        'status':'PENDING','actor_id':actor_id,
+        'native_source_id':'source:synthetic',
+        'metadata':{'sha256':'a'*64,'title':'Synthetic title',
+                    'original_name':'synthetic.pdf',
+                    'license':'synthetic','retention':'short'}}
     journal.shell=lambda school,shell: {'notebook_id':'notebook:synthetic'}
     captured=[]
     journal.query=lambda sql,**bindings: captured.append((sql,bindings)) or []
@@ -124,3 +129,57 @@ def test_native_retry_retains_source_and_original_hash_without_repeat():
                                                          operator_authorized=True))
     assert receipt['state']=='RETRY_SUBMITTED_NOT_COMPLETED'
     assert observed=={'source_reads':2,'native_posts':1,'pdf_gets':2}
+
+
+@pytest.mark.parametrize(('native_receipt','metadata_override','exception'),[
+    (None,None,Indeterminate),
+    ('source:different',None,Indeterminate),
+    ('source:synthetic',{'title':'other title'},Conflict),
+    ('source:synthetic',{},Indeterminate),
+])
+def test_finish_material_rejects_unknown_ack_or_mismatched_original_metadata(
+        native_receipt,metadata_override,exception):
+    journal=SurrealStore.__new__(SurrealStore)
+    journal.actor_id='synthetic-admin'
+    metadata={'sha256':'a'*64,'title':'Synthetic title','original_name':'synthetic.pdf',
+              'license':'synthetic','retention':'short'}
+    if metadata_override is not None:
+        metadata.update(metadata_override)
+    journal._operation=lambda school,key,kind,scope,actor_id=None: {
+        'status':'PENDING','actor_id':actor_id,
+        'native_source_id':native_receipt,'metadata':metadata}
+    journal.shell=lambda school,shell: {'notebook_id':'notebook:synthetic'}
+    called=[]
+    journal.query=lambda sql,**params: called.append((sql,params)) or []
+    with pytest.raises(exception):
+        journal.finish_material('synthetic-school','synthetic-shell','synthetic-key',
+            'source:synthetic','Synthetic title','a'*64,'synthetic.pdf',
+            'synthetic','short',actor_id='synthetic-service')
+    assert not called, 'Must not write SourceOwner without exact durable receipt and metadata'
+
+
+def test_native_receipt_conditional_write_requires_confirmed_single_row():
+    journal=SurrealStore.__new__(SurrealStore)
+    journal.actor_id='synthetic-admin'
+    operation={'status':'PENDING','native_source_id':None}
+    journal._operation=lambda school,key,kind,scope,actor_id=None: operation
+    calls=[]
+    journal.query=lambda sql,**params: calls.append((sql,params)) or [[]]
+    with pytest.raises(Indeterminate):
+        journal.record_material_receipt('synthetic-school','synthetic-shell',
+            'synthetic-key','source:synthetic',actor_id='synthetic-service')
+    assert len(calls)==1
+    assert 'native_source_id IS NULL' in calls[0][0]
+    assert 'native_source_id IS NONE' in calls[0][0]
+
+
+def test_native_receipt_does_not_overwrite_an_existing_different_source():
+    journal=SurrealStore.__new__(SurrealStore)
+    journal.actor_id='synthetic-admin'
+    journal._operation=lambda school,key,kind,scope,actor_id=None: {
+        'status':'PENDING','native_source_id':'source:original'}
+    journal.query=lambda sql,**params: (_ for _ in ()).throw(
+        AssertionError('Unexpected Native receipt overwrite'))
+    with pytest.raises(Conflict):
+        journal.record_material_receipt('synthetic-school','synthetic-shell',
+            'synthetic-key','source:replacement',actor_id='synthetic-service')
