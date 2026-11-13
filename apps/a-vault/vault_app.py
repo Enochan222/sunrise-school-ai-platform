@@ -345,8 +345,13 @@ def build_app(cfg:Settings|None=None,native=None):
         key=req.headers.get('idempotency-key','')
         if not ID_RE.fullmatch(key):raise HTTPException(400,'Idempotency-Key required for upload')
         fingerprint=hashlib.sha256(json.dumps([digest,title,license,retention,name],separators=(',',':')).encode()).hexdigest()
+        metadata={'sha256':digest,'title':title,'license':license,
+                  'retention':retention,'original_name':name}
+        options=material_actor_options(p)
+        if isinstance(store,SurrealStore):
+            options['metadata']=metadata
         try:
-            receipt_old,is_new=store.start_material(p['school_id'],shell_id,key,fingerprint,**material_actor_options(p))
+            receipt_old,is_new=store.start_material(p['school_id'],shell_id,key,fingerprint,**options)
         except (Conflict,Indeterminate) as e:return_error(e)
         if not is_new:
             return JSONResponse({'source_id':receipt_old['source_id'],'sha256':receipt_old['sha256'],
@@ -354,6 +359,12 @@ def build_app(cfg:Settings|None=None,native=None):
         try:
             receipt=await upstream.upload_pdf(s['notebook_id'],content,name,title)
             source_id=receipt['id']
+            # Native POST ACK is NOT an atomic A journal commit. Save its exact
+            # Source ID durably before further owner/hash readback. If ACK was
+            # lost we have no trustworthy Source ID: quarantine, never POST again.
+            if isinstance(store,SurrealStore):
+                store.record_material_receipt(p['school_id'],shell_id,key,source_id,
+                                              **material_actor_options(p))
             # Do not expose uncertain source if ownership cannot be confirmed.
             await upstream.ensure_owned(source_id,s['notebook_id'])
             store.finish_material(p['school_id'],shell_id,key,source_id,title,digest,name,license,retention,**material_actor_options(p))
