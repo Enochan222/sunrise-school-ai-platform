@@ -94,6 +94,7 @@ def main():
     shells=sql('SELECT * FROM content_shell LIMIT 10001;',a_ns,a_db)
     shell_index={(r['school_id'],r['shell_id']):r for r in shells}
     identities=[]
+    rights_versions=[]
     searched=0
     for owner in owners:
         source=owner.get('source_id')
@@ -104,12 +105,20 @@ def main():
         shell=shell_index.get((owner.get('school_id'),owner.get('shell_id')))
         if not shell or shell.get('notebook_id')!=notebook:
             raise RuntimeError('School/Shell/Notebook mapping inconsistent')
+        expected_initial=hashlib.sha256(json.dumps(
+            [source,owner.get('sha256')],ensure_ascii=False,
+            separators=(',',':'),sort_keys=True).encode('utf-8')).hexdigest()
         if (not HEX.fullmatch(str(owner.get('sha256',''))) or
-            not HEX.fullmatch(str(owner.get('initial_version_id',''))) or
+            owner.get('version')!=1 or
+            owner.get('initial_version_id')!=expected_initial or
             not owner.get('license') or not owner.get('retention') or
+            not owner.get('original_name') or
+            owner.get('original_mime_type')!='application/pdf' or
+            not owner.get('rights_owner_actor_id') or
             owner.get('approved_sharing') is not False or
-            owner.get('ai_usage_allowed') is not False):
-            raise RuntimeError('Rights/version/original hash incorrect')
+            owner.get('ai_usage_allowed') is not False or
+            owner.get('ai_usage') is not False):
+            raise RuntimeError('Rights/immutable initial version/original hash incorrect')
         # Native reference source(in) -> notebook(out), exactly one.
         links=sql('SELECT in,out FROM reference WHERE in=type::thing("source","'+source.split(':',1)[1]+'");',on_ns,on_db)
         if len(links)!=1 or str(links[0].get('in'))!=source or str(links[0].get('out'))!=notebook:
@@ -121,11 +130,20 @@ def main():
         if hashlib.sha256(pdf).hexdigest()!=owner['sha256']:
             raise RuntimeError('Native original PDF hash differs after isolated restore')
         identities.append((source,notebook,owner['sha256']))
+        rights_versions.append((source,owner['sha256'],owner['version'],
+            owner['initial_version_id'],owner['license'],owner['retention'],
+            owner['rights_owner_actor_id'],owner['original_name'],
+            owner['original_mime_type'],owner['approved_sharing'],
+            owner['ai_usage_allowed'],owner['ai_usage']))
         searched+=1
     result={'classification':'NATIVE_OWNER_READBACK_NOT_FORMAL_AT',
             'source_owner_count':len(owners),'shell_count':len(shells),
             'verified_original_count':searched,
             'owned_source_graph_hash':owned_identity_digest(identities),
+            'rights_retention_initial_version_sha256':hashlib.sha256(json.dumps(
+                sorted(rights_versions),ensure_ascii=False,
+                separators=(',',':')).encode('utf-8')).hexdigest(),
+            'rights_retention_initial_version_count':len(rights_versions),
             'text_only_patch_attested':True,'external_ai_egress_test':'NOT_RUN'}
     print(json.dumps(result,sort_keys=True))
 
