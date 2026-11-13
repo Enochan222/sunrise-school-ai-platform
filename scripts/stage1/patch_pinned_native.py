@@ -47,7 +47,10 @@ def patch_scoped_cjk_search(source: str) -> str:
         # Limit the literal match to sources linked to one explicit notebook.
         if (source and not note and notebook_ids
                 and len(notebook_ids) == 1
-                and any("\u3400" <= char <= "\u9fff" for char in keyword)):
+                and any("\u3400" <= char <= "\u9fff"
+                        or "\uf900" <= char <= "\ufaff"
+                        or "\U00020000" <= char <= "\U000323af"
+                        for char in keyword)):
             literal_results = await repo_query(
                 "SELECT id, id AS parent_id, title, 0 AS relevance FROM source "
                 "WHERE id IN (SELECT VALUE in FROM reference WHERE out = $notebook) "

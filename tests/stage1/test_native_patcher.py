@@ -108,6 +108,13 @@ async def vector_search():
 
     calls.clear()
     result = asyncio.run(namespace["text_search"](
+        "𠀀", 3, source=True, note=False, notebook_ids=["notebook:owner"]
+    ))
+    assert calls[1][1]["term"] == "𠀀"
+    assert result[0]["parent_id"] == "source:substring"
+
+    calls.clear()
+    result = asyncio.run(namespace["text_search"](
         "繁體中文", 3, source=True, note=False, notebook_ids=[]
     ))
     assert len(calls) == 1
