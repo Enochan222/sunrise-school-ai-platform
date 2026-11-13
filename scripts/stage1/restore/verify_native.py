@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import re
+import sys
 import urllib.request
 from websockets.sync.client import connect
 
@@ -40,9 +41,9 @@ def owned_identity_digest(identities):
 
 
 def sql(query,ns,db):
-    if os.environ.get('SURREAL_URL')!='ws://surrealdb:8000/rpc':
-        raise RuntimeError('Only isolated SurrealDB address accepted')
-    with connect('ws://surrealdb:8000/rpc',subprotocols=['json'],open_timeout=5) as ws:
+    if os.environ.get('SURREAL_URL')!='ws://on_db:8000/rpc':
+        raise RuntimeError('Native verifier may query only the ON physical graph DB')
+    with connect('ws://on_db:8000/rpc',subprotocols=['json'],open_timeout=5) as ws:
         number=0
         def rpc(method,params):
             nonlocal number
@@ -86,12 +87,24 @@ def main():
     proof=native('/api/sunrise-patch-status')
     if proof.get('marker')!='sunrise-a-text-only-no-vector-v1' or proof.get('text_only') is not True:
         raise RuntimeError('Native no-vector patch identity unavailable')
-    a_ns=os.environ['VAULT_SURREAL_NAMESPACE']
-    a_db=os.environ['VAULT_SURREAL_DATABASE']
+    # The SourceOwner/Shell snapshot came from an independently verified A
+    # container on the physically separate A private network over a host pipe.
+    # A root secrets are NEVER available inside this Native/ON verifier.
+    if os.getenv('A_SURREAL_PASSWORD') or os.getenv('VAULT_SURREAL_PASSWORD'):
+        raise RuntimeError('A root leaked into Native graph verification container')
+    raw=sys.stdin.read((4<<20)+1)
+    if len(raw.encode('utf-8'))>4<<20:
+        raise RuntimeError('A owner pipe evidence is unbounded')
+    snapshot=json.loads(raw)
+    if snapshot.get('classification')!='PRIVATE_A_OWNER_SNAPSHOT_NOT_ACCEPTANCE':
+        raise RuntimeError('Independent physical A SourceOwner snapshot missing')
+    owners=snapshot.get('source_owner')
+    shells=snapshot.get('content_shell')
+    if (not isinstance(owners,list) or not isinstance(shells,list)
+            or not 0<len(owners)<=10000 or len(shells)>10000):
+        raise RuntimeError('A SourceOwner/Shell proof missing, empty or unbounded')
     on_ns=os.environ['ON_GRAPH_NAMESPACE']
     on_db=os.environ['ON_GRAPH_DATABASE']
-    owners=sql('SELECT * FROM source_owner LIMIT 10001;',a_ns,a_db)
-    shells=sql('SELECT * FROM content_shell LIMIT 10001;',a_ns,a_db)
     shell_index={(r['school_id'],r['shell_id']):r for r in shells}
     identities=[]
     rights_versions=[]
