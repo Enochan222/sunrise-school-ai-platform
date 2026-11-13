@@ -48,15 +48,23 @@ def test_service_actor_is_opaque_scope_of_material_idempotency():
 def test_source_owner_preserves_rights_and_ai_disabled_for_authenticated_service_actor():
     journal=SurrealStore.__new__(SurrealStore)
     journal.actor_id='synthetic-admin'
-    journal._operation=lambda school,key,kind,scope,actor_id=None: {
-        'status':'PENDING','actor_id':actor_id,
-        'native_source_id':'source:synthetic',
-        'metadata':{'sha256':'a'*64,'title':'Synthetic title',
-                    'original_name':'synthetic.pdf',
-                    'license':'synthetic','retention':'short'}}
+    receipt={'status':'PENDING','actor_id':'synthetic-service',
+             'native_source_id':'source:synthetic','metadata':{
+                 'sha256':'a'*64,'title':'Synthetic title',
+                 'original_name':'synthetic.pdf','license':'synthetic',
+                 'retention':'short'}}
+    journal._operation=lambda school,key,kind,scope,actor_id=None: receipt
     journal.shell=lambda school,shell: {'notebook_id':'notebook:synthetic'}
     captured=[]
-    journal.query=lambda sql,**bindings: captured.append((sql,bindings)) or []
+    persisted={}
+    def transaction(sql,**bindings):
+        captured.append((sql,bindings))
+        if 'BEGIN TRANSACTION;' in sql:
+            persisted.update(bindings['material'])
+            receipt.update({'status':'COMMITTED','source_id':'source:synthetic'})
+        return []
+    journal.query=transaction
+    journal.material=lambda source,shell,school: dict(persisted) if persisted else None
     journal.finish_material('synthetic-school','synthetic-shell','synthetic-key',
         'source:synthetic','Synthetic title','a'*64,'synthetic.pdf','synthetic','short',
         actor_id='synthetic-service')
