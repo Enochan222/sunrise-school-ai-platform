@@ -113,6 +113,18 @@ def read_json(path):
     return json.loads(path.read_text(encoding='utf-8'))
 
 
+def sha256_file(path):
+    """Hash cold restore archives without loading an unbounded tar into RAM."""
+    digest=hashlib.sha256()
+    with path.open('rb') as stream:
+        while True:
+            chunk=stream.read(1024*1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def test_result(at,report):
     if at=='S1-AT01':
         required=('admin_login_and_private_session','surreal_durable_native_notebook_unique',
@@ -224,7 +236,7 @@ def run_restore(config,output):
     target.write_text(json.dumps({'at_id':'S1-AT05','status':'PASS',
         'source_commit':final.get('source_commit'),
         'source_tree':final.get('source_tree'),
-        'cold_bundle_sha256':hashlib.sha256(bundle.read_bytes()).hexdigest(),
+        'cold_bundle_sha256':sha256_file(bundle),
         'restore_evidence_sha256':hashlib.sha256((workdir/'native-readback-evidence.json').read_bytes()).hexdigest(),
         'target_project':final.get('target_project'),'utc':timestamp()},indent=2)+'\n')
     return {'steps':[first,second,third]},hashlib.sha256(target.read_bytes()).hexdigest()
