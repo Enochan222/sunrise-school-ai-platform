@@ -29,11 +29,12 @@ def verify_private_address(value):
 
 
 def verify_manifest(path,context,project,expected_source_sha,expected_source_tree):
-    if Path(path).is_symlink():raise ValueError('Runtime identity symlink forbidden')
-    raw=Path(path).read_bytes()
-    if len(raw)>1<<20:raise ValueError('Oversize runtime identity document')
+    target=Path(path)
+    if target.is_symlink() or not target.is_file() or target.stat().st_size>1<<20:
+        raise ValueError('Missing/unbounded/symlinked runtime identity')
+    raw=target.read_bytes()
     document=json.loads(raw)
-    if (document.get('type')!='SUNRISE_S1_A_DOCKER_RUNTIME_IDENTITY_UNREVIEWED'
+    if (document.get('type')!='SUNRISE_S1_A_DUAL_DB_RUNTIME_IDENTITY_UNREVIEWED'
             or document.get('context')!=context or document.get('project')!=project
             or document.get('source_commit')!=expected_source_sha
             or document.get('source_tree')!=expected_source_tree
@@ -41,34 +42,56 @@ def verify_manifest(path,context,project,expected_source_sha,expected_source_tre
             or document.get('native_source_tree')!='2d101001de594c7d6a0e4aaeb8e85ac4c52980af'
             or not SHA64.fullmatch(str(document.get('compose_sha256','')))
             or not SHA64.fullmatch(str(document.get('on_patch_sha256','')))):
-        raise ValueError('Wrong/stale source revision, context, patch, compose or project identity')
+        raise ValueError('Wrong dual physical source SHA/tree/project/patch identity')
+    gateway=document.get('gateway',{})
+    if (gateway.get('tls_verified') is not True
+            or not SHA64.fullmatch(str(gateway.get('tls_peer_sha256','')))
+            or not SHA64.fullmatch(str(gateway.get('tls_ca_sha256','')))
+            or not str(gateway.get('origin','')).startswith('https://')):
+        raise ValueError('Verified Gateway TLS identity missing')
+    root=document.get('dual_rpc',{})
+    if (root.get('authenticated') is not True
+            or root.get('separate_root_secrets') is not True
+            or root.get('on_viewer_read_only') is not True):
+        raise ValueError('Two authenticated root engines and scoped ON Viewer not proven')
     for key in ('surreal_namespace','surreal_database','on_namespace','on_database'):
         if not re.fullmatch(r'[A-Za-z0-9_-]{1,100}',str(document.get(key,''))):
-            raise ValueError('Namespace/database identity incomplete')
+            raise ValueError('Physical namespace/database missing')
     services=document.get('services')
-    if not isinstance(services,dict) or set(services)!={'open_notebook','surrealdb'}:
-        raise ValueError('Missing or ambiguous Compose services')
+    if not isinstance(services,dict) or set(services)!={'a_db','on_db','native'}:
+        raise ValueError('Missing physical A/ON/Native services')
+    if (services['a_db'].get('container_id')==services['on_db'].get('container_id')
+            or services['a_db'].get('network_id')==services['on_db'].get('network_id')
+            or services['a_db'].get('persistent_volume')==services['on_db'].get('persistent_volume')):
+        raise ValueError('A/ON physical engine identity collision')
     ports=[]
     for service,identity in services.items():
-        if (identity.get('status')!='running' or
-                not SHA64.fullmatch(str(identity.get('image_id','')).removeprefix('sha256:')) or
-                not re.fullmatch(r'[a-f0-9]{64}',str(identity.get('container_id','')))
-                or not isinstance(identity.get('published_ports'),list)):
-            raise ValueError('Docker service identity unverified or not running')
+        if (identity.get('status')!='running'
+                or not SHA64.fullmatch(str(identity.get('image_id','')).removeprefix('sha256:'))
+                or not re.fullmatch(r'[a-f0-9]{64}',str(identity.get('container_id','')))
+                or not isinstance(identity.get('published_ports'),list)
+                or len(identity['published_ports'])!=1
+                or not str(identity.get('persistent_volume','')).startswith(project+'_')):
+            raise ValueError('Non-project or unverified immutable physical service')
+        if service in ('a_db','on_db') and not re.fullmatch(
+                r'[1-9][0-9]*:[1-9][0-9]*',str(identity.get('container_user',''))):
+            raise ValueError('Source DB is not verifiably nonroot')
         for binding in identity['published_ports']:
             port=binding.get('host_port')
             bind=binding.get('host_ip')
-            if not isinstance(port,int) or not 0<port<65536:
-                raise ValueError('HostPort is missing, stale or invalid')
-            if not isinstance(bind,str):raise ValueError('Missing published bind address')
-            ip_address(bind)  # No DNS/synthetic misleading address.
-            if '/' not in binding.get('container_port',''):
-                raise ValueError('ContainerPort protocol unspecified')
-            ports.append((service,identity['container_id'],bind,port,binding['container_port']))
-    if len(ports)!=len(set((p[3],p[4]) for p in ports)):
-        raise ValueError('Ambiguous duplicate published port')
+            target=binding.get('container_port')
+            if (type(port) is not int or not 1024<=port<=65535
+                    or bind!='127.0.0.1'
+                    or target!=('5055/tcp' if service=='native' else '8000/tcp')):
+                raise ValueError('Unattested or externally exposed private service')
+            ports.append((service,identity['container_id'],bind,port,target))
+    if len(set(x[3] for x in ports))!=3:
+        raise ValueError('Duplicate/ambiguous dynamic physical host port')
+    a, on=services['a_db']['published_ports'][0],services['on_db']['published_ports'][0]
+    if (root.get('a_url')!='ws://127.0.0.1:'+str(a['host_port'])+'/rpc'
+            or root.get('on_url')!='ws://127.0.0.1:'+str(on['host_port'])+'/rpc'):
+        raise ValueError('Dual physical authenticated endpoint identity changed')
     return document,ports,hashlib.sha256(raw).hexdigest()
-
 
 def probe(ip,port,timeout):
     try:
