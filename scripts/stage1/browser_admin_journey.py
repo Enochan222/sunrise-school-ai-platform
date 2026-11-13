@@ -60,6 +60,8 @@ def main():
               'classification': 'SYNTHETIC_LOCAL_BROWSER_JOURNEY_CANDIDATE'}
     try:
         from playwright.sync_api import sync_playwright
+        from importlib.metadata import version as package_version
+        report['playwright_package_version'] = package_version('playwright')
         raw = synthetic_chinese_pdf()
         digest = hashlib.sha256(raw).hexdigest()
         token = secrets.token_hex(8)
@@ -67,6 +69,7 @@ def main():
         stream = 'ui_' + token
         with sync_playwright() as pw:
             browser = pw.chromium.launch(headless=True)
+            report['chromium_version'] = browser.version
             try:
                 context = browser.new_context(accept_downloads=True)
                 # A private UI must not cause the browser to fetch external resources.
