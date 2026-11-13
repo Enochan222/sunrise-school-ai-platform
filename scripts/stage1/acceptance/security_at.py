@@ -173,9 +173,10 @@ def main():
             report['gateway_secret_fail_start']='PASS'
             report['pinned_native_compose_required_secrets']=tested
             report['direct_native_process_missing_secret_test']='NOT_RUN'
-            # Do not elevate Compose interpolation proof into a full Native
-            # process/runtime startup acceptance without independent evidence.
-            raise RuntimeError('AT08 remains PARTIAL: Native process secret fail-start evidence absent')
+            report['status']='PARTIAL_NEEDS_NATIVE_PROCESS_FAIL_START'
+            # Compose variable interpolation is useful evidence, but cannot
+            # prove that the pinned Native process rejects example passwords.
+            raise SystemExit(2)
         else:
             report['private_ports']=public_port_denials(args)
             report.update(gateway_negative(args,args.at_id))
