@@ -155,15 +155,27 @@ def native_readback_at_freeze(args,identity):
 def stop_project(args,identity):
     ids={service:value['container_id'] for service,value in identity['services'].items()}
     # Stop only the pinned, already inspected isolated Compose project.
+    # Stop ALL relays first, then Native/DB. Leaving a published relay while
+    # freezing recovery point would keep a foreign host access path alive.
     run(['docker','--context',args.context,'compose','-p',args.project,
          '-f',str(args.compose_file),'stop','--timeout','30',
-         'native','on_db','a_db'])
+         'native_relay','on_relay','a_relay','native','on_db','a_db'])
     for service,container_id in ids.items():
         inspected=json.loads(docker(args.context,'inspect',container_id))[0]
         if inspected.get('State',{}).get('Running') is not False:
             raise BackupInvalid('Synthetic service did not stop: '+service)
         if inspected.get('Id')!=container_id:
             raise BackupInvalid('Container identity changed after stop')
+        relay=identity['services'][service].get('host_relay')
+        if not isinstance(relay,dict):
+            raise BackupInvalid('Host relay identity missing from recovery point')
+        relay_id=relay.get('relay_container_id')
+        if not isinstance(relay_id,str) or not re.fullmatch(r'[a-f0-9]{64}',relay_id):
+            raise BackupInvalid('Invalid saved relay container identity')
+        relay_info=json.loads(docker(args.context,'inspect',relay_id))[0]
+        if (relay_info.get('Id')!=relay_id
+                or relay_info.get('State',{}).get('Running') is not False):
+            raise BackupInvalid('Host relay still running or replaced after cold stop')
 
 
 def copy_volumes(args,identity,staging,inventory,native_readback):
