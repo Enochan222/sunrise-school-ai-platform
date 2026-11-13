@@ -48,7 +48,8 @@ def inspect(root: Path, path: Path, source_sha: str, source_tree: str) -> str:
     for service in ('a_db','on_db','native'):
         entry=doc['services'][service]
         if (not isinstance(entry,dict) or entry.get('status')!='running'
-                or not _SHA64.fullmatch(str(entry.get('image_id','')).removeprefix('sha256:'))
+                or not re.fullmatch(r'sha256:[0-9a-f]{64}',
+                                    str(entry.get('image_id','')))
                 or not isinstance(entry.get('container_id'),str)
                 or not re.fullmatch(r'[0-9a-f]{64}',entry['container_id'])):
             raise RuntimeError('Incomplete live-container identity')
