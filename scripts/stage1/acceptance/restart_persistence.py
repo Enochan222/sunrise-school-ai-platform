@@ -11,13 +11,14 @@ import json
 import os
 from pathlib import Path
 import re
+import secrets
 import subprocess
 import sys
 import time
 
 ROOT=Path(__file__).resolve().parents[3]
 sys.path.insert(0,str(ROOT/'scripts/stage1/restore'))
-from cold_capture import check_manifest,check_gateway_frozen,drain,inventory_at_freeze,stop_project
+from cold_capture import check_manifest,check_gateway_frozen,drain,inventory_at_freeze,stop_project,native_readback_at_freeze
 from runtime_identity import git_identity
 
 
@@ -44,18 +45,21 @@ def main():
         p.error('Exact tested revision mismatch')
     if args.out.exists():p.error('Evidence cannot overwrite prior run')
     identity=check_manifest(args)
-    # Conditional creation, no existing recovery/capture flag is replaced.
-    with args.maintenance_file.open('x') as f:
-        f.write('SUNRISE_A_RESTART_WRITE_FREEZE\n')
+    # One unique probe-owned barrier; leave it active on any failed restart.
+    nonce=secrets.token_hex(16)
+    marker='SUNRISE_A_RESTART_WRITE_FREEZE '+nonce+'\n'
+    with args.maintenance_file.open('x') as freeze:
+        freeze.write(marker)
     record={'at_id':'S1-AT04','status':'NOT_RUN','start_utc':datetime.now(timezone.utc).isoformat(),
             'source_commit':sha,'source_tree':tree,'project':args.project}
     try:
         check_gateway_frozen(args)
         drain(args)
+        before_readback=native_readback_at_freeze(args,identity)
+        drain(args)
         before=inventory_at_freeze(args,identity)
         stop_project(args,identity)
-        compose(args,'start','surrealdb')
-        compose(args,'start','open_notebook')
+        compose(args,'start','a_db','on_db')
         after=None
         for _ in range(30):
             try:
@@ -63,12 +67,31 @@ def main():
                 break
             except (OSError,RuntimeError,subprocess.CalledProcessError):
                 time.sleep(2)
-        if after is None or before!=after:
-            raise RuntimeError('DB/worker restart did not preserve A+ON journal, source and index inventory')
+        if (after is None or before!=after or
+                after.get('distinct_engines') is not True):
+            raise RuntimeError('Two physical DB journal/index inventories changed during restart')
+        compose(args,'start','native')
+        after_readback=None
+        for _ in range(30):
+            try:
+                after_readback=native_readback_at_freeze(args,identity)
+                break
+            except (OSError,RuntimeError,subprocess.CalledProcessError):
+                time.sleep(2)
+        if after_readback is None or after_readback!=before_readback:
+            raise RuntimeError('Native Worker/SourceOwner/Original Graph changed after restart')
+        check_gateway_frozen(args)
         record['before_inventory_sha256']=hashlib.sha256(
             json.dumps(before,sort_keys=True).encode()).hexdigest()
         record['after_inventory_sha256']=hashlib.sha256(
             json.dumps(after,sort_keys=True).encode()).hexdigest()
+        record['native_readback_before_after_equal']=True
+        # Only unfreeze the exact flag created by THIS successful check.
+        # Any error (including identity mismatch) leaves it frozen.
+        if args.maintenance_file.read_text(encoding='utf-8')!=marker:
+            raise RuntimeError('Another operator changed restart write-freeze')
+        args.maintenance_file.unlink()
+        record['own_restart_freeze_released_after_pass']=True
         record['status']='PASS'
     except Exception as e:
         record['status']='FAIL';record['error_type']=type(e).__name__
@@ -76,9 +99,9 @@ def main():
     finally:
         record['end_utc']=datetime.now(timezone.utc).isoformat()
         args.out.write_text(json.dumps(record,sort_keys=True,indent=2)+'\n')
-    # Keep maintenance in place; operator explicitly reviews and releases.
     print(json.dumps({'at_id':record['at_id'],'status':record['status'],
-                      'maintenance_flag_held':True}))
+                      'restart_freeze_held':args.maintenance_file.exists(),
+                      'released_only_after_verified_pass':record.get('own_restart_freeze_released_after_pass') is True}))
 
 
 if __name__=='__main__':main()
