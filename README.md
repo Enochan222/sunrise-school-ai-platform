@@ -2,7 +2,7 @@
 
 **Active repository:** https://github.com/Enochan222/sunrise-school-ai-platform  
 **Delivery:** Stage S0 is **documentation-only**. S1–S28 are **NOT IMPLEMENTED / NOT DEPLOYED**.  
-**GitHub Actions:** **HISTORICALLY DISABLED (D08); LIMITED STAGE 1 [A] TWO-WORKFLOW EXCEPTION** (see [addendum](docs/decisions/STAGE1_LIMITED_CI_ADDENDUM.md)). **GitHub Copilot:** **NOT USED.**  
+**GitHub Actions:** **HISTORICALLY DISABLED (D08); LIMITED STAGE 1 [A] TWO-WORKFLOW EXCEPTION** (see [addendum](docs/decisions/STAGE1_LIMITED_CI_ADDENDUM.md)). **GitHub Copilot:** **NOT USED.**
 **Release/Stage approval:** **PENDING**; static checks do not count as runtime acceptance or approval.
 
 Read [AI development rules](AGENTS.md), [Stage0 handover](docs/delivery/NEW_REPO_STAGE0.md), [PRD](docs/product/PRD.md), [S0–S28 Roadmap](docs/product/ROADMAP.md), [Stage Registry](docs/quality/STAGE_REGISTRY.json), [API Inventory](docs/architecture/API_INVENTORY.json), [Reuse-first audit](docs/architecture/OPEN_NOTEBOOK_REUSE_AUDIT.md), [Stage logic audit](docs/delivery/STAGE_FLOW_ENGINEERING_AUDIT.md).
