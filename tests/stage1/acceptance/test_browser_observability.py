@@ -84,3 +84,21 @@ def test_worker_polling_empty_and_http_failures_are_explicit():
         module.worker_status([{'sha256':'expected-hash','title':'expected-title','state':'READY'},
                               {'sha256':'expected-hash','title':'expected-title','state':'READY'}],
                              'expected-hash','expected-title')
+
+
+@pytest.mark.parametrize('status,location,accepted',[
+    (303,'/admin',True),
+    (200,'/admin',False),   # JSON API is NOT an HTML form redirect
+    (302,'/admin',False),   # wrong redirect semantics
+    (307,'/admin',False),
+    (303,'https://attacker.invalid/admin',False),
+    (303,'//attacker.invalid/admin',False),
+    (303,'/admin?token=secret',False),
+    (303,'/auth/login',False),
+    (303,'/admin#redirect',False),
+    (303,'',False),
+    (True,'/admin',False),
+])
+def test_admin_html_login_must_redirect_303_to_relative_admin(status,location,accepted):
+    module=load()
+    assert module.valid_admin_login_redirect(status,location) is accepted
