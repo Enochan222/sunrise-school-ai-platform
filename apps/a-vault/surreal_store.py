@@ -231,8 +231,19 @@ class SurrealStore:
         if not isinstance(key,str) or not _SAFE.fullmatch(key):
             raise ValueError('Unsafe idempotency key')
 
-    def _operation(self,school,key,kind,scope=''):
-        rid=_record('vault_operation',school,self.actor_id,kind,key,scope)
+    @staticmethod
+    def _material_actor(actor_id, fallback):
+        # The authenticated JWT subject, not the process-wide Admin identity,
+        # scopes service material operations. It is hashed into opaque record IDs.
+        actor=actor_id if actor_id is not None else fallback
+        if (not isinstance(actor,str) or not actor.strip() or len(actor)>256
+                or any(ord(char)<32 for char in actor)):
+            raise ValueError('Invalid authenticated material actor')
+        return actor
+
+    def _operation(self,school,key,kind,scope='',*,actor_id=None):
+        actor=self._material_actor(actor_id,self.actor_id)
+        rid=_record('vault_operation',school,actor,kind,key,scope)
         return self._first(self.query('SELECT * FROM type::record($rid);',rid=rid))
 
     def operation(self,school,key,kind,scope=''):
@@ -348,9 +359,10 @@ class SurrealStore:
     def del_session(self,sid):
         self.query('DELETE type::record($rid);',rid=_record('vault_session',sid))
 
-    def start_material(self,school_id,shell_id,key,digest):
+    def start_material(self,school_id,shell_id,key,digest,*,actor_id=None):
         self._validate_key(school_id,key)
-        op=self._operation(school_id,key,'material',shell_id)
+        actor=self._material_actor(actor_id,self.actor_id)
+        op=self._operation(school_id,key,'material',shell_id,actor_id=actor)
         if op:
             if op.get('payload_sha')!=digest:raise Conflict('Upload key reused with different body')
             if op['status']=='COMMITTED':
@@ -358,9 +370,9 @@ class SurrealStore:
                 if m: return m,False
                 raise Indeterminate('Material committed without ownership record')
             raise Indeterminate('Unconfirmed source upload; no unsafe replay')
-        opid=_record('vault_operation',school_id,self.actor_id,'material',key,shell_id)
+        opid=_record('vault_operation',school_id,actor,'material',key,shell_id)
         claimid=_record('vault_scope_claim',school_id,shell_id,digest)
-        op={'school_id':school_id,'actor_id':self.actor_id,'kind':'material','idempotency_key':key,
+        op={'school_id':school_id,'actor_id':actor,'kind':'material','idempotency_key':key,
             'shell_id':shell_id,'payload_sha':digest,'status':'PENDING','source_id':None,
             'created_at':_now(),'updated_at':_now()}
         claim={'school_id':school_id,'scope_key':_digest(shell_id,digest),'operation_id':opid}
@@ -372,19 +384,22 @@ class SurrealStore:
             raise Indeterminate('Source upload reservation conflict/uncertain') from e
         return None,True
 
-    def finish_material(self,school_id,shell_id,key,source_id,title,sha256,filename,license,retention):
+    def finish_material(self,school_id,shell_id,key,source_id,title,sha256,filename,license,retention,*,actor_id=None):
         checked_id(source_id,'source')
-        opid=_record('vault_operation',school_id,self.actor_id,'material',key,shell_id)
-        op=self._operation(school_id,key,'material',shell_id)
+        actor=self._material_actor(actor_id,self.actor_id)
+        opid=_record('vault_operation',school_id,actor,'material',key,shell_id)
+        op=self._operation(school_id,key,'material',shell_id,actor_id=actor)
         if not op or op['status']!='PENDING': raise Indeterminate('Source operation not reserved')
         if not self.shell(school_id,shell_id):raise Indeterminate('Shell disappeared during upload')
         m={'source_id':source_id,'school_id':school_id,'shell_id':shell_id,
            'notebook_id':self.shell(school_id,shell_id)['notebook_id'],
            'title':title,'sha256':sha256,'original_name':filename,'version':1,
            'initial_version_id':_digest(source_id,sha256),
-           'license':license,'retention':retention,'approved_sharing':False,
-           'ai_usage':False,'created_by_actor_id':self.actor_id,'state':'PENDING',
-           'created_at':_now()}
+           'license':license,'retention':retention,
+           'rights_owner_actor_id':actor,'created_by_actor_id':actor,
+           'original_mime_type':'application/pdf','native_locator':source_id,
+           'approved_sharing':False,'ai_usage_allowed':False,'ai_usage':False,
+           'state':'PENDING','created_at':_now()}
         sid=_record('source_owner',source_id)
         try:
             self.query('BEGIN TRANSACTION; CREATE ONLY type::record($sid) CONTENT $material; '
@@ -393,8 +408,9 @@ class SurrealStore:
         except SurrealUnavailable as e:
             raise Indeterminate('Source ownership transaction uncertain') from e
 
-    def quarantine_material(self,school_id,shell_id,key):
-        rid=_record('vault_operation',school_id,self.actor_id,'material',key,shell_id)
+    def quarantine_material(self,school_id,shell_id,key,*,actor_id=None):
+        actor=self._material_actor(actor_id,self.actor_id)
+        rid=_record('vault_operation',school_id,actor,'material',key,shell_id)
         self.query('UPDATE type::record($rid) SET status="QUARANTINED",updated_at=time::unix() WHERE status="PENDING";',rid=rid)
 
     def material(self,source_id,shell_id,school_id):
