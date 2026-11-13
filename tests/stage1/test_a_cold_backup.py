@@ -18,13 +18,14 @@ def snapshot(tmp_path,monkeypatch):
     monkeypatch.setenv('OPEN_NOTEBOOK_ENCRYPTION_KEY','native-'+'A'*48)
     monkeypatch.setenv('VAULT_ENCRYPTION_KEY','vault-'+'B'*48)
     folder=tmp_path/'source'
-    for name in ('surreal','native','gateway'):(folder/name).mkdir(parents=True)
-    (folder/'surreal'/'db.rocks').write_bytes(b'SYNTHETIC_DB\x00INDEX_RECORD')
+    for name in ('a_db','on_db','native','gateway'):(folder/name).mkdir(parents=True)
+    (folder/'a_db'/'db.rocks').write_bytes(b'SYNTHETIC_A_DB\x00INDEX_RECORD')
+    (folder/'on_db'/'graph.rocks').write_bytes(b'SYNTHETIC_ON_DB_GRAPH_INDEX')
     (folder/'native'/'original.pdf').write_bytes(b'%PDF-1.4\nsynthetic\n%%EOF')
     (folder/'gateway'/'metadata.json').write_text('{"school":"synthetic"}')
     attestation=tmp_path/'operator.json'
     attestation.write_text(json.dumps({'exclusive_synthetic_host':True,
-        'native_and_db_stopped':True,'offline_volume_copy':True,
+        'a_and_on_and_native_stopped':True,'offline_volume_copy':True,
         'docker_project':'only-synthetic-wp08','host_identity':'synthetic-test-host',
         'snapshot_utc':'2026-11-13T11:45:00Z'}))
     return folder,attestation,tmp_path
@@ -34,19 +35,19 @@ def bundle(snapshot):
     folder,att,root=snapshot
     output=root/'result.tar'
     summary=build(folder,output,att,'a'*40,'b'*40,'sha256:'+'c'*64)
-    assert summary['files']==3 and output.is_file()
+    assert summary['files']==4 and output.is_file()
     return output
 
 
 def test_bundle_verify_isolated_restore_round_trip_with_keys(snapshot):
     path=bundle(snapshot)
     manifest=verify(path)
-    assert len(manifest['files'])==3
+    assert len(manifest['files'])==4
     assert 'OPEN_NOTEBOOK_ENCRYPTION_KEY' in manifest['required_external_key_sha256']
     assert 'A'*30 not in str(manifest) and 'B'*30 not in str(manifest)
     restored=snapshot[2]/'separate_namespace'
     output=restore_isolated(path,restored)
-    assert output['files']==3
+    assert output['files']==4
     for name,record in manifest['files'].items():
         assert hashlib.sha256((restored/name).read_bytes()).hexdigest()==record['sha256']
     assert not (restored/'manifest.json').exists()
@@ -65,7 +66,7 @@ def test_wrong_or_missing_key_never_creates_restore(snapshot,monkeypatch):
 
 def test_changed_archive_detected_before_restore(snapshot):
     path=bundle(snapshot)
-    data=path.read_bytes().replace(b'SYNTHETIC_DB',b'UNTRUSTED_DB')
+    data=path.read_bytes().replace(b'SYNTHETIC_A_DB',b'UNTRUSTED_A_DB')
     path.write_bytes(data)
     with pytest.raises(BackupInvalid,match='corrupted'):
         verify(path)
@@ -88,7 +89,7 @@ def test_cold_gate_symlink_and_missing_volume_rejected(snapshot,monkeypatch):
 
 def test_attestation_missing_or_false_refused(snapshot):
     folder,att,root=snapshot
-    att.write_text(json.dumps({'exclusive_synthetic_host':False,'native_and_db_stopped':True,
+    att.write_text(json.dumps({'exclusive_synthetic_host':False,'a_and_on_and_native_stopped':True,
         'offline_volume_copy':True,'docker_project':'p','host_identity':'h','snapshot_utc':'now'}))
     with pytest.raises(BackupInvalid,match='offline export'):
         build(folder,root/'no.tar',att,'a'*40,'b'*40,'sha256:'+'c'*64)
