@@ -1,51 +1,58 @@
-# Candidate local-only WP00 v1.15.1 runtime. REQUIRES external Docker host for verification.
-# Only synthetic data; do not use real school/student records. Do NOT expose upstream externally.
-name: sunrise-s1-native-synthetic
+# Stage 1 A-only · IMPLEMENTED_UNTESTED. Require a new exclusive -p project.
+# Physically separate A Journal and ON databases; loopback dynamic host ports.
 services:
-  surrealdb:
+  a_db:
     image: surrealdb/surrealdb:v2.3.10
-    command: ["start", "--log", "warn", "--user", "${SURREAL_USER:?required}", "--pass", "${SURREAL_PASSWORD:?required}", "rocksdb:/mydata/mydatabase.db"]
-    # Dedicated A Gateway connects via loopback only, never public interface.
-    ports:
-      - "127.0.0.1:8000:8000"
-    volumes:
-      - surreal_synthetic:/mydata
-    networks: [a_private]
+    user: "${A_SURREAL_IMAGE_UID:?verified nonroot image UID}:${A_SURREAL_IMAGE_GID:?verified nonroot image GID}"
+    command: ["start", "--log", "warn", "--user", "${A_SURREAL_USER:?A DB root}", "--pass", "${A_SURREAL_PASSWORD:?A DB secret}", "rocksdb:/mydata/mydatabase.db"]
+    ports: ["127.0.0.1::8000"]
+    volumes: [a_db_data:/mydata]
+    networks: [a_db_private]
     restart: "no"
     security_opt: [no-new-privileges:true]
-  open_notebook:
+  on_db:
+    image: surrealdb/surrealdb:v2.3.10
+    user: "${ON_SURREAL_IMAGE_UID:?verified nonroot image UID}:${ON_SURREAL_IMAGE_GID:?verified nonroot image GID}"
+    command: ["start", "--log", "warn", "--user", "${ON_SURREAL_USER:?ON DB root}", "--pass", "${ON_SURREAL_PASSWORD:?ON DB secret}", "rocksdb:/mydata/mydatabase.db"]
+    ports: ["127.0.0.1::8000"]
+    volumes: [on_db_data:/mydata]
+    networks: [on_db_private]
+    restart: "no"
+    security_opt: [no-new-privileges:true]
+  native:
     build:
-      context: ${ON_PATCHED_DIR:?absolute path to verified A-only patched staging checkout}
+      context: ${ON_PATCHED_DIR:?verified pinned staging copy}
       target: runtime
     image: sunrise-on-s1-v1.15.1-text-only:local
-    ports:
-      - "127.0.0.1:5055:5055"
+    ports: ["127.0.0.1::5055"]
     environment:
-      OPEN_NOTEBOOK_PASSWORD: ${OPEN_NOTEBOOK_PASSWORD:?required}
-      CORS_ORIGINS: http://127.0.0.1:8765
-      OPEN_NOTEBOOK_ENCRYPTION_KEY: ${OPEN_NOTEBOOK_ENCRYPTION_KEY:?required}
-      SURREAL_URL: ws://surrealdb:8000/rpc
-      SURREAL_USER: ${SURREAL_USER:?required}
-      SURREAL_PASSWORD: ${SURREAL_PASSWORD:?required}
-      SURREAL_NAMESPACE: open_notebook
-      SURREAL_DATABASE: open_notebook
+      OPEN_NOTEBOOK_PASSWORD: ${OPEN_NOTEBOOK_PASSWORD:?Native secret}
+      OPEN_NOTEBOOK_ENCRYPTION_KEY: ${OPEN_NOTEBOOK_ENCRYPTION_KEY:?Encryption secret}
+      OPEN_NOTEBOOK_PASSWORD_FILE: ""
+      CORS_ORIGINS: ${VAULT_GATEWAY_ORIGIN:?private verified Gateway origin}
+      SURREAL_URL: ws://on_db:8000/rpc
+      SURREAL_USER: ${ON_SURREAL_USER:?ON DB root}
+      SURREAL_PASSWORD: ${ON_SURREAL_PASSWORD:?ON DB secret}
+      SURREAL_NAMESPACE: ${ON_GRAPH_NAMESPACE:?ON Namespace}
+      SURREAL_DATABASE: ${ON_GRAPH_DATABASE:?ON Database}
       OPEN_NOTEBOOK_ENABLE_DOCLING: "false"
       OPEN_NOTEBOOK_ENABLE_CRAWL4AI: "false"
       OPEN_NOTEBOOK_WORKER_MAX_TASKS: "1"
-      OPEN_NOTEBOOK_PASSWORD_FILE: ""
       HTTP_PROXY: ""
       HTTPS_PROXY: ""
       ALL_PROXY: ""
-      NO_PROXY: "localhost,127.0.0.1,surrealdb,open_notebook"
-    volumes:
-      - notebook_synthetic:/app/data
-    depends_on: [surrealdb]
-    networks: [a_private]
+      NO_PROXY: localhost,127.0.0.1,on_db,native
+    volumes: [native_data:/app/data]
+    depends_on: [on_db]
+    networks: [on_db_private]
     restart: "no"
     security_opt: [no-new-privileges:true]
 networks:
-  a_private:
+  a_db_private:
+    internal: true
+  on_db_private:
     internal: true
 volumes:
-  surreal_synthetic: {}
-  notebook_synthetic: {}
+  a_db_data: {}
+  on_db_data: {}
+  native_data: {}
