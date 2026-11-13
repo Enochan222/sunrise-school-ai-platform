@@ -150,6 +150,26 @@ class Native:
             raise NativeOwnershipError('Native source does not have exactly one expected notebook owner')
         return src
 
+    @staticmethod
+    def processing_state(source: dict) -> str:
+        """Conservative read-only Native worker status for an already-owned source.
+
+        This does not mutate or enqueue native jobs, infer readiness from the
+        upload receipt, or expose upstream command internals to the browser.
+        Native SourceResponse on pinned v1.15.1 supplies status and full_text.
+        """
+        if not isinstance(source, dict):
+            raise NativeUnavailable('Malformed native source status')
+        status=source.get('status')
+        if status=='completed':
+            full_text=source.get('full_text')
+            return 'READY' if isinstance(full_text,str) and full_text.strip() else 'UNKNOWN'
+        if status in ('queued','running'):
+            return 'PROCESSING'
+        if status=='failed':
+            return 'FAILED'
+        return 'UNKNOWN'
+
     async def original(self, source_id: str, expected_sha: str) -> bytes:
         """Verify bounded native body BEFORE passing any byte to Gateway client.
 
