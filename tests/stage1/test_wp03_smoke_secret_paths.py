@@ -44,6 +44,13 @@ def prepare(monkeypatch,tmp_path,secret=None,race_mode='good',ack_mode='good',db
     evidence=tmp_path/'journal.json'
     monkeypatch.setenv('VAULT_RUNTIME_SYNTHETIC_CONFIRM','YES')
     monkeypatch.setenv('VAULT_JOURNAL_EVIDENCE',str(evidence))
+    # Unit fixture only: runtime case attestation is separately exercised by
+    # executable provenance regressions, never claimed as Native PASS.
+    monkeypatch.setattr(sys,'argv',['surreal_journal_smoke.py',
+        '--runtime-identity',str(tmp_path/'synthetic-runtime.json'),
+        '--source-sha','a'*40,'--source-tree','b'*40])
+    monkeypatch.setattr(module,'inspect_runtime',lambda *a: 'c'*64)
+    monkeypatch.setattr(module,'guard_runtime',lambda *a: None)
     if secret is None:monkeypatch.delenv('OPEN_NOTEBOOK_PASSWORD',raising=False)
     else:monkeypatch.setenv('OPEN_NOTEBOOK_PASSWORD',secret)
     monkeypatch.setattr(module,'cfg',lambda: SimpleNamespace(database='synthetic-unique-journal'))
