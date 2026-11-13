@@ -69,3 +69,10 @@ form > button { margin-top: .85rem; }
 }
 #retry-detail { margin-bottom: .75rem; }
 [role="status"][data-error="true"] { color: #603b10; }
+
+/* A-only school switch, values are server supplied */
+.school-switch {display:flex;align-items:end;flex-wrap:wrap;gap:.6rem;padding:.65rem 0;}
+.school-switch label{flex-basis:100%;margin:0;}
+.school-switch select{min-height:2.75rem;min-width:min(100%,14rem);padding:.4rem;border:1px solid #788d84;border-radius:.4rem;font:inherit;background:#fff;color:inherit;}
+.school-switch button{margin:0;}
+.school-switch select:focus-visible{outline:3px solid #946000;outline-offset:3px;}
