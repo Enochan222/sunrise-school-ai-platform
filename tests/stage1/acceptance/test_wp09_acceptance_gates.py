@@ -177,7 +177,8 @@ def test_service_jwt_probe_uses_cookie_free_client(monkeypatch):
     monkeypatch.setattr(h.httpx,'Client',CookieFree)
     session={'school_id':'synthetic-a'}
     args=SimpleNamespace(school_a='synthetic-a',shell_a='shell-a',
-                         gateway='http://127.0.0.1:8080')
+                         gateway='https://127.0.0.1:8080',
+                         gateway_ca_file=Path('/synthetic/test-only/ca.pem'))
     assert h.case_14(admin,args,session) is session
     assert calls==['Bearer synthetic-allow','Bearer synthetic-wrong-scope',
                    'Bearer synthetic-foreign']
