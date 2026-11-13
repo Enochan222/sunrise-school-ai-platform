@@ -5,6 +5,9 @@ services:
   surrealdb:
     image: surrealdb/surrealdb:v2.3.10
     command: ["start", "--log", "warn", "--user", "${SURREAL_USER:?required}", "--pass", "${SURREAL_PASSWORD:?required}", "rocksdb:/mydata/mydatabase.db"]
+    # Dedicated A Gateway connects via loopback only, never public interface.
+    ports:
+      - "127.0.0.1:8000:8000"
     volumes:
       - surreal_synthetic:/mydata
     networks: [a_private]
