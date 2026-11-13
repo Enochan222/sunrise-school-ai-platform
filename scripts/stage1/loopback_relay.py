@@ -48,7 +48,10 @@ class Handler(socketserver.BaseRequestHandler):
                 selector.register(self.request, selectors.EVENT_READ, upstream)
                 selector.register(upstream, selectors.EVENT_READ, self.request)
                 while True:
-                    events = selector.select(timeout=30)
+                    # Native PDF/Worker operations may hold an HTTP request
+                    # open while processing. Keep a finite but sufficient
+                    # timeout; do not cut a legitimate long upload at 30 s.
+                    events = selector.select(timeout=240)
                     if not events:
                         return
                     for key, _ in events:
