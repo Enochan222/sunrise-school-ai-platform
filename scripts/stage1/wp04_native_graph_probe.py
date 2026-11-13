@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from urllib.parse import urlsplit
 import sys
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -124,6 +125,10 @@ def main():
             not os.environ.get('VAULT_ACTOR_ID')):
         print('RUNTIME_NOT_RUN: exclusive synthetic graph mutation not authorized',file=sys.stderr)
         raise SystemExit(69)
+    target=urlsplit(args.native_url)
+    if (target.scheme!='http' or target.hostname not in ('127.0.0.1','localhost','::1')
+            or target.username or target.password or target.path not in ('','/')):
+        raise ValueError('Graph operator Native API must be a trusted loopback origin')
     record={'start_utc':utc(),'component':'WP04_NATIVE_LINK_UNLINK_AND_A_OWNER',
             'status':'NOT_RUN','original_sha256':args.expected_sha256,'formal_S1_AT':'NOT_RUN'}
     try:
