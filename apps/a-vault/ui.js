@@ -353,8 +353,16 @@ function setupAdmin() {
         if (typeof material.source_id !== 'string' || !material.source_id) throw new GatewayError(0);
         const item = element('li');
         const title = String(material.title || material.source_id);
-        const status = ['PENDING', 'SUBMITTED_NATIVE_PROCESSING'].includes(material.state)
-          ? '記錄顯示待處理，完成情況未獲確認。' : '目前沒有可確認的處理進度。';
+        // Normalized by the authenticated A Gateway after live Native ownership
+        // re-check; incomplete/ambiguous Worker states must never appear READY.
+        const status = ({
+          READY: '已確認 Native 文字抽取完成。',
+          PROCESSING: 'Native Worker 已排隊或正在處理，請稍後手動更新。',
+          FAILED: 'Native 處理失敗；請交管理員核對，系統不會自動重送。',
+          UNKNOWN: 'Native 處理狀態未能確認，請稍後手動更新。',
+          PENDING: '已提交處理，尚未確認 Worker 結果。',
+          SUBMITTED_NATIVE_PROCESSING: '已提交處理，尚未確認 Worker 結果。'
+        })[material.state] || '處理狀態未能確認。';
         const meta = element('dl', undefined, 'metadata');
         for (const [label, value] of [['來源編號', material.source_id], ['原始檔名', material.original_name],
           ['版本', material.version], ['SHA-256', material.sha256], ['授權', material.license], ['保留資料', material.retention]]) {
