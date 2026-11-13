@@ -6,6 +6,7 @@ failures always fail closed. External observer proof + Docker identity +
 Gateway route denial required; local loopback-only does not satisfy HTTPS AT07.
 """
 import argparse
+import hashlib
 from datetime import datetime,timezone
 import json
 import os
@@ -212,6 +213,7 @@ def main():
     p.add_argument('--at-id',required=True,choices=['S1-AT02','S1-AT07','S1-AT08','S1-AT09'])
     p.add_argument('--gateway',required=True)
     p.add_argument('--native-compose-file',type=Path)  # required only for AT08
+    p.add_argument('--owner-attestation',type=Path)  # required for AT07
     for key in ('runtime-identity','context','project','source-sha','source-tree',
                 'target-private-ip','out'):
         p.add_argument('--'+key,required=True)
@@ -234,10 +236,35 @@ def main():
             report['private_ports']=public_port_denials(args)
             report.update(gateway_negative(args,args.at_id))
         if args.at_id=='S1-AT07':
-            report['unique_admin_full_login_audit']='NOT_RUN'
-            report['real_student_data_absence_audit']='NOT_RUN'
-            report['status']='PARTIAL_NEEDS_INDEPENDENT_DATA_AND_ADMIN_AUDIT'
-            raise SystemExit(2)
+            if not args.owner_attestation:
+                raise RuntimeError('Signed independent Owner full-volume data review required for AT07')
+            audit_path=args.out.with_name(args.out.stem+'-admin-audit.json')
+            if audit_path.exists():
+                raise RuntimeError('Admin audit evidence overwrite refused')
+            script=Path(__file__).parent/'admin_data_audit.py'
+            fixed=[sys.executable,str(script),
+                '--gateway',args.gateway,'--runtime-identity',str(args.runtime_identity),
+                '--owner-attestation',str(args.owner_attestation),
+                '--context',args.context,'--project',args.project,
+                '--source-sha',args.source_sha,'--source-tree',args.source_tree,
+                '--out',str(audit_path)]
+            attempt=subprocess.run(fixed,cwd=str(ROOT),capture_output=True,
+                                   text=True,timeout=480)
+            if attempt.returncode!=0:
+                raise RuntimeError('Independent AT07 Admin/data audit failed; see isolated evidence')
+            audited=json.loads(audit_path.read_text(encoding='utf-8'))
+            if (audited.get('status')!='PASS'
+                    or audited.get('at_id')!='S1-AT07-AUDIT'
+                    or audited.get('source_commit')!=args.source_sha
+                    or audited.get('source_tree')!=args.source_tree
+                    or audited.get('signed_data_scope',{}).get('signature_verified') is not True
+                    or any(audited.get('real_admin_session_audit',{}).get(k)!='PASS'
+                           for k in ('admin_login_audit','trusted_school_switch_audit',
+                                     'admin_logout_audit','session_revocation'))):
+                raise RuntimeError('AT07 requires signed real audit and durable session evidence')
+            report['unique_admin_full_login_audit']='PASS'
+            report['real_student_data_absence_audit']='INDEPENDENT_SIGNED_FULL_VOLUME_REVIEW'
+            report['audit_evidence_sha256']=hashlib.sha256(audit_path.read_bytes()).hexdigest()
         report['status']='PASS'
     except Exception as error:
         report['status']='FAIL';report['error_type']=type(error).__name__
