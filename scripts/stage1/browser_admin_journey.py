@@ -22,6 +22,8 @@ from urllib.parse import urlsplit
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'scripts/stage1'))
 from native_runtime_smoke import fixture as synthetic_chinese_pdf
+from wp01_network_boundary_probe import verify_manifest
+from runtime_identity import tls_gateway_identity
 from browser_observability import (
     Events,BrowserContractError,STAGES,same_origin,safe_path,
     worker_status,http_category,classify_failure
@@ -49,18 +51,35 @@ def safe_http(response,expected,events,report,method,url):
 
 def main():
     parser=argparse.ArgumentParser()
-    parser.add_argument('--gateway',default='http://127.0.0.1:8765')
+    parser.add_argument('--gateway',required=True)
+    parser.add_argument('--gateway-ca-file',required=True,type=Path)
+    parser.add_argument('--runtime-identity',required=True,type=Path)
+    parser.add_argument('--context',required=True)
+    parser.add_argument('--project',required=True)
     parser.add_argument('--source-sha',required=True)
     parser.add_argument('--source-tree',required=True)
     parser.add_argument('--out',required=True,type=Path)
     args=parser.parse_args()
     target=urlsplit(args.gateway)
-    require(target.scheme in ('http','https')
+    require(target.scheme=='https'
         and target.hostname in ('127.0.0.1','localhost') and target.port
         and not target.username and not target.password
         and target.path in ('','/') and not target.query and not target.fragment,
         'Only an explicit private loopback Gateway is permitted')
     origin=args.gateway.rstrip('/')
+    identity,_,runtime_sha=verify_manifest(args.runtime_identity,args.context,
+        args.project,args.source_sha,args.source_tree)
+    gateway=identity['gateway']
+    ca=args.gateway_ca_file
+    require(ca.is_file() and not ca.is_symlink() and ca.stat().st_size<=1<<20,
+            'Browser private TLS root is missing/unsafe')
+    require(origin==gateway.get('origin') and
+            hashlib.sha256(ca.read_bytes()).hexdigest()==gateway.get('tls_ca_sha256'),
+            'Browser Gateway origin or TLS CA differs from attested service')
+    actual=tls_gateway_identity(origin,ca)
+    require(all(actual.get(k)==gateway.get(k) for k in (
+        'instance_id','tls_peer_sha256','tls_ca_sha256','origin')),
+        'Browser preflight TLS peer or A Gateway process changed')
     require(os.getenv('VAULT_RUNTIME_SYNTHETIC_CONFIRM')=='YES'
         and os.getenv('VAULT_STORE_BACKEND')=='surreal',
         'Real synthetic SurrealDB runtime not confirmed')
@@ -75,7 +94,9 @@ def main():
         'browser_engine':'chromium','source_classification':'IMPLEMENTED_UNTESTED',
         'classification':'SYNTHETIC_LOCAL_BROWSER_JOURNEY_CANDIDATE',
         'started_utc':datetime.now(timezone.utc).isoformat(),
-        'checks':{},'gateway_scheme':target.scheme}
+        'checks':{},'gateway_scheme':target.scheme,
+        'runtime_identity_sha256':runtime_sha,
+        'gateway_tls_peer_sha256':gateway['tls_peer_sha256']}
     try:
         trace.stage('S1B-STARTUP')
         from playwright.sync_api import sync_playwright
