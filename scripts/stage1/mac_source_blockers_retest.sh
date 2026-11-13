@@ -32,6 +32,13 @@ echo "FULL_NON_NATIVE_PASS_NO_RUNTIME_CLAIM"
 : "$VAULT_GATEWAY_ORIGIN" "$VAULT_GATEWAY_CA_FILE" "$VAULT_MAINTENANCE_FILE"
 : "$VAULT_DOCKER_CONTEXT" "$VAULT_SYNTHETIC_PROJECT" "$VAULT_ON_PATCH_SHA256"
 : "$A_SURREAL_NAMESPACE" "$A_SURREAL_DATABASE" "$ON_GRAPH_NAMESPACE" "$ON_GRAPH_DATABASE"
+for key in VAULT_GATEWAY_ORIGIN VAULT_GATEWAY_CA_FILE VAULT_MAINTENANCE_FILE \
+    VAULT_DOCKER_CONTEXT VAULT_SYNTHETIC_PROJECT VAULT_ON_PATCH_SHA256 \
+    A_SURREAL_NAMESPACE A_SURREAL_DATABASE ON_GRAPH_NAMESPACE ON_GRAPH_DATABASE; do
+  [[ -n "$(printenv "$key" 2>/dev/null || true)" ]] || {
+    echo "Required runtime parameter is blank: $key" >&2; exit 78;
+  }
+done
 [[ "$VAULT_MAINTENANCE_FILE" = /* && -d "$(dirname "$VAULT_MAINTENANCE_FILE")" ]] || exit 78
 python - "$ROOT" "$OUT" <<'PY_TLS'
 import hashlib,json,os,pathlib,sys
@@ -68,7 +75,7 @@ python scripts/stage1/runtime_identity.py \
   --on-namespace "$ON_GRAPH_NAMESPACE" --on-database "$ON_GRAPH_DATABASE" \
   --out "$OUT/runtime_identity.json"
 echo "RUNTIME_IDENTITY_RECORDED_NOT_FORMAL_ACCEPTANCE"
-if [[ "$VAULT_RUN_CHROMIUM_DIAGNOSTIC" == YES ]]; then
+if [[ "$(printenv VAULT_RUN_CHROMIUM_DIAGNOSTIC 2>/dev/null || true)" == YES ]]; then
   python scripts/stage1/browser_admin_journey.py \
     --gateway "$VAULT_GATEWAY_ORIGIN" --gateway-ca-file "$VAULT_GATEWAY_CA_FILE" \
     --runtime-identity "$OUT/runtime_identity.json" \
