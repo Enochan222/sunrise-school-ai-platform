@@ -46,7 +46,7 @@ def cfg(tmp_path,school='school-a'):
     return Settings(admin_hash=PasswordHasher().hash('only-synthetic-secret'),
         session_secret='s'*60,encryption_key='e'*60,school_id=school,actor_id='a-owner',
         sqlite_file=str(tmp_path/'synthetic-journal.db'),native_url='http://127.0.0.1:8001',
-        native_password='private-test-password')
+        native_password='private-test-password',store_backend='synthetic_sqlite')
 
 
 def auth(client):
