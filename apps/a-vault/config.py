@@ -16,6 +16,7 @@ class Settings:
     sqlite_file: str
     native_url: str
     native_password: str
+    maintenance_file: str = ''  # exclusive host-visible atomic write freeze flag
     school_allowlist: tuple[str,...] = ()  # trusted server-side A/B school choices
     service_public_key: str = ""
     service_issuer: str = ""
@@ -47,6 +48,8 @@ class Settings:
                 self.school_id not in schools or
                 any(not re.fullmatch(r'[A-Za-z0-9_-]{1,100}',school) for school in schools)):
             raise ValueError('Explicit trusted school allowlist required; no dynamic school discovery')
+        if self.maintenance_file and not os.path.isabs(self.maintenance_file):
+            raise ValueError('Maintenance flag path must be absolute when configured')
         if self.store_backend not in ('surreal','synthetic_sqlite'):
             raise ValueError('Unknown vault store backend')
         if self.store_backend == 'synthetic_sqlite':
@@ -77,6 +80,7 @@ def from_env():
     return Settings(admin_hash=os.environ['VAULT_ADMIN_PASSWORD_HASH'],session_secret=os.environ['VAULT_SESSION_SECRET'],
         encryption_key=os.environ['VAULT_ENCRYPTION_KEY'],school_id=os.environ['VAULT_SCHOOL_ID'],
         actor_id=os.environ['VAULT_ACTOR_ID'],sqlite_file=os.getenv('VAULT_SQLITE_FILE',''),
+        maintenance_file=os.getenv('VAULT_MAINTENANCE_FILE',''),
         school_allowlist=tuple(v.strip() for v in os.getenv('VAULT_SCHOOL_ALLOWLIST',
                                     os.environ['VAULT_SCHOOL_ID']).split(',')),
         native_url=os.environ['VAULT_NATIVE_URL'],native_password=os.environ['VAULT_NATIVE_PASSWORD'],
