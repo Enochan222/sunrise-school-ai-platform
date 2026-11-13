@@ -17,6 +17,28 @@ ID=re.compile(r'^(source|notebook):[A-Za-z0-9_-]{1,128}$')
 HEX=re.compile(r'^[a-f0-9]{64}$')
 
 
+def owned_identity_digest(identities):
+    """Order-independent digest for the verified SourceOwner/native graph.
+
+    SurrealQL SELECT without ORDER BY has no stable row ordering across DB
+    restart or isolated restore. Duplicate source ownership fails closed.
+    """
+    if not isinstance(identities,list) or len(identities)>10000:
+        raise RuntimeError('Invalid owned source identity inventory')
+    seen=set()
+    for row in identities:
+        if (not isinstance(row,tuple) or len(row)!=3 or
+                not isinstance(row[0],str) or not row[0].startswith('source:') or
+                not isinstance(row[1],str) or not row[1].startswith('notebook:') or
+                not isinstance(row[2],str) or not HEX.fullmatch(row[2]) or
+                row[0] in seen):
+            raise RuntimeError('Duplicate/malformed SourceOwner graph identity')
+        seen.add(row[0])
+    canonical=json.dumps(sorted(identities),ensure_ascii=False,
+                         separators=(',',':')).encode('utf-8')
+    return hashlib.sha256(canonical).hexdigest()
+
+
 def sql(query,ns,db):
     if os.environ.get('SURREAL_URL')!='ws://surrealdb:8000/rpc':
         raise RuntimeError('Only isolated SurrealDB address accepted')
@@ -71,7 +93,7 @@ def main():
     owners=sql('SELECT * FROM source_owner LIMIT 10001;',a_ns,a_db)
     shells=sql('SELECT * FROM content_shell LIMIT 10001;',a_ns,a_db)
     shell_index={(r['school_id'],r['shell_id']):r for r in shells}
-    check_digest=hashlib.sha256()
+    identities=[]
     searched=0
     for owner in owners:
         source=owner.get('source_id')
@@ -98,12 +120,12 @@ def main():
         pdf=native('/api/sources/'+source+'/download')
         if hashlib.sha256(pdf).hexdigest()!=owner['sha256']:
             raise RuntimeError('Native original PDF hash differs after isolated restore')
-        check_digest.update((source+'|'+notebook+'|'+owner['sha256']).encode())
+        identities.append((source,notebook,owner['sha256']))
         searched+=1
     result={'classification':'NATIVE_OWNER_READBACK_NOT_FORMAL_AT',
             'source_owner_count':len(owners),'shell_count':len(shells),
             'verified_original_count':searched,
-            'owned_source_graph_hash':check_digest.hexdigest(),
+            'owned_source_graph_hash':owned_identity_digest(identities),
             'text_only_patch_attested':True,'external_ai_egress_test':'NOT_RUN'}
     print(json.dumps(result,sort_keys=True))
 
