@@ -76,12 +76,20 @@ def native_compose_secret_preflight(args):
     fixed=['docker','--context',args.context,'compose','-p',args.project,
            '-f',str(args.native_compose_file),'config','--quiet']
     baseline=os.environ.copy()
+    physical,_,_=verify_manifest(args.runtime_identity,args.context,args.project,
+                                 args.source_sha,args.source_tree)
+    for service,prefix in (('a_db','A_SURREAL'),('on_db','ON_SURREAL')):
+        user=physical['services'][service]['container_user'].split(':')
+        baseline[prefix+'_IMAGE_UID']=user[0]
+        baseline[prefix+'_IMAGE_GID']=user[1]
     first=subprocess.run(fixed,env=baseline,capture_output=True,text=True,timeout=30)
     if first.returncode!=0:
         raise RuntimeError('Baseline pinned private Compose config cannot be proven')
     tested=[]
     for key in ('OPEN_NOTEBOOK_PASSWORD','OPEN_NOTEBOOK_ENCRYPTION_KEY',
-                'SURREAL_USER','SURREAL_PASSWORD'):
+                'A_SURREAL_USER','A_SURREAL_PASSWORD',
+                'ON_SURREAL_USER','ON_SURREAL_PASSWORD',
+                'ON_GRAPH_NAMESPACE','ON_GRAPH_DATABASE'):
         altered=baseline.copy();altered.pop(key,None)
         result=subprocess.run(fixed,env=altered,capture_output=True,text=True,timeout=30)
         # An unrelated Docker outage is not proof of secret fail-start.
@@ -102,10 +110,15 @@ def native_process_secret_fail_start(args):
     """
     identity,_,_=verify_manifest(args.runtime_identity,args.context,args.project,
                                  args.source_sha,args.source_tree)
-    image=identity['services']['open_notebook']['image_id']
+    image=identity['services']['native']['image_id']
     required=('OPEN_NOTEBOOK_PASSWORD','OPEN_NOTEBOOK_ENCRYPTION_KEY',
               'SURREAL_USER','SURREAL_PASSWORD')
-    if any(not os.getenv(k) for k in required):
+    runtime_env=os.environ.copy()
+    if not runtime_env.get('ON_SURREAL_USER') or not runtime_env.get('ON_SURREAL_PASSWORD'):
+        raise RuntimeError('Private ON physical engine root secrets missing')
+    runtime_env['SURREAL_USER']=runtime_env['ON_SURREAL_USER']
+    runtime_env['SURREAL_PASSWORD']=runtime_env['ON_SURREAL_PASSWORD']
+    if any(not runtime_env.get(k) for k in required):
         raise RuntimeError('Pinned Native process smoke requires operator secrets in private env')
     base=['docker','--context',args.context,'run','--rm','--network','none',
           '--security-opt','no-new-privileges','--pids-limit','64',
@@ -123,7 +136,8 @@ def native_process_secret_fail_start(args):
         if key:
             cmd.extend(['-e',key+'='+value])
         cmd.extend([image,'/bin/true'])
-        proc=subprocess.run(cmd,capture_output=True,text=True,timeout=90)
+        proc=subprocess.run(cmd,capture_output=True,text=True,timeout=90,
+                            env=runtime_env)
         return proc.returncode,proc.stdout+proc.stderr
     status,output=invoke()
     if status!=0 or 'Starting Open Notebook.' not in output:
@@ -165,12 +179,20 @@ def public_port_denials(args):
 
 def gateway_negative(args,at):
     base=urlsplit(args.gateway)
-    ensure(base.scheme in ('http','https'),'Gateway scheme invalid')
-    if at=='S1-AT07':
-        ensure(base.scheme=='https','Basic security AT07 requires verified HTTPS, not local HTTP')
-    elif base.scheme=='http':
-        ensure(base.hostname in ('127.0.0.1','localhost','::1'),'Unencrypted gateway is never remote')
-    with httpx.Client(base_url=args.gateway,verify=True,trust_env=False,
+    ensure(base.scheme=='https' and base.hostname in ('127.0.0.1','localhost')
+           and base.port and not base.username and not base.password
+           and base.path in ('','/') and not base.query and not base.fragment,
+           'All security ATs require exactly pinned loopback HTTPS Gateway')
+    identity,_,_=verify_manifest(args.runtime_identity,args.context,args.project,
+                                 args.source_sha,args.source_tree)
+    gateway=identity['gateway']
+    ca=args.gateway_ca_file
+    ensure(ca.is_file() and not ca.is_symlink() and ca.stat().st_size<=1<<20,
+           'Exact independent Gateway CA material required')
+    ensure(hashlib.sha256(ca.read_bytes()).hexdigest()==gateway.get('tls_ca_sha256')
+           and args.gateway.rstrip('/')==gateway.get('origin'),
+           'AT Gateway origin/CA differs from captured physical runtime')
+    with httpx.Client(base_url=args.gateway,verify=str(ca),trust_env=False,
                       follow_redirects=False,timeout=10) as c:
         # Bind HTTPS/loopback observer result to the actual private Gateway
         # instance captured alongside the Docker Compose project.
@@ -214,6 +236,7 @@ def main():
     p.add_argument('--gateway',required=True)
     p.add_argument('--native-compose-file',type=Path)  # required only for AT08
     p.add_argument('--owner-attestation',type=Path)  # required for AT07
+    p.add_argument('--gateway-ca-file',required=True,type=Path)
     for key in ('runtime-identity','context','project','source-sha','source-tree',
                 'target-private-ip','out'):
         p.add_argument('--'+key,required=True)
@@ -243,7 +266,8 @@ def main():
                 raise RuntimeError('Admin audit evidence overwrite refused')
             script=Path(__file__).parent/'admin_data_audit.py'
             fixed=[sys.executable,str(script),
-                '--gateway',args.gateway,'--runtime-identity',str(args.runtime_identity),
+                '--gateway',args.gateway,'--gateway-ca-file',str(args.gateway_ca_file),
+                '--runtime-identity',str(args.runtime_identity),
                 '--owner-attestation',str(args.owner_attestation),
                 '--context',args.context,'--project',args.project,
                 '--source-sha',args.source_sha,'--source-tree',args.source_tree,
