@@ -41,9 +41,11 @@ def fixture(service="a_db"):
             "HostConfig":{"PortBindings":{}},
         }
     backend=base(service,"b"*64)
+    backend["Config"]["User"]="65532:65532"
     backend["NetworkSettings"]["Networks"]={private:{"NetworkID":"c"*64}}
     relay_doc=base(relay,"d"*64)
     relay_doc["Image"]=IMAGE
+    relay_doc["Config"]["User"]="65532:65532"
     relay_doc["NetworkSettings"]["Networks"]={
         private:{"NetworkID":"c"*64},
         publish:{"NetworkID":"e"*64}}
@@ -82,7 +84,8 @@ def test_only_loopback_relay_published_and_private_service_unpublished(service):
     "relay_wrong_project","relay_wrong_destination",
     "relay_root_writable","relay_volume_mount","relay_script_writable",
     "relay_capabilities","relay_wrong_entrypoint",
-    "relay_wrong_service","backend_stopped","relay_stopped",
+    "relay_wrong_service","relay_root","relay_wrong_gid","relay_no_nnp",
+    "backend_stopped","relay_stopped",
 ))
 def test_host_port_identity_and_network_fail_closed(change):
     mod=load()
@@ -131,6 +134,12 @@ def test_host_port_identity_and_network_fail_closed(change):
         relay["Config"]["Entrypoint"]=["/bin/sh"]
     elif change=="relay_wrong_service":
         relay["Config"]["Labels"]["com.docker.compose.service"]="other"
+    elif change=="relay_root":
+        relay["Config"]["User"]="0:0"
+    elif change=="relay_wrong_gid":
+        relay["Config"]["User"]="65532:1000"
+    elif change=="relay_no_nnp":
+        relay["HostConfig"]["SecurityOpt"]=[]
     elif change=="backend_stopped":
         backend["State"]["Running"]=False
     elif change=="relay_stopped":
