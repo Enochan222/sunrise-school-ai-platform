@@ -170,6 +170,44 @@ class Native:
             return 'FAILED'
         return 'UNKNOWN'
 
+    async def retry_failed_owned_source(self, source_id: str, notebook_id: str,
+                                        expected_sha: str, *, operator_authorized=False) -> dict:
+        """Private operator-only failed-job retry, NEVER a browser/API route.
+
+        Requires the full pinned all-or-nothing Sunrise Native patch attestation.
+        Native retry independently enforces status=='failed' and embed=False;
+        any race/ACK loss must be reconciled manually, never blindly retried.
+        """
+        if not operator_authorized or not self.text_only_verified:
+            raise NativeUnavailable('Unapproved native retry; disabled by default')
+        checked_id(source_id,'source')
+        checked_id(notebook_id,'notebook')
+        proof=(await self._request('GET','/api/sunrise-patch-status')).json()
+        if (not isinstance(proof,dict) or
+                proof.get('marker')!='sunrise-a-text-only-no-vector-v1' or
+                proof.get('text_only') is not True):
+            raise NativeUnavailable('Pinned A-only native patch provenance not verified')
+        before=await self.ensure_owned(source_id,notebook_id)
+        if before.get('status')!='failed' or not before.get('command_id'):
+            raise NativeUnavailable('Native job not proven failed; retry forbidden')
+        # Immutable source bytes are compared before any destructive/queuing action.
+        await self.original(source_id,expected_sha)
+        try:
+            receipt=(await self._request('POST',f'/api/sources/{source_id}/retry')).json()
+        except (ValueError,TypeError) as e:
+            raise NativeUnavailable('Native retry receipt unreadable; reconcile manually') from e
+        if (not isinstance(receipt,dict) or receipt.get('id')!=source_id or
+                receipt.get('status')!='queued' or
+                not isinstance(receipt.get('command_id'),str) or
+                receipt['command_id']==before['command_id']):
+            raise NativeUnavailable('Native retry outcome uncertain; no automatic replay')
+        after=await self.ensure_owned(source_id,notebook_id)
+        await self.original(source_id,expected_sha)
+        if after.get('command_id')!=receipt['command_id']:
+            raise NativeUnavailable('Retry command identity not durable/consistent')
+        return {'source_id':source_id,'notebook_id':notebook_id,
+                'new_command_id':receipt['command_id'],'state':'RETRY_SUBMITTED_NOT_COMPLETED'}
+
     async def original(self, source_id: str, expected_sha: str) -> bytes:
         """Verify bounded native body BEFORE passing any byte to Gateway client.
 
