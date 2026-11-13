@@ -19,6 +19,7 @@ ROOT=Path(__file__).resolve().parents[3]
 sys.path.insert(0,str(ROOT/'scripts/stage1/restore'))
 from isolated_restore import compose,container_id,inspect_isolation,restore_env,load_identity
 from a_cold_backup import verify,BackupInvalid
+from dual_inventory_runner import read_a_owner_snapshot,native_readback,both
 
 
 def main():
@@ -47,28 +48,22 @@ def main():
             or previous.get('db_inventories_equal') is not True):
         p.error('Target has not passed isolated DB inventory gate')
     inspect_isolation(args,env)
-    compose(args,'start','open_notebook',env=env)
-    cid=container_id(args,'open_notebook',env)
-    proof=(Path(__file__).parent/'verify_native.py').read_text()
+    compose(args,'start','native',env=env)
+    cid=container_id(args,'native',env)
+    proof=(Path(__file__).parent/'verify_native.py').read_text(encoding='utf-8')
     last=None
+    output=None
     for _ in range(25):
         try:
-            # Executing this readback within the private stopped-volume target
-            # proves local native source/owner hashes WITHOUT a public port.
-            result=subprocess.run(['docker','--context',args.context,'exec',
-                '-e','VAULT_RUNTIME_SYNTHETIC_CONFIRM=YES',cid,'python','-c',proof],
-                capture_output=True,text=True,timeout=75)
-            if result.returncode==0:
-                output=json.loads(result.stdout)
-                if output.get('classification')!='NATIVE_OWNER_READBACK_NOT_FORMAL_AT':
-                    raise BackupInvalid('Unexpected Native verify result')
-                break
-            last='Native private readback returned '+str(result.returncode)
-        except (OSError,ValueError,subprocess.TimeoutExpired) as exc:
+            source_owner=read_a_owner_snapshot(
+                args.context,args.project,env['ON_RESTORE_IMAGE'])
+            output=native_readback(args.context,cid,source_owner,proof)
+            break
+        except (OSError,ValueError,subprocess.TimeoutExpired,RuntimeError) as exc:
             last=type(exc).__name__
         time.sleep(2)
-    else:
-        raise BackupInvalid('Native source/graph/original readback not proven: '+str(last))
+    if output is None:
+        raise BackupInvalid('Independent A/ON Native original/graph readback unavailable: '+str(last))
     before=json.loads((args.workdir/'gateway'/'native-pre-capture-readback.json').read_text())
     identity_fields=('source_owner_count','shell_count','verified_original_count',
                      'owned_source_graph_hash','rights_retention_initial_version_sha256',
@@ -85,6 +80,9 @@ def main():
             json.dumps(before,sort_keys=True).encode()).hexdigest(),
         'native_owner_identity_matches_before_after':True,
         'native_worker_running':True,
+        'a_db_restored_nonroot':True,
+        'on_db_restored_nonroot':True,
+        'two_physical_dbs_restored':True,
         'native_readback':output,
         'native_started_utc':datetime.now(timezone.utc).isoformat(),
         'classification':'ISOLATED_RESTORE_NATIVE_READBACK_NOT_AT_PASS',
