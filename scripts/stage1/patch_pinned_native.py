@@ -125,6 +125,8 @@ def patch_entrypoint(source: str) -> str:
     is missing. The private Sunrise image must never enter supervisord in that
     state. Docker secret-file values are honoured, but an invalid file fails.
     """
+    if 'SUNRISE_NATIVE_SECRET_FAIL_START' in source:
+        raise ValueError('Private Native entrypoint was already patched')
     marker = 'VENV_PY="/app/.venv/bin/python"\n'
     guard = r'''# Sunrise A-only fail-start guard. Never print secret values.
 sunrise_secret_fail() {
