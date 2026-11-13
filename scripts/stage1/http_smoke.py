@@ -12,7 +12,7 @@ with tempfile.TemporaryDirectory() as td:
         VAULT_SCHOOL_ID='synthetic-school',VAULT_ACTOR_ID='synthetic-admin',
         VAULT_SQLITE_FILE=str(Path(td)/'journal.sqlite3'),
         VAULT_NATIVE_URL='http://127.0.0.1:8001',VAULT_NATIVE_PASSWORD='synthetic-native-no-provider',
-        VAULT_COOKIE_SECURE='false')
+        VAULT_COOKIE_SECURE='false',VAULT_STORE_BACKEND='synthetic_sqlite')
     p=subprocess.Popen([sys.executable,'-m','uvicorn','server:app','--host','127.0.0.1','--port','18765','--no-access-log'],
         cwd=root/'apps'/'a-vault',env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     try:
