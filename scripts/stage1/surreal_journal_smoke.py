@@ -24,6 +24,7 @@ sys.path.insert(0,str(ROOT/'apps/a-vault'))
 from surreal_store import SurrealStore,SurrealConfig,SurrealUnavailable
 from store import Conflict,Indeterminate
 from native import Native
+from wp03_races import first_reservation_races,native_lost_ack
 
 
 def now():return datetime.now(timezone.utc).isoformat()
@@ -65,6 +66,7 @@ def main():
         journal=SurrealStore(configuration,actor)
         reservation,fresh=journal.start_shell(school,key,details)
         assert fresh and reservation['creation_marker'].startswith('sunrise-a-op-v1:')
+        log['results']['fresh_first_reservation_races']=first_reservation_races(configuration,actor)
         log['results']['real_surrealdb_unique_operation_reservation']='PASS'
         # Different-body 409 before any native side effect.
         try:
@@ -109,6 +111,7 @@ os._exit(97)
             same,new=restarted.start_shell(school,key,details)
             assert new is False and same['notebook_id']==recovered['notebook_id']
             assert restarted.shell('synthetic-foreign-school',recovered['shell_id']) is None
+            log['results']['real_native_lost_ack_tcp']=native_lost_ack(configuration,actor,os.environ['OPEN_NOTEBOOK_PASSWORD'])
             log['results']['real_native_crash_after_create_before_journal_commit']='PASS'
             log['results']['marker_reconciliation_unique_mapping']='PASS'
             log['results']['same_key_replay_original_notebook']='PASS'
