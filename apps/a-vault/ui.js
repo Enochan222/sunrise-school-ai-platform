@@ -53,6 +53,7 @@ const api = (() => {
     setCsrf(value) { csrf = value; },
     login: (body) => request('/auth/login', { method: 'POST', body, protectedWrite: false }),
     session: () => request('/auth/me'),
+    switchSchool: (school_id) => request('/auth/school', { method: 'POST', json: {school_id} }),
     logout: () => request('/auth/logout', { method: 'POST' }),
     listShells: () => request(shells),
     getShell: (id) => request(shellPath(id)),
@@ -156,6 +157,7 @@ function setupAdmin() {
     for (const id of ['active-school', 'detail-title', 'shell-summary', 'detail-status',
       'materials-status', 'search-status', 'upload-receipt', 'pending-message']) $(id).textContent = '';
     $('filter').value = '';
+    $('school-choice').replaceChildren();
     $('detail').hidden = true;
     $('retry-detail').hidden = true;
     $('workspace').hidden = true;
@@ -189,6 +191,7 @@ function setupAdmin() {
     $('archive').disabled = blocked || !state.shell || Boolean(state.shell.archived);
     $('search-submit').disabled = state.searching || !state.shell;
     $('logout').disabled = state.writing || state.sessionBusy;
+    $('switch-school-submit').disabled = blocked || state.sessionBusy;
     $('reconcile').disabled = state.writing;
     $('pending').hidden = !state.mutation;
     $('reconcile').textContent = state.mutation?.kind === 'archive'
@@ -588,6 +591,17 @@ function setupAdmin() {
       }
       state.session = session;
       api.setCsrf(session.csrf_token);
+      if (!Array.isArray(session.available_schools) ||
+          session.available_schools.some((id) => typeof id !== 'string' || !id) ||
+          !session.available_schools.includes(session.school_id)) throw new GatewayError(403);
+      const select = $('school-choice');
+      select.replaceChildren();
+      for (const id of session.available_schools) {
+        const option=element('option',id);
+        option.value=id;
+        select.append(option);
+      }
+      select.value=session.school_id;
       $('active-school').textContent = session.school_id;
       $('workspace').hidden = false;
       $('logout').hidden = false;
@@ -610,6 +624,35 @@ function setupAdmin() {
       syncControls();
     }
   }
+
+  $('switch-school').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!state.session || state.sessionBusy || state.writing || state.mutation) return;
+    const choice=$('school-choice').value;
+    if (!state.session.available_schools?.includes(choice)) {
+      notice('notice','沒有伺服器授權的學校選項。',true);
+      return;
+    }
+    if (choice===state.session.school_id) return;
+    state.writing=true;
+    syncControls();
+    notice('notice','正在更新受信任的學校 Session…');
+    try {
+      const changed=await api.switchSchool(choice);
+      if (!changed || changed.school_id!==choice || !changed.csrf_token) {
+        throw new GatewayError(0);
+      }
+    } catch(error) {
+      // A lost response may mean CSRF/session school already rotated.
+      // Never operate using an optimistic client-selected school.
+      notice('notice',errorMessage(error),true);
+    } finally {
+      state.writing=false;
+      clearPrivate();
+      $('sign-in-again').hidden=false;
+      void checkSession(); // only the server returns the actual active school
+    }
+  });
 
   $('logout').addEventListener('click', async () => {
     if (!state.session || state.writing || state.sessionBusy) return;
