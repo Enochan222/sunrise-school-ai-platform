@@ -41,6 +41,19 @@ def verified_source_owner(args):
     journal=SurrealStore(SurrealConfig(*(os.environ[n] for n in env[:5])),args.actor_id)
     shell=journal.shell(args.school_id,args.shell_id)
     owner=journal.material(args.source_id,args.shell_id,args.school_id)
+    # A SourceOwner alone does not prove the authenticated operator owns the
+    # committed upload operation. Pin the same source and actor in its journal.
+    ops=journal.query(
+        'SELECT source_id,actor_id,school_id,shell_id,status FROM vault_operation '
+        'WHERE kind="material" AND source_id=$source AND school_id=$school '
+        'AND shell_id=$shell AND actor_id=$actor LIMIT 2;',
+        source=args.source_id,school=args.school_id,
+        shell=args.shell_id,actor=args.actor_id)
+    committed=ops[-1] if ops else None
+    if not isinstance(committed,list) or len(committed)!=1 or (
+            committed[0].get('status')!='COMMITTED' or
+            committed[0].get('source_id')!=args.source_id):
+        raise ValueError('Unique committed material journal/actor is not proven')
     if (not shell or not owner or shell.get('archived') or
         shell.get('notebook_id')!=args.notebook_id or
         owner.get('notebook_id')!=args.notebook_id or
