@@ -11,6 +11,7 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 import secrets
 import subprocess
 import sys
@@ -56,6 +57,8 @@ def main():
     if os.getenv('VAULT_RUNTIME_SYNTHETIC_CONFIRM')!='YES':
         print('RUNTIME_NOT_RUN: synthetic Docker runtime confirmation required',file=sys.stderr)
         raise SystemExit(69)
+    # Resolve ON secret ONCE before any optional Native side effect. Never log its value.
+    secret = os.environ.get('OPEN_NOTEBOOK_PASSWORD') or None
     configuration=cfg();school='synthetic-a-'+secrets.token_hex(5)
     actor='synthetic-actor';key='ackcrash_'+secrets.token_hex(8)
     details={'academic_year':'2026','grade':'P4','subject':'Mathematics','curriculum_stream':'synthetic'}
@@ -66,7 +69,25 @@ def main():
         journal=SurrealStore(configuration,actor)
         reservation,fresh=journal.start_shell(school,key,details)
         assert fresh and reservation['creation_marker'].startswith('sunrise-a-op-v1:')
-        log['results']['fresh_first_reservation_races']=first_reservation_races(configuration,actor,secret or None)
+        log['results']['fresh_first_reservation_races']=first_reservation_races(configuration,actor,secret)
+        # Validate actual nested first-write outcomes; no successful empty/malformed data.
+        race_modes={'same_key_same_body','different_key_same_scope','same_key_different_body'}
+        races=log['results']['fresh_first_reservation_races']
+        if not isinstance(races,dict) or set(races)!=race_modes:
+            raise AssertionError('Missing or malformed first-reservation races')
+        for mode in race_modes:
+            entry=races[mode]
+            if not isinstance(entry,dict) or not isinstance(entry.get('outcomes'),dict):
+                raise AssertionError('Missing nested first-reservation evidence: '+mode)
+            outcomes=entry['outcomes']
+            if (outcomes.get('FRESH')!=1 or outcomes.get('REPLAY',0)!=0 or
+                    sum(outcomes.values())!=8 or entry.get('durable_operations')!=1 or
+                    entry.get('durable_scope_claims')!=1):
+                raise AssertionError('Fresh first-claim did not prove durable uniqueness: '+mode)
+            expected_native=1 if secret else 0
+            if (entry.get('durable_shells')!=expected_native or
+                    entry.get('native_create_posts')!=expected_native):
+                raise AssertionError('Fresh first-claim native evidence incomplete: '+mode)
         log['results']['real_surrealdb_unique_operation_reservation']='PASS'
         # Different-body 409 before any native side effect.
         try:
@@ -84,8 +105,12 @@ def main():
         log['results']['same_key_concurrent_no_second_reservation']='PASS'
         op=journal.operation(school,key,'shell')
         assert op['shell_id']==reservation['shell_id']
-        if not os.getenv('OPEN_NOTEBOOK_PASSWORD'):
-            log['results']['native_ack_loss_crash']='NOT_RUN'
+        if not secret:
+            for name in ('real_native_crash_after_create_before_journal_commit',
+                         'real_native_lost_ack_tcp','marker_reconciliation_unique_mapping',
+                         'same_key_replay_original_notebook','cross_school_shell_negative'):
+                log['results'][name]='NOT_RUN'
+            log['native_gate']='NOT_RUN'
             log['status']='PARTIAL'
         else:
             # The child runs real Native API POST and immediately terminates, skipping
@@ -99,24 +124,34 @@ async def run():
 asyncio.run(run())
 os._exit(97)
 '''
-            env=dict(os.environ,VAULT_TEST_MARKER=reservation['creation_marker'])
+            env=dict(os.environ,VAULT_TEST_MARKER=reservation['creation_marker'],
+                     OPEN_NOTEBOOK_PASSWORD=secret)
             child=subprocess.run([sys.executable,'-c',code],cwd=str(ROOT/'apps/a-vault'),
                                   env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=40)
             if child.returncode!=97:
                 raise RuntimeError('Native create crash child failed before committed boundary')
             # Independent fresh DB connection proves restart/readback, not use of process memory.
             restarted=SurrealStore(configuration,actor)
-            recovered=asyncio.run(recover_native(restarted,school,key,details,os.environ['OPEN_NOTEBOOK_PASSWORD']))
+            recovered=asyncio.run(recover_native(restarted,school,key,details,secret))
             assert recovered['notebook_id'].startswith('notebook:')
             same,new=restarted.start_shell(school,key,details)
             assert new is False and same['notebook_id']==recovered['notebook_id']
             assert restarted.shell('synthetic-foreign-school',recovered['shell_id']) is None
-            log['results']['real_native_lost_ack_tcp']=native_lost_ack(configuration,actor,os.environ['OPEN_NOTEBOOK_PASSWORD'])
+            lost_ack=native_lost_ack(configuration,actor,secret)
+            if (not isinstance(lost_ack,dict) or
+                    lost_ack.get('native_create_posts')!=1 or
+                    lost_ack.get('client_received_post_ack') is not False or
+                    lost_ack.get('persisted_mapping_count')!=1 or
+                    not isinstance(lost_ack.get('original_notebook_sha256'),str) or
+                    not re.fullmatch(r'[a-f0-9]{64}',lost_ack['original_notebook_sha256'])):
+                raise AssertionError('Lost-ACK recovery evidence missing/invalid')
+            log['results']['real_native_lost_ack_tcp']=lost_ack
             log['results']['real_native_crash_after_create_before_journal_commit']='PASS'
             log['results']['marker_reconciliation_unique_mapping']='PASS'
             log['results']['same_key_replay_original_notebook']='PASS'
             log['results']['cross_school_shell_negative']='PASS'
             log['notebook_id_sha256']=hashlib.sha256(recovered['notebook_id'].encode()).hexdigest()
+            log['native_gate']='PASS'
             log['status']='PASS'
     except Exception as error:
         log['status']='FAIL'
@@ -129,5 +164,10 @@ os._exit(97)
         dest.write_text(json.dumps(log,indent=2,ensure_ascii=False)+'\n')
         print(json.dumps({'status':log.get('status'),'results':log['results'],
                           'evidence':str(dest)},ensure_ascii=False))
+    if log['status']=='PARTIAL':
+        raise SystemExit(2)  # DB-only results do not satisfy mandatory Native gate.
+    if log['status']!='PASS':
+        raise SystemExit(1)
 
-if __name__=='__main__':main()
+if __name__=='__main__':
+    main()
