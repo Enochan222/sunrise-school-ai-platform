@@ -162,14 +162,32 @@ def load_containers(context,project):
             isinstance(d,str) and re.fullmatch(r'[^\s@]+@sha256:[a-f0-9]{64}',d)
             for d in digests),'Malformed source image registry digests')
         user=item.get('Config',{}).get('User','')
+        declared=image_info[0].get('Config',{}).get('User','')
+        verified_primary=None
         if service in ('a_db','on_db'):
             require(re.fullmatch(r'[1-9][0-9]*:[1-9][0-9]*',user or '') is not None,
                     'DB runtime effective user not attested nonroot')
+            require(len(digests)==1,
+                    'DB image has ambiguous registry provenance')
+            image_digest=digests[0].rsplit('@',1)[-1]
+            verifier=Path(__file__).parent/'verify_surreal_image_user.py'
+            identity=subprocess.run(['python',str(verifier),
+                '--context',context,'--image',image,'--digest',image_digest],
+                capture_output=True,text=True,timeout=120)
+            require(identity.returncode==0 and
+                    re.fullmatch(r'[1-9][0-9]*:[1-9][0-9]*',
+                                 identity.stdout.strip()) is not None,
+                    'Cannot derive effective primary GID from image itself')
+            verified_primary=identity.stdout.strip()
+            require(user==verified_primary,
+                    'DB container UID/GID differs from digest-attested image primary identity')
         result[service]={'container_id':item['Id'],'image_id':image,
                          'image_name':item.get('Config',{}).get('Image'),
                          'image_repo_digests':digests,'image_os':image_info[0].get('Os'),
                          'image_arch':image_info[0].get('Architecture'),
-                         'container_user':user,'status':state,
+                         'container_user':user,'image_declared_user':declared,
+                         'image_verified_primary_user':verified_primary,
+                         'status':state,
                          'persistent_volume':mounts[0]['Name'],
                          'mount_destination':EXPECTED_MOUNTS[service],
                          'network_name':expected_name,'network_id':network_id,
