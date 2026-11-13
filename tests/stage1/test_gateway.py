@@ -105,12 +105,26 @@ def test_formal_surreal_gateway_rejects_missing_maintenance_at_startup(tmp_path)
 
 @pytest.mark.parametrize('bad_path',[
     'relative/maintenance.lock',
-    '/this/sunrise/nonexistent/maintenance.lock',
+    'missing-parent',
 ])
 def test_maintenance_path_invalid_configuration_fails_closed(tmp_path,bad_path):
     from dataclasses import replace
+    candidate = str(tmp_path/'nonexistent'/'maintenance.lock') if bad_path=='missing-parent' else bad_path
     with pytest.raises(ValueError,match='Maintenance flag'):
-        replace(cfg(tmp_path),maintenance_file=bad_path).validate()
+        replace(cfg(tmp_path),maintenance_file=candidate).validate()
+
+
+def test_formal_surreal_maintenance_configured_before_gateway_open(tmp_path):
+    from dataclasses import replace
+    path=tmp_path/'maintenance.lock'
+    configured=replace(cfg(tmp_path),
+        store_backend='surreal',maintenance_file=str(path),
+        surreal_ws_url='ws://127.0.0.1:8000/rpc',
+        surreal_user='synthetic_test_user',
+        surreal_password='synthetic-private-db-password-at-least-24',
+        surreal_namespace='sunrise_a',surreal_database='synthetic')
+    assert configured.validate().maintenance_file==str(path)
+    assert not path.exists()  # startup validation never creates freeze flag
 
 
 def test_maintenance_symlink_and_directory_rejected(tmp_path):
