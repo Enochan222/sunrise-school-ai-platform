@@ -73,6 +73,13 @@ def check_manifest(args):
         raise BackupInvalid('Pinned Native DB identity mismatch')
     require_image_digest(args.context,manifest['services']['surrealdb']['image_id'],
                          args.surreal_image_digest)
+    gateway=manifest.get('gateway')
+    if (not isinstance(gateway,dict) or
+            not re.fullmatch(r'[a-f0-9]{32}',str(gateway.get('instance_id',''))) or
+            gateway.get('health_url')!='http://127.0.0.1:8765/health' or
+            gateway.get('maintenance_path_sha256')!=hashlib.sha256(
+                str(args.maintenance_file).encode('utf-8')).hexdigest()):
+        raise BackupInvalid('Gateway instance or write-freeze path was not recorded correctly')
     return manifest
 
 
@@ -83,9 +90,13 @@ def check_gateway_frozen(args):
     request=urllib.request.Request('http://127.0.0.1:8765/health',headers={'Accept':'application/json'})
     with urllib.request.urlopen(request,timeout=3) as response:
         body=json.loads(response.read(1<<16))
+    identity=json.loads(args.runtime_identity.read_text(encoding='utf-8'))
+    expected=identity.get('gateway',{})
     if (body.get('gateway')!='running' or body.get('maintenance') is not True
-            or body.get('mutations_in_flight')!=0):
-        raise BackupInvalid('Gateway still admits writes or has in-flight mutations')
+            or body.get('mutations_in_flight')!=0
+            or body.get('gateway_instance')!=expected.get('instance_id')
+            or body.get('maintenance_path_sha256')!=expected.get('maintenance_path_sha256')):
+        raise BackupInvalid('Gateway instance changed, wrong freeze or in-flight requests')
 
 
 def check_db_clean(cfg,required_tables,active_query):
@@ -217,6 +228,8 @@ def main():
     if not 10<=args.drain_timeout<=600:p.error('Bounded worker drain required')
     if args.out.exists() or not args.maintenance_file.is_absolute():
         p.error('New output and absolute maintenance flag required')
+    if os.getenv('VAULT_GATEWAY_SINGLE_PROCESS_CONFIRM')!='YES':
+        p.error('Snapshot barrier only supports explicitly confirmed single-process Gateway')
     if not re.fullmatch(r'[A-Za-z0-9_-]{8,90}',args.recovery_point):
         p.error('Unique recovery point ID required')
     sha,tree=git_identity(ROOT)
