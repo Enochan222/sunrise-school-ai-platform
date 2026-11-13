@@ -25,7 +25,7 @@ python - "$ON_PATCHED_DIR" "$ROOT/scripts/stage1/patch_pinned_native.py" <<'PY_P
 import hashlib,json,sys
 from pathlib import Path
 stage=Path(sys.argv[1]);script=Path(sys.argv[2])
-files=['api/main.py','api/routers/sources.py','api/routers/notebooks.py','open_notebook/domain/notebook.py']
+files=['api/main.py','api/routers/sources.py','api/routers/notebooks.py','open_notebook/domain/notebook.py','scripts/docker-entrypoint.sh']
 state={'pinned_source_commit':'5e285b7a2e435895c4ee99ad7e4b8d2af64c3239',
        'patcher_sha256':hashlib.sha256(script.read_bytes()).hexdigest(),
        'patched_files':{p:hashlib.sha256((stage/p).read_bytes()).hexdigest() for p in files}}
