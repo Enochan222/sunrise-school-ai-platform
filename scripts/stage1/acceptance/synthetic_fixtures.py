@@ -16,7 +16,6 @@ from pathlib import Path
 
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from reportlab.pdfbase.ttfonts import TTFont
 from fontTools.ttLib import TTFont as InspectFont
 
@@ -76,13 +75,14 @@ def main():
         p.error('Synthetic fixture output must be a new absolute directory')
     if len(args.font_license_reference.strip())<8:
         p.error('Operator must record a valid source/licence reference for embedded font')
-    supports(args.extended_han_font_ttf,EXTENDED)
+    # One explicitly licensed font must cover BOTH Traditional and Ext-Han.
+    # Do not allow built-in CID fallback to replace missing Chinese glyphs.
+    supports(args.extended_han_font_ttf,TRADITIONAL+EXTENDED)
     args.out_dir.mkdir(parents=True)
-    pdfmetrics.registerFont(UnicodeCIDFont('STSong-Light'))
     pdfmetrics.registerFont(TTFont('SunriseExtHan',str(args.extended_han_font_ttf)))
     assets=[
         write_pdf(args.out_dir/'synthetic-english.pdf',ENGLISH),
-        write_pdf(args.out_dir/'synthetic-traditional-chinese.pdf',TRADITIONAL,'STSong-Light'),
+        write_pdf(args.out_dir/'synthetic-traditional-chinese.pdf',TRADITIONAL,'SunriseExtHan'),
         write_pdf(args.out_dir/'synthetic-extended-han.pdf',EXTENDED,'SunriseExtHan')
     ]
     manifest={'classification':'SYNTHETIC_FIXTURES_NOT_ACCEPTANCE',
