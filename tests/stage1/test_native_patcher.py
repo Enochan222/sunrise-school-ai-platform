@@ -66,3 +66,49 @@ def test_patch_main_adds_only_protected_marker():
     fixed=patcher.patch_main('app = FastAPI()\n\nif CORS_IS_DEFAULT_WILDCARD:\n    pass\n')
     assert '/api/sunrise-patch-status' in fixed
     assert patcher.MARKER in fixed
+
+
+def test_chinese_search_merges_scoped_literal_and_bm25_results():
+    """Retain substring matches when BM25 also returned a different source."""
+    import asyncio
+
+    fixture = '''async def text_search(keyword, results, source=True, note=True, notebook_ids=None):
+    if True:
+        search_results = await repo_query("bm25", {})
+        return search_results
+
+async def vector_search():
+    pass
+'''
+    transformed = patcher.patch_scoped_cjk_search(fixture)
+    calls = []
+
+    async def query(sql, params):
+        calls.append((sql, params))
+        if sql == "bm25":
+            return [
+                {"parent_id": "source:exact"},
+                {"parent_id": "source:shared"},
+            ]
+        return [
+            {"parent_id": "source:substring"},
+            {"parent_id": "source:shared"},
+        ]
+
+    namespace = {"repo_query": query, "ensure_record_id": lambda value: value}
+    exec(transformed, namespace)
+    result = asyncio.run(namespace["text_search"](
+        "繁體中文", 3, source=True, note=False, notebook_ids=["notebook:owner"]
+    ))
+    assert [hit["parent_id"] for hit in result] == [
+        "source:substring", "source:shared", "source:exact"
+    ]
+    assert calls[1][1]["notebook"] == "notebook:owner"
+    assert calls[1][1]["term"] == "繁體中文"
+
+    calls.clear()
+    result = asyncio.run(namespace["text_search"](
+        "繁體中文", 3, source=True, note=False, notebook_ids=[]
+    ))
+    assert len(calls) == 1
+    assert len(result) == 2
