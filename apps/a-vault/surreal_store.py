@@ -399,9 +399,20 @@ class SurrealStore:
             raise SurrealUnavailable('Unverifiable material key uniqueness')
         return _clean(rows[0]) if rows else None
 
-    def start_material(self,school_id,shell_id,key,digest,*,actor_id=None):
+    def start_material(self,school_id,shell_id,key,digest,*,actor_id=None,metadata=None):
         self._validate_key(school_id,key)
         actor=self._material_actor(actor_id,self.actor_id)
+        if metadata is not None:
+            if (not isinstance(metadata,dict) or
+                set(metadata)!=set(('sha256','title','license','retention','original_name')) or
+                not re.fullmatch(r'[a-f0-9]{64}',str(metadata.get('sha256','')))):
+                raise ValueError('Canonical upload metadata invalid')
+            computed=hashlib.sha256(json.dumps(
+                [metadata['sha256'],metadata['title'],metadata['license'],
+                 metadata['retention'],metadata['original_name']],
+                separators=(',',':')).encode('utf-8')).hexdigest()
+            if computed!=digest:
+                raise Conflict('Upload payload fingerprint/metadata mismatch')
         any_op=self._material_key_owner(school_id,actor,key)
         if any_op and (any_op.get('shell_id')!=shell_id or
                        any_op.get('payload_sha')!=digest):
@@ -417,8 +428,10 @@ class SurrealStore:
         opid=_record('vault_operation',school_id,actor,'material',key,shell_id)
         claimid=_record('vault_scope_claim',school_id,shell_id,digest)
         op={'school_id':school_id,'actor_id':actor,'kind':'material','idempotency_key':key,
-            'shell_id':shell_id,'payload_sha':digest,'status':'PENDING','source_id':None,
-            'created_at':_now(),'updated_at':_now()}
+            'shell_id':shell_id,'payload_sha':digest,'status':'PENDING',
+            'source_id':None,'native_source_id':None,
+            'material_marker':'sunrise-a-material-v1:'+_digest(school_id,actor,key,digest),
+            'metadata':metadata or {},'created_at':_now(),'updated_at':_now()}
         claim={'school_id':school_id,'scope_key':_digest(shell_id,digest),'operation_id':opid}
         try:
             self.query('BEGIN TRANSACTION; CREATE ONLY type::record($opid) CONTENT $op; '
@@ -437,12 +450,40 @@ class SurrealStore:
             raise Indeterminate('Source upload reservation conflict/ACK uncertain') from e
         return None,True
 
+    def record_material_receipt(self,school_id,shell_id,key,source_id,*,actor_id=None):
+        """Persist exact native Source ID before ownership/finish. Never infer one."""
+        checked_id(source_id,'source')
+        actor=self._material_actor(actor_id,self.actor_id)
+        op=self._operation(school_id,key,'material',shell_id,actor_id=actor)
+        if not op or op.get('status') not in ('PENDING','QUARANTINED'):
+            raise Indeterminate('No safe operation for Native Source receipt')
+        old=op.get('native_source_id')
+        if old and old!=source_id:
+            raise Conflict('Different Native Source receipt for same operation')
+        if old==source_id:return
+        rid=_record('vault_operation',school_id,actor,'material',key,shell_id)
+        self.query('UPDATE type::record($rid) SET native_source_id=$source,updated_at=time::unix() '
+                   'WHERE status="PENDING" AND native_source_id=NONE;',rid=rid,source=source_id)
+        after=self._operation(school_id,key,'material',shell_id,actor_id=actor)
+        if not after or after.get('native_source_id')!=source_id:
+            raise Indeterminate('Native Source receipt persistence is unconfirmed')
+
     def finish_material(self,school_id,shell_id,key,source_id,title,sha256,filename,license,retention,*,actor_id=None):
         checked_id(source_id,'source')
         actor=self._material_actor(actor_id,self.actor_id)
         opid=_record('vault_operation',school_id,actor,'material',key,shell_id)
         op=self._operation(school_id,key,'material',shell_id,actor_id=actor)
-        if not op or op['status']!='PENDING': raise Indeterminate('Source operation not reserved')
+        if not op or op.get('status') not in ('PENDING','QUARANTINED'):
+            raise Indeterminate('Source operation not safely recoverable')
+        if op.get('native_source_id')!=source_id:
+            raise Indeterminate('Native Source ID is not recorded in durable operation')
+        metadata=op.get('metadata')
+        if not isinstance(metadata,dict) or not metadata:
+            raise Indeterminate('Canonical upload metadata missing; quarantine')
+        if any(metadata.get(a)!=b for a,b in (
+            ('sha256',sha256),('title',title),('original_name',filename),
+            ('license',license),('retention',retention))):
+            raise Conflict('Original upload receipt metadata mismatch')
         if not self.shell(school_id,shell_id):raise Indeterminate('Shell disappeared during upload')
         m={'source_id':source_id,'school_id':school_id,'shell_id':shell_id,
            'notebook_id':self.shell(school_id,shell_id)['notebook_id'],
