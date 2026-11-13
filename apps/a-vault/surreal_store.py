@@ -359,9 +359,24 @@ class SurrealStore:
     def del_session(self,sid):
         self.query('DELETE type::record($rid);',rid=_record('vault_session',sid))
 
+    def _material_key_owner(self,school_id,actor,key):
+        # Formal unique scope: School + Actor + Kind + Key, not Shell.
+        blocks=self.query(
+            'SELECT * FROM vault_operation WHERE school_id=$school AND actor_id=$actor '
+            'AND kind="material" AND idempotency_key=$key LIMIT 2;',
+            school=school_id,actor=actor,key=key)
+        rows=blocks[-1] if blocks else None
+        if not isinstance(rows,list) or len(rows)>1:
+            raise SurrealUnavailable('Unverifiable material key uniqueness')
+        return _clean(rows[0]) if rows else None
+
     def start_material(self,school_id,shell_id,key,digest,*,actor_id=None):
         self._validate_key(school_id,key)
         actor=self._material_actor(actor_id,self.actor_id)
+        any_op=self._material_key_owner(school_id,actor,key)
+        if any_op and (any_op.get('shell_id')!=shell_id or
+                       any_op.get('payload_sha')!=digest):
+            raise Conflict('Material Idempotency-Key reused across Shell or payload')
         op=self._operation(school_id,key,'material',shell_id,actor_id=actor)
         if op:
             if op.get('payload_sha')!=digest:raise Conflict('Upload key reused with different body')
@@ -381,7 +396,16 @@ class SurrealStore:
                        'CREATE ONLY type::record($cid) CONTENT $claim; COMMIT TRANSACTION;',
                        opid=opid,op=op,cid=claimid,claim=claim)
         except SurrealUnavailable as e:
-            raise Indeterminate('Source upload reservation conflict/uncertain') from e
+            # A failed COMMIT can mean a uniqueness conflict or a lost ACK.
+            # Read back the actor-key and scope; never blindly retry CREATE.
+            found=self._material_key_owner(school_id,actor,key)
+            if found and (found.get('shell_id')!=shell_id or
+                          found.get('payload_sha')!=digest):
+                raise Conflict('Material Idempotency-Key already reserved for another request') from e
+            claim=self._first(self.query('SELECT * FROM type::record($rid);',rid=claimid))
+            if claim and claim.get('operation_id')!=opid:
+                raise Conflict('Same material content already claimed by another operation') from e
+            raise Indeterminate('Source upload reservation conflict/ACK uncertain') from e
         return None,True
 
     def finish_material(self,school_id,shell_id,key,source_id,title,sha256,filename,license,retention,*,actor_id=None):
