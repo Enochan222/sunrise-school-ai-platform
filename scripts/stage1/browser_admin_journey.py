@@ -60,34 +60,55 @@ def main():
     parser.add_argument('--source-tree',required=True)
     parser.add_argument('--out',required=True,type=Path)
     args=parser.parse_args()
-    target=urlsplit(args.gateway)
-    require(target.scheme=='https'
-        and target.hostname in ('127.0.0.1','localhost') and target.port
-        and not target.username and not target.password
-        and target.path in ('','/') and not target.query and not target.fragment,
-        'Only an explicit private loopback Gateway is permitted')
-    origin=args.gateway.rstrip('/')
-    identity,_,runtime_sha=verify_manifest(args.runtime_identity,args.context,
-        args.project,args.source_sha,args.source_tree)
-    gateway=identity['gateway']
-    ca=args.gateway_ca_file
-    require(ca.is_file() and not ca.is_symlink() and ca.stat().st_size<=1<<20,
-            'Browser private TLS root is missing/unsafe')
-    require(origin==gateway.get('origin') and
-            hashlib.sha256(ca.read_bytes()).hexdigest()==gateway.get('tls_ca_sha256'),
-            'Browser Gateway origin or TLS CA differs from attested service')
-    actual=tls_gateway_identity(origin,ca)
-    require(all(actual.get(k)==gateway.get(k) for k in (
-        'instance_id','tls_peer_sha256','tls_ca_sha256','origin')),
-        'Browser preflight TLS peer or A Gateway process changed')
-    require(os.getenv('VAULT_RUNTIME_SYNTHETIC_CONFIRM')=='YES'
-        and os.getenv('VAULT_STORE_BACKEND')=='surreal',
-        'Real synthetic SurrealDB runtime not confirmed')
-    password=os.getenv('VAULT_TEST_ADMIN_PASSWORD')
-    require(bool(password),'Private operator synthetic Admin secret missing')
-    require((git_id('HEAD'),git_id('HEAD^{tree}'))==(args.source_sha,args.source_tree),
-        'Git source SHA/tree mismatch')
-    require(not args.out.exists(),'Browser evidence overwrite refused')
+    # Even a failed TLS/browser preflight produces sanitized, immutable
+    # diagnostic evidence. Previously these checks ran outside the evidence
+    # try/finally, leaving no root-cause classification at all.
+    if args.out.exists():
+        parser.error('Browser evidence overwrite refused')
+    try:
+        target=urlsplit(args.gateway)
+        require(target.scheme=='https'
+            and target.hostname in ('127.0.0.1','localhost') and target.port
+            and not target.username and not target.password
+            and target.path in ('','/') and not target.query and not target.fragment,
+            'Only an explicit private loopback Gateway is permitted')
+        origin=args.gateway.rstrip('/')
+        identity,_,runtime_sha=verify_manifest(args.runtime_identity,args.context,
+            args.project,args.source_sha,args.source_tree)
+        gateway=identity['gateway']
+        ca=args.gateway_ca_file
+        require(ca.is_file() and not ca.is_symlink() and ca.stat().st_size<=1<<20,
+                'Browser private TLS root is missing/unsafe')
+        require(origin==gateway.get('origin') and
+                hashlib.sha256(ca.read_bytes()).hexdigest()==gateway.get('tls_ca_sha256'),
+                'Browser Gateway origin or TLS CA differs from attested service')
+        actual=tls_gateway_identity(origin,ca)
+        require(all(actual.get(k)==gateway.get(k) for k in (
+            'instance_id','tls_peer_sha256','tls_ca_sha256','origin')),
+            'Browser preflight TLS peer or A Gateway process changed')
+        require(os.getenv('VAULT_RUNTIME_SYNTHETIC_CONFIRM')=='YES'
+            and os.getenv('VAULT_STORE_BACKEND')=='surreal',
+            'Real synthetic SurrealDB runtime not confirmed')
+        password=os.getenv('VAULT_TEST_ADMIN_PASSWORD')
+        require(bool(password),'Private operator synthetic Admin secret missing')
+        require((git_id('HEAD'),git_id('HEAD^{tree}'))==(args.source_sha,args.source_tree),
+            'Git source SHA/tree mismatch')
+        require(not args.out.exists(),'Browser evidence overwrite refused')
+        except Exception as error:
+        category=classify_failure(str(error))
+        evidence={'at_id':'S1-AT01-BROWSER','status':'FAIL',
+            'source_commit':args.source_sha,'source_tree':args.source_tree,
+            'failure_stage':'S1B-STARTUP',
+            'error_category':category,'error_type':type(error).__name__,
+            'stage_ids':list(STAGES),'redacted_events':[{
+                'stage':'S1B-STARTUP','event':'browser','class':category}],
+            'classification':'PRECHECK_FAILURE_NOT_CHROMIUM_PASS',
+            'finished_utc':datetime.now(timezone.utc).isoformat()}
+        args.out.write_text(json.dumps(evidence,sort_keys=True,indent=2)+'\n')
+        print(json.dumps({'at_id':evidence['at_id'],'status':'FAIL',
+            'failure_stage':'S1B-STARTUP','error_category':category,
+            'evidence':str(args.out)},sort_keys=True))
+        raise SystemExit(1) from None
     trace=Events()
     report={'at_id':'S1-AT01-BROWSER','status':'NOT_RUN',
         'source_commit':args.source_sha,'source_tree':args.source_tree,
