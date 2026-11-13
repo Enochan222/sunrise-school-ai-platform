@@ -59,7 +59,10 @@ class Settings:
             from surreal_store import SurrealConfig
             SurrealConfig(self.surreal_ws_url,self.surreal_user,self.surreal_password,
                 self.surreal_namespace,self.surreal_database).validate()
-        if not self.native_password or self.native_password in ('root','password','changeme'):
+        if (not isinstance(self.native_password,str) or len(self.native_password)<16 or
+                self.native_password.strip()!=self.native_password or
+                self.native_password.lower() in ('root','root:root','password',
+                    'changeme','admin','password123','1234567890')):
             raise ValueError('Native secret missing or unsafe')
         parsed = urlsplit(self.native_url)
         if parsed.scheme != 'http' or parsed.hostname not in ('127.0.0.1','localhost','::1') or parsed.username or parsed.password or parsed.path.rstrip('/') not in ('',):
