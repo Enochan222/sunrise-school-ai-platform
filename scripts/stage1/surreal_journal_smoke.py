@@ -66,7 +66,7 @@ def main():
         journal=SurrealStore(configuration,actor)
         reservation,fresh=journal.start_shell(school,key,details)
         assert fresh and reservation['creation_marker'].startswith('sunrise-a-op-v1:')
-        log['results']['fresh_first_reservation_races']=first_reservation_races(configuration,actor)
+        log['results']['fresh_first_reservation_races']=first_reservation_races(configuration,actor,secret or None)
         log['results']['real_surrealdb_unique_operation_reservation']='PASS'
         # Different-body 409 before any native side effect.
         try:
