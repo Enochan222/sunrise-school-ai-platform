@@ -20,7 +20,8 @@ import httpx
 def test_real_backend_selected_by_default_and_missing_credentials_fails_start(tmp_path):
     cfg=Settings(admin_hash=PasswordHasher().hash('synthetic'),session_secret='S'*56,
         encryption_key='E'*56,school_id='synthetic-a',actor_id='admin',sqlite_file='',
-        native_url='http://127.0.0.1:5055',native_password='synthetic-native-password')
+        native_url='http://127.0.0.1:5055',native_password='synthetic-native-password',
+        maintenance_file=str(tmp_path/'synthetic-maintenance.flag'))
     assert cfg.store_backend=='surreal'
     with pytest.raises(ValueError,match='database'):
         cfg.validate()
