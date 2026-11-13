@@ -58,6 +58,16 @@ def build_app(cfg:Settings|None=None,native=None):
     attempt_lock=Lock()
     app.state.store=store
     app.state.native=upstream
+    # WP07: trusted local templates are served ONLY through existing Gateway routes.
+    # Load once on startup, fail closed if deploy bundle omitted either HTML file.
+    template_dir=Path(__file__).parent/'templates'
+    login_template=(template_dir/'login.html').read_text(encoding='utf-8')
+    admin_template=(template_dir/'admin.html').read_text(encoding='utf-8')
+    login_marker='__SUNRISE_LOGIN_CSRF__'
+    if login_template.count(login_marker)!=1:
+        raise RuntimeError('WP07 login CSRF template marker must occur exactly once')
+    if login_marker in admin_template or '<script>' in admin_template.lower():
+        raise RuntimeError('WP07 admin template contains disallowed marker or inline script')
 
     def origin_guard(req:Request):
         # CSRF origin guard applies even to /auth/login; strict same-origin on browser POSTs.
@@ -142,10 +152,9 @@ def build_app(cfg:Settings|None=None,native=None):
     @app.get('/auth/login',response_class=HTMLResponse)
     def login_form():
         csrf=secrets.token_urlsafe(24)
-        resp=HTMLResponse('<!doctype html><meta charset="utf-8"><title>Sunrise A Login</title><h1>Sunrise A Vault</h1>'
-            '<p>Local synthetic development. Native gates not verified.</p><form method="post" action="/auth/login">'
-            '<input type="password" name="password" required autocomplete="current-password">'
-            f'<input type="hidden" name="csrf" value="{escape(csrf)}"><button>Login</button></form>')
+        # Preserve the signed, HttpOnly ten-minute login-CSRF cookie below.
+        html=login_template.replace(login_marker,escape(csrf,quote=True))
+        resp=HTMLResponse(html)
         resp.set_cookie(LOGIN_COOKIE,login_serializer.dumps(csrf),httponly=True,secure=cfg.session_secure,samesite='strict',max_age=600)
         return resp
 
@@ -329,28 +338,8 @@ def build_app(cfg:Settings|None=None,native=None):
     @app.get('/admin',response_class=HTMLResponse)
     def dashboard(req:Request):
         p=credentials(req);admin_only(p)
-        return HTMLResponse("""<!doctype html><html lang="en"><meta charset="utf-8">
-<title>Sunrise A Vault — Local Synthetic</title><link rel="stylesheet" href="/assets/style.css">
-<h1>Sunrise A Vault</h1><p>LOCAL SYNTHETIC DEVELOPMENT — not release-ready.
-Native search and uncertain retries fail closed.</p><p id="status" role="status"></p>
-<form id="create"><h2>Create Content Shell</h2>
-<label>Academic year<input name="academic_year" required maxlength="32" value="2026-2027"></label>
-<label>Grade<input name="grade" required maxlength="32" value="P4"></label>
-<label>Subject<input name="subject" required maxlength="48" value="Mathematics"></label>
-<label>Stream<input name="curriculum_stream" required maxlength="48" value="HK"></label>
-<button>Create</button></form>
-<h2>Owned shells</h2><div id="shells"></div><section id="detail" hidden>
-<h2 id="heading"></h2><button id="archive">Archive</button>
-<form id="upload"><h3>Upload synthetic PDF</h3>
-<input type="file" name="file" accept="application/pdf" required>
-<label>Title<input name="title" required></label>
-<label>License<input name="license" required value="synthetic-test-only"></label>
-<label>Retention<input name="retention" required value="synthetic-short-lived"></label>
-<button>Upload</button></form>
-<form id="search"><h3>Scoped native text search</h3>
-<input name="query" required><button>Search</button></form><div id="search-results"></div>
-<h3>Materials</h3><div id="materials"></div></section>
-<button id="logout">Logout</button><script src="/assets/app.js" defer></script></html>""")
+        # HTML is not an unguarded asset: authenticate the admin before reading.
+        return HTMLResponse(admin_template)
 
     @app.get('/assets/app.js')
     def ui_script():
