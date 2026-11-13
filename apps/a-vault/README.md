@@ -60,3 +60,27 @@ python scripts/stage1/real_admin_journey.py --gateway http://127.0.0.1:8765
 ```
 
 The probe explicitly leaves Gateway Restart, secondary School B gateway negative and isolated full Restore as NOT_RUN. It does not authorize public hosting, budget changes, Work checkout edits or R01.
+
+## WP07 verified scratch UI candidate port — IMPLEMENTED_UNTESTED (2026-11-13)
+
+**Do NOT treat earlier test counts or runtime reports in this README as results for this new UI/API revision.** The Owner expressly required a coding-only sprint; no UI Browser/HTTP, pytest, compile, lint, native runtime, or CI checks were executed for the latest commits.
+
+Source: `Sunrise_WP07_Codex_UI_Candidate_Handoff copy.zip`, SHA-256
+`8d974fbf614171b0ae4e742f66ccdd02d0daf970ea5300d08e4ef7aca68490da`. All eight ZIP paths were inspected; seven manifest-listed file hashes match. This was `SCRATCH_IMPLEMENTATION_UNTESTED`, not a previously accepted product.
+
+The integrated Gateway loads `templates/login.html` and `templates/admin.html` as **private local templates**, served exclusively by existing `GET /auth/login` and authenticated `GET /admin`; it does not publish a separate template route. The login handler creates a fresh signed ten-minute HttpOnly cookie and substitutes exactly one `__SUNRISE_LOGIN_CSRF__` with `escape(csrf,quote=True)`. The existing POST handler continues to support JSON Login for JS and HTTP 303 Redirect for HTML forms. Session expiry/revocation, Origin guard, Argon2id password and CSP remain on the Gateway.
+
+Candidate JavaScript was adapted as the sole `apps/a-vault/ui.js` asset, using `/assets/app.js`, with `style.css` for responsive Chinese UI. No external CDN, Inline Script, Native API credentials or untrusted `innerHTML` rendering is intended. Browser state tracks only the current session's CSRF and unresolved mutation snapshots; **no durable cross-refresh/browser-restart recovery is claimed**. Source/School authorisation stays entirely server-side.
+
+The unchanged formal eight A routes are used for Shell List/Create/Read/Archive, Materials List/Upload/Download and Scoped Search. Upload acknowledgment means `SUBMITTED_NATIVE_PROCESSING`, not Worker extraction complete. The Gateway now projects conservative Native statuses (`PROCESSING`, `READY`, `FAILED`, `UNKNOWN`) onto the existing Materials List `state` field, after per-Source Ownership readback. Unknown/completed-without-text is not considered READY.
+
+Other code-only updates in this revision:
+- WP02/WP04: stable authenticated Service JWT actor identity scopes formal A SurrealDB Material Operation, source-rights metadata/initial version/original locator and AI-use disabled.
+- WP03: same actor's reused Material Idempotency-Key with a different Shell or payload is rejected; duplicate source scope claims are read back without blindly creating another Source.
+- WP05: private disabled-by-default failed-only Native Retry validates patched source marker, Native owner/status, and original SHA before/after. Operator harness: `scripts/stage1/wp05_private_retry_probe.py`.
+- WP01: `scripts/stage1/wp01_network_boundary_probe.py` is an isolated-network source-only probe. WP04 Native graph source-only probe: `scripts/stage1/wp04_native_graph_probe.py`.
+- WP06: Shell/Search normalization and PDF form metadata/MIME/path validation happen before Native operations.
+
+**Restricted coding lease:** WP08/WP09 `a_cold_backup.py`, `test_a_cold_backup.py`, `restore/**`, `acceptance/**`, `docs/stage1/uat/**` remain frozen until Reviewer records Codex's local stop/handoff and issues `WP08_WP09_LEASE_RELEASED_TO_BUILDER_B`. Existing committed WP08 code is preserved without modification. There is no new WP09 accepted harness or Owner UAT result.
+
+**Rollback boundary:** restore the matched Gateway template handling, both private templates, `ui.js` and `style.css` together to the previous tested commit; do not mix new DOM IDs with old JavaScript. Re-running formal QA is mandatory after rollback or subsequent integration. Current Stage 1 Acceptance, Native Worker readiness, full restore and R01 remain NOT_APPROVED/NOT_RUN.
