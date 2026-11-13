@@ -127,5 +127,4 @@ os._exit(97)
         print(json.dumps({'status':log.get('status'),'results':log['results'],
                           'evidence':str(dest)},ensure_ascii=False))
 
-
 if __name__=='__main__':main()
