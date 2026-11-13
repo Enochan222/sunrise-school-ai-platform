@@ -161,6 +161,8 @@ def inspect_isolation(args,env):
             'native':('/app/data','native_data')}
     networks={'a_db':'a_db_private','on_db':'on_db_private','native':'on_db_private'}
     observed={}
+    volume_proof={}
+    container_proof={}
     for service in ('a_db','on_db','native'):
         cid=container_id(args,service,env)
         info=json.loads(docker(args.context,'inspect',cid))[0]
@@ -180,12 +182,21 @@ def inspect_isolation(args,env):
         if set(network)!={expected_network}:
             raise BackupInvalid('Target physical DB cross-engine network exposure')
         observed[service]=network[expected_network].get('NetworkID')
+        volume_proof[service]=found[0]['Name']
+        container_proof[service]=cid
         if service in ('a_db','on_db') and info['Config'].get('User')!=(
                 env['A_RESTORE_UID']+':'+env['A_RESTORE_GID'] if service=='a_db'
                 else env['ON_RESTORE_UID']+':'+env['ON_RESTORE_GID']):
             raise BackupInvalid('Target physical DB running as wrong UID/GID')
     if observed['a_db']==observed['on_db'] or observed['on_db']!=observed['native']:
         raise BackupInvalid('Restored A/ON physical network trust-domain collision')
+    if (len(set(volume_proof.values()))!=len(mounts)
+            or len(set(container_proof.values()))!=len(mounts)
+            or any(not isinstance(network_id,str) or len(network_id)<12
+                   for network_id in observed.values())):
+        raise BackupInvalid('Independent target volumes, containers or networks not proven')
+    return {'volumes':volume_proof,'containers':container_proof,
+            'network_ids':observed}
 
 
 def restore_new_target_db_owner(args,env,root,manifest):
@@ -266,7 +277,7 @@ def main():
     (args.workdir/'target-owner-manifest.json').write_text(
         json.dumps(manifest,sort_keys=True)+'\n',encoding='utf-8')
     compose(args,'create','--no-recreate','a_db','on_db','native',env=env)
-    inspect_isolation(args,env)
+    target_before=inspect_isolation(args,env)
     transfer_into_volume(args,'a_db',args.workdir/'a_db','/mydata',env)
     transfer_into_volume(args,'on_db',args.workdir/'on_db','/mydata',env)
     transfer_into_volume(args,'native',args.workdir/'native','/app/data',env)
@@ -287,9 +298,23 @@ def main():
             restored.get('distinct_engines') is not True
             or restored.get('distinct_private_networks') is not True):
         raise BackupInvalid('Both physical A and ON DB record counts/hashes not independently restored')
+    target_after=inspect_isolation(args,env)
+    if target_after!=target_before:
+        raise BackupInvalid('Restored target volume/container/network identity changed')
+    source_volumes={identity['services'][service]['persistent_volume']
+                    for service in ('a_db','on_db','native')}
+    target_volumes=set(target_after['volumes'].values())
+    if source_volumes & target_volumes:
+        raise BackupInvalid('Independent target reused source persistent volume')
     summary={'utc':datetime.now(timezone.utc).isoformat(),
         'recovery_point':manifest['recovery_point_id'],
         'source_commit':args.source_sha,'source_tree':args.source_tree,
+        'source_runtime_identity_sha256':hashlib.sha256(
+            args.source_runtime_identity.read_bytes()).hexdigest(),
+        'independent_target_verified':True,
+        'restored_volume_count':len(target_volumes),
+        'restored_services':sorted(target_after['volumes']),
+        'restored_target_volume_names':target_after['volumes'],
         'target_project':args.project,'target_context':args.context,
         'original_file_inventory_sha256':hashlib.sha256(
             json.dumps(manifest['files'],sort_keys=True).encode()).hexdigest(),
