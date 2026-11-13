@@ -25,6 +25,7 @@ ROOT=Path(__file__).resolve().parents[3]
 sys.path.insert(0,str(ROOT/'scripts/stage1'))
 from a_cold_backup import BackupInvalid,restore_isolated,verify
 from runtime_identity import git_identity
+from dual_inventory_runner import both
 
 HEX40=re.compile(r'^[a-f0-9]{40}$')
 HEX64=re.compile(r'^[a-f0-9]{64}$')
@@ -56,6 +57,12 @@ def target_clean(args):
         raise BackupInvalid('Target Compose project/volumes already exist: never overwrite')
     if args.workdir.exists():
         raise BackupInvalid('Target restore staging path already exists')
+    for leaf in ('a_db_data','on_db_data','native_data'):
+        volume=args.project+'_'+leaf
+        attempt=subprocess.run(['docker','--context',args.context,
+            'volume','inspect',volume],capture_output=True,text=True,timeout=30)
+        if attempt.returncode==0:
+            raise BackupInvalid('Foreign or old target named volume exists: '+leaf)
 
 
 def load_identity(args,manifest):
@@ -63,16 +70,20 @@ def load_identity(args,manifest):
     if hashlib.sha256(raw).hexdigest()!=manifest.get('runtime_identity_sha256'):
         raise BackupInvalid('Runtime identity different from cold recovery point')
     identity=json.loads(raw)
-    if (identity.get('type')!='SUNRISE_S1_A_DOCKER_RUNTIME_IDENTITY_UNREVIEWED'
+    if (identity.get('type')!='SUNRISE_S1_A_DUAL_DB_RUNTIME_IDENTITY_UNREVIEWED'
             or identity.get('source_commit')!=manifest['source_commit']
             or identity.get('source_tree')!=manifest['source_tree']
             or manifest.get('external_key_escrow_reference')!=args.key_escrow_reference
             or identity.get('project')==args.project):
         raise BackupInvalid('Foreign source identity or target collision')
     service=identity.get('services')
-    if not isinstance(service,dict) or set(service)!={'surrealdb','open_notebook'}:
-        raise BackupInvalid('Missing exact source images')
-    for name in ('surrealdb','open_notebook'):
+    if not isinstance(service,dict) or set(service)!={'a_db','on_db','native'}:
+        raise BackupInvalid('Missing exact physically independent source images')
+    if (service['a_db'].get('container_id')==service['on_db'].get('container_id') or
+            service['a_db'].get('network_id')==service['on_db'].get('network_id') or
+            service['a_db'].get('persistent_volume')==service['on_db'].get('persistent_volume')):
+        raise BackupInvalid('Source did not contain independently isolated physical DBs')
+    for name in ('a_db','on_db','native'):
         if not re.fullmatch(r'sha256:[a-f0-9]{64}',str(service[name].get('image_id',''))):
             raise BackupInvalid('Unverified immutable container image ID')
     if not args.key_escrow_reference.startswith('offline-escrow:'):
@@ -82,15 +93,29 @@ def load_identity(args,manifest):
 
 def restore_env(identity):
     env=os.environ.copy()
-    env['SURREAL_RESTORE_IMAGE']=identity['services']['surrealdb']['image_id']
-    env['ON_RESTORE_IMAGE']=identity['services']['open_notebook']['image_id']
-    required=('SURREAL_USER','SURREAL_PASSWORD','OPEN_NOTEBOOK_PASSWORD',
-              'OPEN_NOTEBOOK_ENCRYPTION_KEY','ON_GRAPH_NAMESPACE','ON_GRAPH_DATABASE',
-              'VAULT_SURREAL_NAMESPACE','VAULT_SURREAL_DATABASE')
+    services=identity['services']
+    env['A_DB_RESTORE_IMAGE']=services['a_db']['image_id']
+    env['ON_DB_RESTORE_IMAGE']=services['on_db']['image_id']
+    env['ON_RESTORE_IMAGE']=services['native']['image_id']
+    for service,prefix in (('a_db','A'),('on_db','ON')):
+        user=services[service].get('container_user','')
+        if not re.fullmatch(r'[1-9][0-9]*:[1-9][0-9]*',user):
+            raise BackupInvalid('Pinned physical DB nonroot user not attested')
+        env[prefix+'_RESTORE_UID'],env[prefix+'_RESTORE_GID']=user.split(':')
+    required=('A_SURREAL_USER','A_SURREAL_PASSWORD','A_SURREAL_NAMESPACE',
+              'A_SURREAL_DATABASE','ON_SURREAL_USER','ON_SURREAL_PASSWORD',
+              'OPEN_NOTEBOOK_PASSWORD','OPEN_NOTEBOOK_ENCRYPTION_KEY',
+              'ON_GRAPH_NAMESPACE','ON_GRAPH_DATABASE')
     if any(not env.get(k) for k in required):
-        raise BackupInvalid('Restore secrets or namespace bindings absent')
+        raise BackupInvalid('Separate physical restore secrets or DB identities missing')
+    if env['A_SURREAL_PASSWORD']==env['ON_SURREAL_PASSWORD']:
+        raise BackupInvalid('Restored physical DBs cannot share root credentials')
+    if (identity.get('surreal_namespace')!=env['A_SURREAL_NAMESPACE']
+            or identity.get('surreal_database')!=env['A_SURREAL_DATABASE']
+            or identity.get('on_namespace')!=env['ON_GRAPH_NAMESPACE']
+            or identity.get('on_database')!=env['ON_GRAPH_DATABASE']):
+        raise BackupInvalid('Wrong root namespace/database bindings for restored image')
     return env
-
 
 def container_id(args,service,env):
     raw=compose(args,'ps','--all','-q',service,env=env).strip().splitlines()
@@ -118,33 +143,68 @@ def transfer_into_volume(args,service,root,path,env):
 
 
 def inspect_isolation(args,env):
-    for service in ('surrealdb','open_notebook'):
+    images={'a_db':env['A_DB_RESTORE_IMAGE'],'on_db':env['ON_DB_RESTORE_IMAGE'],
+            'native':env['ON_RESTORE_IMAGE']}
+    mounts={'a_db':('/mydata','a_db_data'),
+            'on_db':('/mydata','on_db_data'),
+            'native':('/app/data','native_data')}
+    networks={'a_db':'a_db_private','on_db':'on_db_private','native':'on_db_private'}
+    observed={}
+    for service in ('a_db','on_db','native'):
         cid=container_id(args,service,env)
         info=json.loads(docker(args.context,'inspect',cid))[0]
+        if info.get('Id')!=cid or info.get('Image')!=images[service]:
+            raise BackupInvalid('Target service immutable image identity mismatch')
         if info['Config']['Labels'].get('com.docker.compose.project')!=args.project:
-            raise BackupInvalid('Target resource belongs to another project')
+            raise BackupInvalid('Foreign restore container')
         if any(x for x in info.get('HostConfig',{}).get('PortBindings',{}).values() if x):
-            raise BackupInvalid('Restore target publishes private port: REFUSE START')
-        expected_mount={'surrealdb':'/mydata','open_notebook':'/app/data'}[service]
-        mounts=[m for m in info.get('Mounts',[]) if m.get('Destination')==expected_mount]
-        if (len(mounts)!=1 or mounts[0].get('Type')!='volume' or
-                not str(mounts[0].get('Name','')).startswith(args.project+'_')):
-            raise BackupInvalid('Restore target volume not isolated/newly project-named')
-        networks=info.get('NetworkSettings',{}).get('Networks') or {}
-        if len(networks)!=1 or not all(args.project in key for key in networks):
-            raise BackupInvalid('Restore target has unexpected/bridged Docker network')
+            raise BackupInvalid('Isolated restored A/ON/Native publishes a TCP port')
+        mount,leaf=mounts[service]
+        found=[m for m in info.get('Mounts',[]) if m.get('Destination')==mount]
+        if (len(found)!=1 or found[0].get('Type')!='volume'
+                or found[0].get('Name')!=args.project+'_'+leaf):
+            raise BackupInvalid('Wrong or reused target physical DB/native volume')
+        expected_network=args.project+'_'+networks[service]
+        network=info.get('NetworkSettings',{}).get('Networks') or {}
+        if set(network)!={expected_network}:
+            raise BackupInvalid('Target physical DB cross-engine network exposure')
+        observed[service]=network[expected_network].get('NetworkID')
+        if service in ('a_db','on_db') and info['Config'].get('User')!=(
+                env['A_RESTORE_UID']+':'+env['A_RESTORE_GID'] if service=='a_db'
+                else env['ON_RESTORE_UID']+':'+env['ON_RESTORE_GID']):
+            raise BackupInvalid('Target physical DB running as wrong UID/GID')
+    if observed['a_db']==observed['on_db'] or observed['on_db']!=observed['native']:
+        raise BackupInvalid('Restored A/ON physical network trust-domain collision')
+
+
+def restore_new_target_db_owner(args,env,root,manifest):
+    """Only target new volumes; check exact restored files BEFORE chown or write."""
+    if root not in ('a_db','on_db'):
+        raise BackupInvalid('Unexpected target ownership operation')
+    leaf=root+'_data'
+    volume=args.project+'_'+leaf
+    raw=json.loads(docker(args.context,'volume','inspect',volume))
+    if (len(raw)!=1 or raw[0].get('Name')!=volume
+            or raw[0].get('Labels',{}).get('com.docker.compose.project')!=args.project
+            or raw[0].get('Labels',{}).get('com.docker.compose.volume')!=leaf):
+        raise BackupInvalid('Non-project target DB volume cannot be adjusted')
+    prefix='A' if root=='a_db' else 'ON'
+    uid,gid=env[prefix+'_RESTORE_UID'],env[prefix+'_RESTORE_GID']
+    helper=str(Path(__file__).parent/'restore_tree_owner.py')
+    image=env['ON_RESTORE_IMAGE']
+    for mode,user in (('chown','0:0'),('nonroot-probe',uid+':'+gid)):
+        docker(args.context,'run','--rm','--network','none','--read-only',
+               '--security-opt','no-new-privileges','--cap-drop','ALL',
+               '--user',user,
+               '-v',volume+':/target:rw',
+               '-v',str(args.workdir)+':/proof:ro',
+               '-v',helper+':/helper.py:ro',
+               '--entrypoint','/app/.venv/bin/python',image,'/helper.py',
+               '--mode',mode,'--root',root,'--uid',uid,'--gid',gid)
 
 
 def runtime_inventory(args,env):
-    code=(Path(__file__).parent/'db_inventory.py').read_text(encoding='utf-8')
-    # "compose run" uses a transient private utility container with Python
-    # entrypoint; never starts Native worker/UI, no port published.
-    raw=compose(args,'run','--rm','--no-deps','-T','--entrypoint','python',
-                'open_notebook','-c',code,env=env)
-    data=json.loads(raw)
-    if data.get('classification')!='DB_INVENTORY_ONLY_NOT_ACCEPTANCE':
-        raise BackupInvalid('Restore DB verification source not authoritative')
-    return data
+    return both(args.context,args.project,env['ON_RESTORE_IMAGE'])
 
 
 def report(args,values):
@@ -187,17 +247,32 @@ def main():
     target_clean(args)
     result=restore_isolated(args.bundle,args.workdir)
     # No source project or source Docker volume is ever mounted in the target.
-    compose(args,'create','--no-recreate','surrealdb','open_notebook',env=env)
+    # Restore proof file is local to the new, staged target and contains only
+    # cryptographic file metadata. Never write the escrow secret to this file.
+    (args.workdir/'target-owner-manifest.json').write_text(
+        json.dumps(manifest,sort_keys=True)+'\n',encoding='utf-8')
+    compose(args,'create','--no-recreate','a_db','on_db','native',env=env)
     inspect_isolation(args,env)
-    transfer_into_volume(args,'surrealdb',args.workdir/'surreal','/mydata',env)
-    transfer_into_volume(args,'open_notebook',args.workdir/'native','/app/data',env)
-    # Start the *private* DB only. Native UI/Worker remain stopped until
-    # DB, ownership, index, graph and original files have been independently reviewed.
-    compose(args,'start','surrealdb',env=env)
+    transfer_into_volume(args,'a_db',args.workdir/'a_db','/mydata',env)
+    transfer_into_volume(args,'on_db',args.workdir/'on_db','/mydata',env)
+    transfer_into_volume(args,'native',args.workdir/'native','/app/data',env)
+    for root in ('a_db','on_db'):
+        restore_new_target_db_owner(args,env,root,manifest)
+    # Start both isolated DB engines, NOT Native UI/Worker.
+    compose(args,'start','a_db','on_db',env=env)
     reference=json.loads((args.workdir/'gateway'/'db-inventory.json').read_text())
-    restored=runtime_inventory(args,env)
-    if restored!=reference:
-        raise BackupInvalid('Isolated A/ON DB record counts, identity or canonical hashes differ')
+    restored=None
+    for _ in range(30):
+        try:
+            restored=runtime_inventory(args,env)
+            break
+        except (OSError,BackupInvalid,subprocess.SubprocessError,RuntimeError):
+            import time
+            time.sleep(2)
+    if (restored is None or restored!=reference or
+            restored.get('distinct_engines') is not True
+            or restored.get('distinct_private_networks') is not True):
+        raise BackupInvalid('Both physical A and ON DB record counts/hashes not independently restored')
     summary={'utc':datetime.now(timezone.utc).isoformat(),
         'recovery_point':manifest['recovery_point_id'],
         'source_commit':args.source_sha,'source_tree':args.source_tree,
