@@ -140,8 +140,10 @@ class Events:
         self._append({'stage':self.current,'event':'HTTP','method':method,
                       'path':path,'status':status,'class':http_category(path,status)})
 
-    def failure(self,source: str,label: str):
+    def failure(self,source: str,label: str,url: str|None=None):
         if source not in ('requestfailed','pageerror','navigation','browser'):
             raise BrowserContractError('Unsupported browser failure source')
-        self._append({'stage':self.current,'event':source,
-                      'class':classify_failure(label)})
+        row={'stage':self.current,'event':source,'class':classify_failure(label)}
+        if url is not None:
+            row['path']=safe_path(url)
+        self._append(row)
