@@ -8,6 +8,7 @@ No cleanup of source or target resources, even on failure.
 import argparse
 from datetime import datetime,timezone
 import json
+import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -68,7 +69,16 @@ def main():
         time.sleep(2)
     else:
         raise BackupInvalid('Native source/graph/original readback not proven: '+str(last))
+    before=json.loads((args.workdir/'gateway'/'native-pre-capture-readback.json').read_text())
+    identity_fields=('source_owner_count','shell_count','verified_original_count',
+                     'owned_source_graph_hash','text_only_patch_attested')
+    if (before.get('classification')!='NATIVE_OWNER_READBACK_NOT_FORMAL_AT'
+            or any(before.get(key)!=output.get(key) for key in identity_fields)):
+        raise BackupInvalid('Native original PDF/graph/source ownership differs from source recovery point')
     summary={**previous,
+        'pre_capture_native_readback_sha256':hashlib.sha256(
+            json.dumps(before,sort_keys=True).encode()).hexdigest(),
+        'native_owner_identity_matches_before_after':True,
         'native_worker_running':True,
         'native_readback':output,
         'native_started_utc':datetime.now(timezone.utc).isoformat(),
