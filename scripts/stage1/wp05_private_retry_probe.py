@@ -20,14 +20,47 @@ import sys
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'apps/a-vault'))
-from native import Native
+from native import Native,checked_id
+from surreal_store import SurrealConfig,SurrealStore
 
 
 def stamp():
     return datetime.now(timezone.utc).isoformat()
 
 
+def verified_source_owner(args):
+    # Operator knowledge of a Source ID is NEVER equivalent to authorization.
+    env=('VAULT_SURREAL_WS_URL','VAULT_SURREAL_USER','VAULT_SURREAL_PASSWORD',
+         'VAULT_SURREAL_NAMESPACE','VAULT_SURREAL_DATABASE','VAULT_ACTOR_ID')
+    if any(not os.getenv(name) for name in env):
+        raise ValueError('Private A Journal identity missing')
+    if not args.school_id.startswith('synthetic-') or not args.actor_id:
+        raise ValueError('Trusted synthetic school and actor required')
+    if args.actor_id!=os.environ['VAULT_ACTOR_ID']:
+        raise ValueError('Operator actor does not match authenticated A actor')
+    journal=SurrealStore(SurrealConfig(*(os.environ[n] for n in env[:5])),args.actor_id)
+    shell=journal.shell(args.school_id,args.shell_id)
+    owner=journal.material(args.source_id,args.shell_id,args.school_id)
+    if (not shell or not owner or shell.get('archived') or
+        shell.get('notebook_id')!=args.notebook_id or
+        owner.get('notebook_id')!=args.notebook_id or
+        owner.get('school_id')!=args.school_id or
+        owner.get('shell_id')!=args.shell_id or
+        owner.get('source_id')!=args.source_id or
+        owner.get('sha256')!=args.expected_sha256 or
+        owner.get('created_by_actor_id')!=args.actor_id or
+        owner.get('rights_owner_actor_id')!=args.actor_id or
+        owner.get('approved_sharing') is not False or
+        owner.get('ai_usage_allowed') is not False or
+        owner.get('state') in ('QUARANTINED','REVOKED','UNCONFIRMED') or
+        not owner.get('initial_version_id') or
+        not owner.get('license') or not owner.get('retention')):
+        raise ValueError('A SourceOwner, rights, archive or version gate denied')
+    return {'shell_id':shell['shell_id'],'source_id':owner['source_id']}
+
+
 async def probe(args):
+    verified_source_owner(args)
     native=Native(args.native_url,os.environ['OPEN_NOTEBOOK_PASSWORD'],
                   text_only_verified=True,max_download_bytes=args.max_pdf_bytes)
     return await native.retry_failed_owned_source(args.source_id,args.notebook_id,args.expected_sha256,
@@ -38,6 +71,9 @@ def main():
     parser=argparse.ArgumentParser(description='Exclusive synthetic only; failed-job retry, not stage acceptance')
     parser.add_argument('--source-id',required=True)
     parser.add_argument('--notebook-id',required=True)
+    parser.add_argument('--school-id',required=True)
+    parser.add_argument('--shell-id',required=True)
+    parser.add_argument('--actor-id',required=True)
     parser.add_argument('--expected-sha256',required=True)
     parser.add_argument('--native-url',default='http://127.0.0.1:5055')
     parser.add_argument('--max-pdf-bytes',type=int,default=8*1024*1024)
@@ -52,12 +88,15 @@ def main():
     if (parsed.scheme!='http' or parsed.hostname not in ('127.0.0.1','localhost','::1')
             or parsed.username or parsed.password or parsed.path not in ('','/')):
         raise ValueError('Retry operator Native API must be local loopback only')
+    checked_id(args.source_id,'source');checked_id(args.notebook_id,'notebook')
     if not re.fullmatch(r'[a-f0-9]{64}',args.expected_sha256):
         raise ValueError('Expected original PDF SHA-256 invalid')
     evidence={'start_utc':stamp(),'category':'PINNED_NATIVE_FAILED_JOB_RETRY',
               'source_id_sha256':hashlib.sha256(args.source_id.encode()).hexdigest(),
               'notebook_id_sha256':hashlib.sha256(args.notebook_id.encode()).hexdigest(),
-              'original_sha256':args.expected_sha256,'result':'NOT_RUN',
+              'original_sha256':args.expected_sha256,
+              'actor_id_sha256':hashlib.sha256(args.actor_id.encode()).hexdigest(),
+              'result':'NOT_RUN',
               'worker_restart':'NOT_RUN','zero_external_ai_egress':'NOT_RUN',
               'S1_AT05_15':'NOT_RUN'}
     try:
