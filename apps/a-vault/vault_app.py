@@ -8,6 +8,7 @@ import json
 import re
 import secrets
 import time
+import unicodedata
 from collections import defaultdict,deque
 from datetime import datetime,timezone
 from html import escape
@@ -19,7 +20,7 @@ from argon2 import PasswordHasher,exceptions as argon_errors
 from fastapi import FastAPI,Request,HTTPException,UploadFile,File,Form
 from fastapi.responses import HTMLResponse,JSONResponse,Response,RedirectResponse
 from itsdangerous import URLSafeTimedSerializer,BadSignature,SignatureExpired
-from pydantic import BaseModel,Field
+from pydantic import BaseModel,Field,field_validator
 
 from config import Settings,from_env
 from native import Native,NativeUnavailable,NativeOwnershipError
@@ -37,9 +38,27 @@ class ShellInput(BaseModel):
     subject:str=Field(min_length=1,max_length=48)
     curriculum_stream:str=Field(min_length=1,max_length=48)
 
+    @field_validator('academic_year','grade','subject','curriculum_stream')
+    @classmethod
+    def canonical_classification(cls,value,info):
+        stripped=value.strip()
+        if not stripped or any(unicodedata.category(c) in ('Cc','Cf') for c in stripped):
+            raise ValueError('Invalid or invisible classification characters')
+        if info.field_name=='academic_year' and not YEAR_RE.fullmatch(stripped):
+            raise ValueError('Academic year must use ASCII year code')
+        return stripped
+
 class SearchInput(BaseModel):
     query:str=Field(min_length=1,max_length=300)
     limit:int=Field(default=20,ge=1,le=50)
+
+    @field_validator('query')
+    @classmethod
+    def canonical_search_query(cls,value):
+        text=value.strip()
+        if not text or any(unicodedata.category(c)=='Cc' for c in text):
+            raise ValueError('Nonempty plain text query required')
+        return text
 
 
 def build_app(cfg:Settings|None=None,native=None):
@@ -281,11 +300,17 @@ def build_app(cfg:Settings|None=None,native=None):
         p=credentials(req,write=True,permission='vault.materials.write')
         s=get_owned_shell(p,shell_id)
         if s['archived']:raise HTTPException(409,'Archived shells are read-only')
-        if not title.strip() or len(title)>200 or not license.strip() or len(license)>120 or not retention.strip() or len(retention)>100:
+        title,license,retention=title.strip(),license.strip(),retention.strip()
+        if (not title or len(title)>200 or not license or len(license)>120 or
+                not retention or len(retention)>100 or
+                any(unicodedata.category(c) in ('Cc','Cf') for field in (title,license,retention) for c in field)):
             raise HTTPException(422,'Title/license/retention metadata required')
         name=Path(file.filename or '').name
-        if name!=file.filename or not name.lower().endswith('.pdf') or len(name)>180:
-            raise HTTPException(422,'Only safe PDF filenames allowed')
+        if (name!=file.filename or not name.lower().endswith('.pdf') or
+                len(name)>180 or '\\' in name or
+                any(unicodedata.category(c) in ('Cc','Cf') for c in name) or
+                file.content_type not in ('application/pdf','application/octet-stream')):
+            raise HTTPException(422,'Only safe uploaded PDFs allowed')
         content=await file.read(cfg.max_pdf_bytes+1)
         if len(content)>cfg.max_pdf_bytes or not content.startswith(b'%PDF-') or b'%%EOF' not in content[-2048:]:
             raise HTTPException(422,'Invalid or oversized PDF')
