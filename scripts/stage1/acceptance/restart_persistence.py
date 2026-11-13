@@ -20,6 +20,8 @@ ROOT=Path(__file__).resolve().parents[3]
 sys.path.insert(0,str(ROOT/'scripts/stage1/restore'))
 from cold_capture import check_manifest,check_gateway_frozen,drain,inventory_at_freeze,stop_project,native_readback_at_freeze
 from runtime_identity import git_identity
+sys.path.insert(0,str(ROOT/'scripts/stage1'))
+from executed_runtime_provenance import inspect as inspect_runtime,guard as guard_runtime
 
 
 def compose(args,*rest):
@@ -44,6 +46,7 @@ def main():
     if (sha,tree)!=(args.source_sha,args.source_tree):
         p.error('Exact tested revision mismatch')
     if args.out.exists():p.error('Evidence cannot overwrite prior run')
+    runtime_sha=inspect_runtime(ROOT,args.runtime_identity,sha,tree)
     identity=check_manifest(args)
     # One unique probe-owned barrier; leave it active on any failed restart.
     nonce=secrets.token_hex(16)
@@ -51,7 +54,8 @@ def main():
     with args.maintenance_file.open('x') as freeze:
         freeze.write(marker)
     record={'at_id':'S1-AT04','status':'NOT_RUN','start_utc':datetime.now(timezone.utc).isoformat(),
-            'source_commit':sha,'source_tree':tree,'project':args.project}
+            'source_commit':sha,'source_tree':tree,'project':args.project,
+            'runtime_identity_sha256':runtime_sha}
     try:
         check_gateway_frozen(args)
         drain(args)
@@ -86,6 +90,7 @@ def main():
         record['after_inventory_sha256']=hashlib.sha256(
             json.dumps(after,sort_keys=True).encode()).hexdigest()
         record['native_readback_before_after_equal']=True
+        guard_runtime(ROOT,args.runtime_identity,sha,tree,runtime_sha)
         # Only unfreeze the exact flag created by THIS successful check.
         # Any error (including identity mismatch) leaves it frozen.
         if args.maintenance_file.read_text(encoding='utf-8')!=marker:
