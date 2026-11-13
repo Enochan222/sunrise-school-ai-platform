@@ -241,11 +241,15 @@ def main():
                     r=read_json(reg_out)
                     if r.get('status')!='PASS' or r.get('tests_executed',0)<1:
                         raise IncompleteAT('Actual regression missing')
-                    prior={a:v for a,v in report['cases'].items() if a!=at}
+                    mandatory=set(RUN_ORDER)-{'S1-AT13'}
+                    # S1-AT13 is a *full-scope* regression/release-scope check.
+                    # Never let a selected subset or NOT_RUN gate satisfy it.
+                    if set(selected)!=set(RUN_ORDER) or any(
+                            report['cases'][a]['status']!='PASS' for a in mandatory):
+                        raise IncompleteAT('AT13 requires all other 14 real AT cases PASS on same SHA')
                     aggregate={'source_sha':args.source_sha,'source_tree':args.source_tree,
-                               'aggregate':'ALL_SELECTED_PASS' if all(
-                                    v['status']=='PASS' for a,v in prior.items() if a in selected)
-                               else 'FAIL',
+                               'aggregate':'ALL_SELECTED_PASS',
+                               'covered_at_ids':sorted(mandatory),
                                'tests_executed':r['tests_executed']}
                     summary=args.output_dir/'regression-summary.json'
                     summary.write_text(json.dumps(aggregate)+'\n')
