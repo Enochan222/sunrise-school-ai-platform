@@ -199,7 +199,10 @@ def main():
         try:
             os.environ['VAULT_BACKUP_EXCLUSIVE_COLD']='YES'
             result=build(staging,args.out,attestation,args.source_sha,args.source_tree,
-                         args.surreal_image_digest)
+                         args.surreal_image_digest,
+                         recovery_point_id=args.recovery_point,
+                         key_escrow_reference=args.key_escrow_reference,
+                         runtime_identity_sha256=hashlib.sha256(args.runtime_identity.read_bytes()).hexdigest())
         finally:
             attestation.unlink(missing_ok=True)
     print(json.dumps({'status':'OFFLINE_COLD_BUNDLE_NOT_RESTORE_VERIFIED',
