@@ -84,9 +84,9 @@ async def workflow(args,record):
             raise RuntimeError('Native Source remains attached after unlink')
         record['native_unlink']='PASS'
         await native._request('POST',f'/api/notebooks/{notebook}/sources/{source}')
-        was_unlinked=False
         await native.ensure_owned(source,notebook)
         require_exact_edge(journal,source,notebook,1)
+        was_unlinked=False  # Clear only AFTER proving the restored edge exists.
         # Duplicate link request must not introduce a second reference edge.
         await native._request('POST',f'/api/notebooks/{notebook}/sources/{source}')
         await native.ensure_owned(source,notebook)
