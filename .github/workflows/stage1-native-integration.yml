@@ -88,20 +88,6 @@ jobs:
           done
           [[ "$READY" == 1 ]] || { echo 'FAIL: ON API startup/migration'; exit 1; }
           python -m pip install --disable-pip-version-check -r apps/a-vault/requirements-dev.txt
-          python scripts/stage1/native_runtime_smoke.py --host http://127.0.0.1:5055 --out "$RUNNER_TEMP/native-runtime-redacted.json"
-          python - "$RUNNER_TEMP/native-runtime-redacted.json" <<'PY'
-          import json,sys
-          x=json.load(open(sys.argv[1],encoding='utf-8'))
-          if x['status']!='PASS':raise SystemExit('Native smoke reported FAIL')
-          # Source readback is not a Graph Link/Unlink or School IDOR negative test.
-          tests=dict(x['runtime_tests'])
-          if tests.pop('graph_owner_readback',None)=='PASS':tests['owner_readback_partial']='PASS (partial only)'
-          for name in ['actual_link_unlink_negative','ack_loss_crash_injection','worker_retry_fault_injection','independent_restore','owner_uat']:
-              tests[name]='NOT_RUN'
-          print('RUNTIME_PROBE_RESULTS='+json.dumps(tests,ensure_ascii=False,sort_keys=True))
-          print('START_UTC='+x.get('start_utc','')+' END_UTC='+x.get('end_utc',''))
-          print('PDF_SHA256='+x.get('pdf_sha256','')+' SOURCE_PIN='+x.get('source_pin',''))
-          PY
           # Run WP03 in this SAME shell on the already started private services.
           # Temporary credentials need not persist across Github Actions steps.
           # A journal namespace/database stays isolated from native Open Notebook.
@@ -139,3 +125,17 @@ jobs:
           PY_WP03
           sha256sum "$VAULT_JOURNAL_EVIDENCE"
           echo "WP03_JOURNAL_END_UTC=$(date -u +%FT%TZ)"
+          python scripts/stage1/native_runtime_smoke.py --host http://127.0.0.1:5055 --out "$RUNNER_TEMP/native-runtime-redacted.json"
+          python - "$RUNNER_TEMP/native-runtime-redacted.json" <<'PY'
+          import json,sys
+          x=json.load(open(sys.argv[1],encoding='utf-8'))
+          if x['status']!='PASS':raise SystemExit('Native smoke reported FAIL')
+          # Source readback is not a Graph Link/Unlink or School IDOR negative test.
+          tests=dict(x['runtime_tests'])
+          if tests.pop('graph_owner_readback',None)=='PASS':tests['owner_readback_partial']='PASS (partial only)'
+          for name in ['actual_link_unlink_negative','ack_loss_crash_injection','worker_retry_fault_injection','independent_restore','owner_uat']:
+              tests[name]='NOT_RUN'
+          print('RUNTIME_PROBE_RESULTS='+json.dumps(tests,ensure_ascii=False,sort_keys=True))
+          print('START_UTC='+x.get('start_utc','')+' END_UTC='+x.get('end_utc',''))
+          print('PDF_SHA256='+x.get('pdf_sha256','')+' SOURCE_PIN='+x.get('source_pin',''))
+          PY
