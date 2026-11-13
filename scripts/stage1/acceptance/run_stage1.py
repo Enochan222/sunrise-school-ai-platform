@@ -284,7 +284,7 @@ def run_full_at01(config,output,source_sha,source_tree,case_reports,preflight):
         record=read_json(output/(at+'.json'))
         if record.get('at_id')!=at or record.get('status')!='PASS':
             raise IncompleteAT('AT01 prerequisite evidence not a real PASS: '+at)
-        if at in ('S1-AT04','S1-AT05') and (
+        if at in ('S1-AT04','S1-AT05','S1-AT15') and (
                 record.get('source_commit')!=source_sha
                 or record.get('source_tree')!=source_tree):
             raise IncompleteAT('AT01 dependent evidence refers to different source revision')
@@ -429,6 +429,7 @@ def main():
                 report['cases']['S1-AT01']={'status':'FAIL',
                     'error_type':type(exc).__name__,'end_utc':timestamp()}
                 raise
+        browser_preflight=None
         for at in RUN_ORDER:
             if at not in selected:continue
             report['cases'][at]={'status':'RUNNING','start_utc':timestamp()}
@@ -439,6 +440,12 @@ def main():
                 elif at in CASES:
                     steps,digest=run_regular(at,config,args.output_dir,args.source_sha,args.source_tree)
                 elif at=='S1-AT05':
+                    if 'S1-AT01' in selected:
+                        if (report['cases']['S1-AT04']['status']!='PASS'
+                                or report['cases']['S1-AT15']['status']!='PASS'):
+                            raise IncompleteAT('Chromium must follow real restart and school negatives')
+                        browser_preflight=run_browser_before_cold_capture(
+                            config,args.output_dir,args.source_sha,args.source_tree)
                     steps,digest=run_restore(config,args.output_dir,args.source_sha,args.source_tree)
                 elif at=='S1-AT12':
                     steps,digest=validate_restore_rights(config,args.output_dir,args.source_sha,args.source_tree)
