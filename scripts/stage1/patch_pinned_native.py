@@ -45,10 +45,10 @@ def patch_scoped_cjk_search(source: str) -> str:
     old = "        return search_results\n"
     new = """        # English BM25 does not reliably match substrings of Han text.
         # Limit the literal match to sources linked to one explicit notebook.
-        if (not search_results and source and not note and notebook_ids
+        if (source and not note and notebook_ids
                 and len(notebook_ids) == 1
                 and any("\u3400" <= char <= "\u9fff" for char in keyword)):
-            search_results = await repo_query(
+            literal_results = await repo_query(
                 "SELECT id, id AS parent_id, title, 0 AS relevance FROM source "
                 "WHERE id IN (SELECT VALUE in FROM reference WHERE out = $notebook) "
                 "AND (string::contains(title ?? '', $term) "
@@ -57,6 +57,11 @@ def patch_scoped_cjk_search(source: str) -> str:
                 {"notebook": ensure_record_id(notebook_ids[0]),
                  "term": keyword, "limit": results},
             )
+            seen = {str(hit["parent_id"]) for hit in literal_results}
+            search_results = (literal_results + [
+                hit for hit in search_results
+                if str(hit["parent_id"]) not in seen
+            ])[:results]
         return search_results
 """
     return source[:begin] + replace_once(fragment, old, new, "scoped CJK literal search") + source[end:]
