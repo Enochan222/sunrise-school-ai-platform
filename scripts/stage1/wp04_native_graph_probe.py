@@ -20,7 +20,7 @@ import sys
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'apps/a-vault'))
 from native import Native,checked_id
-from surreal_store import SurrealConfig,SurrealStore
+from surreal_store import SurrealConfig,SurrealStore,RPC
 
 
 def utc():
@@ -35,21 +35,53 @@ def configure():
     return SurrealConfig(*(os.environ[name] for name in names))
 
 
-def native_edges(journal,source_id):
+def native_graph_authority():
+    """Independent read-only ON graph RPC connection, never the A journal handle.
+
+    The operator must provide a signed-off private runtime identity manifest
+    from Docker inspection. Environment names are intentionally independent:
+    A_URL and ON_URL may alias the same host but cannot be assumed equivalent.
+    """
+    names=('ON_GRAPH_WS_URL','ON_GRAPH_USER','ON_GRAPH_PASSWORD',
+           'ON_GRAPH_NAMESPACE','ON_GRAPH_DATABASE','ON_GRAPH_IDENTITY_FILE')
+    if any(not os.environ.get(n) for n in names):
+        raise RuntimeError('Native Graph DB identity missing; mutation denied')
+    identity=json.loads(Path(os.environ['ON_GRAPH_IDENTITY_FILE']).read_text())
+    wanted={k:os.environ[k] for k in ('ON_GRAPH_WS_URL','ON_GRAPH_NAMESPACE','ON_GRAPH_DATABASE')}
+    expected={'ws_url':wanted['ON_GRAPH_WS_URL'],'namespace':wanted['ON_GRAPH_NAMESPACE'],
+              'database':wanted['ON_GRAPH_DATABASE']}
+    if (identity.get('native_graph')!=expected or
+            identity.get('source_commit')!='5e285b7a2e435895c4ee99ad7e4b8d2af64c3239'
+            or identity.get('source_tree')!='2d101001de594c7d6a0e4aaeb8e85ac4c52980af'
+            or identity.get('attested_exclusive_synthetic') is not True
+            or not identity.get('container_id') or not identity.get('image_digest')):
+        raise RuntimeError('Unattested Native DB endpoint/namespace/database/source identity')
+    a=configure()
+    a_identity={'ws_url':a.ws_url,'namespace':a.namespace,'database':a.database}
+    if identity.get('a_journal')!=a_identity:
+        raise RuntimeError('A Journal physical DB identity disagrees with runtime manifest')
+    native=SurrealConfig(os.environ['ON_GRAPH_WS_URL'],os.environ['ON_GRAPH_USER'],
+                         os.environ['ON_GRAPH_PASSWORD'],
+                         os.environ['ON_GRAPH_NAMESPACE'],os.environ['ON_GRAPH_DATABASE']).validate()
+    # No SurrealStore(native) here: its migration is A-owned and must not alter ON schema.
+    return RPC(native)
+
+
+def native_edges(graph_rpc,source_id):
     # Pinned ON graph: source -reference-> notebook; the Surreal reference.in
     # endpoint is the source, out is the notebook.
     key=checked_id(source_id,'source').split(':',1)[1]
-    results=journal.query(
+    results=graph_rpc.query(
         'SELECT in,out FROM reference WHERE in=type::thing("source",$source_key);',
-        source_key=key)
+        {'source_key':key})
     rows=results[-1] if results else None
     if not isinstance(rows,list):
         raise RuntimeError('Native graph edge readback malformed')
     return rows
 
 
-def require_exact_edge(journal,source_id,notebook_id,expected):
-    rows=native_edges(journal,source_id)
+def require_exact_edge(graph_rpc,source_id,notebook_id,expected):
+    rows=native_edges(graph_rpc,source_id)
     if len(rows)!=expected:
         raise RuntimeError('Native edge cardinality violates expected count')
     for row in rows:
@@ -66,32 +98,33 @@ async def workflow(args,record):
     if (not isinstance(proof,dict) or proof.get('marker')!='sunrise-a-text-only-no-vector-v1'
             or proof.get('text_only') is not True):
         raise RuntimeError('Full pinned-source patch attestation absent; mutation forbidden')
+    graph_rpc=native_graph_authority()  # Must be verified before ANY mutation.
     journal=SurrealStore(configure(),os.environ['VAULT_ACTOR_ID'])
     owned=journal.material(source,args.shell_id,args.school_id)
     if (not owned or owned.get('notebook_id')!=notebook or owned.get('sha256')!=args.expected_sha256
             or not args.school_id.startswith('synthetic-')):
         raise RuntimeError('Not an exclusively owned synthetic SourceOwner; mutation forbidden')
     await native.ensure_owned(source,notebook)
-    require_exact_edge(journal,source,notebook,1)
+    require_exact_edge(graph_rpc,source,notebook,1)
     original=await native.original(source,args.expected_sha256)
     record['before_original_sha256']=hashlib.sha256(original).hexdigest()
     was_unlinked=False
     try:
         await native._request('DELETE',f'/api/notebooks/{notebook}/sources/{source}')
         was_unlinked=True
-        require_exact_edge(journal,source,notebook,0)
+        require_exact_edge(graph_rpc,source,notebook,0)
         detached=await native.source(source)
         if detached.get('notebooks')!=[]:
             raise RuntimeError('Native Source remains attached after unlink')
         record['native_unlink']='PASS'
         await native._request('POST',f'/api/notebooks/{notebook}/sources/{source}')
         await native.ensure_owned(source,notebook)
-        require_exact_edge(journal,source,notebook,1)
+        require_exact_edge(graph_rpc,source,notebook,1)
         was_unlinked=False  # Clear only AFTER proving the restored edge exists.
         # Duplicate link request must not introduce a second reference edge.
         await native._request('POST',f'/api/notebooks/{notebook}/sources/{source}')
         await native.ensure_owned(source,notebook)
-        require_exact_edge(journal,source,notebook,1)
+        require_exact_edge(graph_rpc,source,notebook,1)
         record['native_link_and_duplicate']='PASS'
         after=await native.original(source,args.expected_sha256)
         if after!=original:
@@ -104,7 +137,7 @@ async def workflow(args,record):
             try:
                 await native._request('POST',f'/api/notebooks/{notebook}/sources/{source}')
                 await native.ensure_owned(source,notebook)
-                require_exact_edge(journal,source,notebook,1)
+                require_exact_edge(graph_rpc,source,notebook,1)
             except Exception as exc:
                 record['recovery']='MANUAL_QUARANTINE_REQUIRED'
                 record['recovery_error_type']=type(exc).__name__
