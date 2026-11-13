@@ -48,6 +48,9 @@ class ShellInput(BaseModel):
             raise ValueError('Academic year must use ASCII year code')
         return stripped
 
+class SchoolSwitchInput(BaseModel):
+    school_id:str=Field(min_length=1,max_length=100)
+
 class SearchInput(BaseModel):
     query:str=Field(min_length=1,max_length=300)
     limit:int=Field(default=20,ge=1,le=50)
@@ -73,6 +76,7 @@ def build_app(cfg:Settings|None=None,native=None):
     serializer=URLSafeTimedSerializer(cfg.session_secret,salt='sunrise-a-session')
     login_serializer=URLSafeTimedSerializer(cfg.session_secret,salt='sunrise-login-csrf')
     ph=PasswordHasher()
+    allowed_schools=frozenset(cfg.allowed_schools())
     attempts=defaultdict(deque)
     attempt_lock=Lock()
     app.state.store=store
@@ -119,7 +123,8 @@ def build_app(cfg:Settings|None=None,native=None):
                 claims=jwt.decode(authorization[7:],cfg.service_public_key,algorithms=['RS256'],
                     issuer=cfg.service_issuer,audience=cfg.service_audience,
                     options={'require':['sub','iss','aud','exp','iat','nbf','jti','school_id','scope']},leeway=5)
-                if (claims['school_id']!=cfg.school_id or not permission or
+                if (not isinstance(claims['school_id'],str) or
+                    claims['school_id'] not in allowed_schools or not permission or
                     not isinstance(claims['scope'],str) or permission not in claims['scope'].split() or
                     not isinstance(claims['sub'],str) or not claims['sub'].strip() or
                     len(claims['sub'])>256 or
@@ -127,18 +132,20 @@ def build_app(cfg:Settings|None=None,native=None):
                     not isinstance(claims['jti'],str) or not claims['jti'] or
                     claims['exp']-claims['iat']>300):
                     raise HTTPException(403,'Service scope denied')
-                return {'school_id':cfg.school_id,'actor_id':claims['sub'],'service':True,'csrf':None}
+                return {'school_id':claims['school_id'],'actor_id':claims['sub'],'service':True,'csrf':None}
             except jwt.PyJWTError:
                 raise HTTPException(401,'Invalid service token')
         token=req.cookies.get(SESSION_COOKIE)
         if not token:raise HTTPException(401,'Authentication required')
         try:sid=serializer.loads(token,max_age=3600)
         except (BadSignature,SignatureExpired):raise HTTPException(401,'Invalid session')
-        state=store.session(sid,cfg.school_id)
-        if not state:raise HTTPException(401,'Session revoked or expired')
+        state=store.session(sid)
+        if not state or state.get('school_id') not in allowed_schools:
+            raise HTTPException(401,'Session revoked, expired or school not allowed')
         if write and not hmac.compare_digest(str(req.headers.get('x-csrf-token','')),state['csrf']):
             raise HTTPException(403,'CSRF token missing or invalid')
-        return {'school_id':cfg.school_id,'actor_id':cfg.actor_id,'service':False,'csrf':state['csrf']}
+        return {'school_id':state['school_id'],'actor_id':cfg.actor_id,
+                'service':False,'csrf':state['csrf']}
 
     def admin_only(p):
         if p['service']:raise HTTPException(403,'Admin only')
@@ -203,6 +210,22 @@ def build_app(cfg:Settings|None=None,native=None):
         resp.delete_cookie(LOGIN_COOKIE)
         return resp
 
+    @app.post('/auth/school')
+    def switch_school(req:Request,body:SchoolSwitchInput):
+        principal=credentials(req,write=True)
+        admin_only(principal)
+        if body.school_id not in allowed_schools:
+            raise HTTPException(403,'School not permitted by server-side allowlist')
+        sid=serializer.loads(req.cookies.get(SESSION_COOKIE,''),max_age=3600)
+        new_csrf=secrets.token_urlsafe(32)
+        try:
+            switched=store.switch_school(sid,principal['school_id'],body.school_id,
+                                         principal['csrf'],new_csrf,cfg.actor_id)
+        except (Indeterminate,SurrealUnavailable) as error:
+            raise HTTPException(503,'Active school rotation uncertain; reauthenticate or readback') from error
+        return {'school_id':switched['school_id'],'actor_id':cfg.actor_id,
+                'csrf_token':new_csrf,'available_schools':list(cfg.allowed_schools())}
+
     @app.post('/auth/logout')
     def logout(req:Request):
         p=credentials(req,write=True);admin_only(p)
@@ -215,7 +238,9 @@ def build_app(cfg:Settings|None=None,native=None):
     @app.get('/auth/me')
     def me(req:Request):
         p=credentials(req)
-        return {'school_id':p['school_id'],'actor_id':p['actor_id'],'csrf_token':p['csrf']}
+        admin_only(p)
+        return {'school_id':p['school_id'],'actor_id':p['actor_id'],
+                'csrf_token':p['csrf'],'available_schools':list(cfg.allowed_schools())}
 
     @app.get('/vault/v1/shells')
     def list_shells(req:Request):
