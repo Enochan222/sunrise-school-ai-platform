@@ -144,7 +144,7 @@ def test_finish_material_rejects_unknown_ack_or_mismatched_original_metadata(
     metadata={'sha256':'a'*64,'title':'Synthetic title','original_name':'synthetic.pdf',
               'license':'synthetic','retention':'short'}
     if metadata_override is not None:
-        metadata.update(metadata_override)
+        metadata=metadata_override if metadata_override=={} else {**metadata,**metadata_override}
     journal._operation=lambda school,key,kind,scope,actor_id=None: {
         'status':'PENDING','actor_id':actor_id,
         'native_source_id':native_receipt,'metadata':metadata}
