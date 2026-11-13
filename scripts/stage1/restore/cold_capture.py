@@ -69,6 +69,11 @@ def check_manifest(args):
         raise BackupInvalid('Unverified Compose source hash')
     if hashlib.sha256(args.compose_file.read_bytes()).hexdigest()!=manifest['compose_sha256']:
         raise BackupInvalid('Compose changed since runtime identity capture')
+    relay_source=Path(__file__).parents[1]/'loopback_relay.py'
+    if (not relay_source.is_file() or relay_source.is_symlink()
+            or hashlib.sha256(relay_source.read_bytes()).hexdigest()!=
+            manifest.get('loopback_relay_source_sha256')):
+        raise BackupInvalid('Immutable relayed host transport source changed since recovery point')
     if manifest.get('on_namespace')!=os.environ.get('ON_GRAPH_NAMESPACE') or (
         manifest.get('on_database')!=os.environ.get('ON_GRAPH_DATABASE')):
         raise BackupInvalid('Pinned Native DB identity mismatch')
