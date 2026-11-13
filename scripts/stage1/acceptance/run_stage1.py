@@ -194,21 +194,32 @@ def test_result(at,report):
     return report.get('status')=='PASS' and report.get('at_id')==at
 
 
-def run_regular(at,config,output):
+def run_regular(at,config,output,source_sha,source_tree):
     script,kind=CASES[at]
     evidence=output/(at+'.json')
-    opts=config.get('case_flags',{}).get(at)
-    env={}
+    flags=config.get('case_flags',{}).get(at)
+    if not isinstance(flags,dict):
+        raise IncompleteAT('Missing fixed real scenario: '+at)
+    flags=dict(flags)
+    for key,value in (('--source-sha',source_sha),('--source-tree',source_tree)):
+        if flags.get(key,value)!=value:
+            raise IncompleteAT('Scenario attempts different tested revision')
+    if kind in ('security','http') or at=='S1-AT04':
+        flags.update({'--source-sha':source_sha,'--source-tree':source_tree})
+    env={'VAULT_FIXED_SOURCE_SHA':source_sha,'VAULT_FIXED_SOURCE_TREE':source_tree}
     if kind=='journal':
         env['VAULT_JOURNAL_EVIDENCE']=str(evidence)
-    detail=subprocess_case(script,opts,evidence,
+    detail=subprocess_case(script,flags,evidence,
         at_id=at if kind in ('security','http') else None,
         env_override=env,has_out=kind!='journal')
     result=read_json(evidence)
     if not test_result(at,result):
-        raise IncompleteAT('Real case result incomplete or wrong classification '+at)
+        raise IncompleteAT('Actual case result incomplete or wrong classification '+at)
+    if kind in ('security','http') or at=='S1-AT04':
+        if (result.get('source_commit')!=source_sha
+                or result.get('source_tree')!=source_tree):
+            raise IncompleteAT('Case report missing same tested source revision: '+at)
     return detail,hashlib.sha256(evidence.read_bytes()).hexdigest()
-
 
 def run_admin_preflight(config, output, source_sha, source_tree):
     """Create actual synthetic material before cold capture; NEVER label this full AT01."""
@@ -406,7 +417,7 @@ def main():
                     steps,digest=run_full_at01(config,args.output_dir,
                         args.source_sha,args.source_tree,report['cases'],preflight)
                 elif at in CASES:
-                    steps,digest=run_regular(at,config,args.output_dir)
+                    steps,digest=run_regular(at,config,args.output_dir,args.source_sha,args.source_tree)
                 elif at=='S1-AT05':
                     steps,digest=run_restore(config,args.output_dir,args.source_sha,args.source_tree)
                 elif at=='S1-AT12':
