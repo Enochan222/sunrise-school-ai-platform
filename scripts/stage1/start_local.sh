@@ -32,5 +32,7 @@ export VAULT_ACTOR_ID="${VAULT_ACTOR_ID:-synthetic-admin}"
 export VAULT_NATIVE_URL="${VAULT_NATIVE_URL:-http://127.0.0.1:5055}"
 export VAULT_SQLITE_FILE="${VAULT_SQLITE_FILE:-$ROOT/.local-synthetic-vault/journal.sqlite3}"
 export VAULT_COOKIE_SECURE=false
+# Local synthetic mode is explicit; never the formal runtime default.
+export VAULT_STORE_BACKEND="${VAULT_STORE_BACKEND:-synthetic_sqlite}"
 # Never ship the admin/native secret or expose an HTTP listener publicly.
 exec python -m uvicorn server:app --host 127.0.0.1 --port 8765 --no-access-log
