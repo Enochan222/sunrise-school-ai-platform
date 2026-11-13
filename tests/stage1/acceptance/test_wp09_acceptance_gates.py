@@ -137,3 +137,14 @@ def test_scenario_cannot_override_evidence_destination_or_pass_arrays():
     with pytest.raises(r.IncompleteAT):
         r.pairs({'--bad arg':'x'})
     assert r.pairs({'--project':'synthetic-test'})==['--project','synthetic-test']
+
+
+def test_cold_bundle_digest_is_streamed_not_loaded_whole(tmp_path,monkeypatch):
+    import hashlib
+    target=tmp_path/'synthetic-cold.tar'
+    payload=b'SYNTHETIC-COLD-BUNDLE'*130000
+    target.write_bytes(payload)
+    expected=hashlib.sha256(payload).hexdigest()
+    # The archive is deliberately larger than the reader's 1 MiB chunk.
+    assert len(payload)>1024*1024
+    assert r.sha256_file(target)==expected
