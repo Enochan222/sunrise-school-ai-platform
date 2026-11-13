@@ -55,10 +55,30 @@ class Store:
         with self.connect() as c:
             c.execute('INSERT INTO sessions VALUES(?,?,?,?)',(sid,school_id,csrf,int(time.time())+seconds))
 
-    def session(self,sid,school_id):
+    def session(self,sid,school_id=None):
         with self.connect() as c:
-            r=c.execute('SELECT * FROM sessions WHERE sid=? AND school_id=? AND expires>?',(sid,school_id,int(time.time()))).fetchone()
+            r=(c.execute('SELECT * FROM sessions WHERE sid=? AND expires>?',(sid,int(time.time()))).fetchone()
+               if school_id is None else
+               c.execute('SELECT * FROM sessions WHERE sid=? AND school_id=? AND expires>?',
+                         (sid,school_id,int(time.time()))).fetchone())
             return dict(r) if r else None
+
+    def switch_school(self,sid,old_school,new_school,old_csrf,new_csrf,actor_id):
+        # Synthetic SQLite test double only. Atomic session update + audit.
+        with self.connect() as c:
+            c.execute('BEGIN IMMEDIATE')
+            updated=c.execute('UPDATE sessions SET school_id=?, csrf=? WHERE sid=? '
+                'AND school_id=? AND csrf=? AND expires>?',
+                (new_school,new_csrf,sid,old_school,old_csrf,int(time.time())))
+            if updated.rowcount!=1:
+                c.execute('ROLLBACK')
+                raise Indeterminate('Stale session/school/CSRF; reauthenticate')
+            c.execute('CREATE TABLE IF NOT EXISTS session_school_audit '
+                      '(sid_sha TEXT, actor_id TEXT, old_school TEXT, new_school TEXT, event_utc INTEGER)')
+            c.execute('INSERT INTO session_school_audit VALUES(?,?,?,?,?)',
+                (hashlib.sha256(sid.encode()).hexdigest(),actor_id,old_school,new_school,int(time.time())))
+            c.execute('COMMIT')
+            return {'school_id':new_school,'csrf':new_csrf}
 
     def del_session(self,sid):
         with self.connect() as c:
