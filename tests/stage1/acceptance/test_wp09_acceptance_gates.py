@@ -241,7 +241,8 @@ def test_service_jwt_probe_uses_cookie_free_client(tmp_path,monkeypatch):
             return SimpleNamespace(status_code=code,
                 json=lambda: {'materials':[dict(material)]} if code==200 else {})
     monkeypatch.setattr(h.httpx,'Client',CookieFree)
-    session={'school_id':'synthetic-a'}
+    session={'school_id':'synthetic-a',
+             'available_schools':['synthetic-a','synthetic-b']}
     args=SimpleNamespace(school_a='synthetic-a',school_b='synthetic-b',
                          source_a='source:owned-a',source_b='source:foreign-b',
                          shell_a='shell-a',gateway='https://127.0.0.1:8080',
@@ -249,6 +250,20 @@ def test_service_jwt_probe_uses_cookie_free_client(tmp_path,monkeypatch):
     assert h.case_14(admin,args,session) is session
     assert responses==[200,403,403,401,401,401,401,401]
 
+
+
+
+def test_service_jwt_negative_school_must_be_independently_provisioned(monkeypatch):
+    """Avoid false positive where foreign school is rejected as unknown."""
+    from types import SimpleNamespace
+    import http_boundaries as h
+    monkeypatch.setattr(h,'authorized_materials',lambda *_: (
+        _ for _ in ()).throw(AssertionError('Should reject before admin material read')))
+    args=SimpleNamespace(school_a='synthetic-a',school_b='synthetic-b',
+                         shell_a='shell-a',source_a='source:owned-a',source_b='source:foreign-b')
+    with pytest.raises(AssertionError,match='both.*schools|two.*schools|provisioned'):
+        h.case_14(object(),args,{'school_id':'synthetic-a',
+                                  'available_schools':['synthetic-a']})
 
 
 def test_at12_rejects_stale_restore_evidence_from_different_git_tree(tmp_path):
