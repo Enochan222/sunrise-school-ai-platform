@@ -17,7 +17,9 @@ from native import Native, NativeUnavailable
 
 
 async def create_and_drop_ack(secret: str, marker: str,
-                              native_host: str = 'http://127.0.0.1:5055') -> dict:
+                              native_host: str) -> dict:
+    if not re.fullmatch(r'http://127[.]0[.]0[.]1:[0-9]{4,5}',native_host):
+        raise ValueError('Native URL must be an explicitly verified loopback relay')
     if not re.fullmatch(r'sunrise-a-op-v1:[a-f0-9]{64}',marker):
         raise ValueError('Invalid native creation marker')
     state={'forwarded':0,'upstream_ack':False,'downstream_ack_sent':False}
