@@ -16,6 +16,10 @@ import re
 import sys
 from pathlib import Path
 from urllib.parse import urlsplit
+import stat
+import time
+from cryptography.hazmat.primitives import serialization
+from make_synthetic_service_jwt import build_tokens
 import httpx
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
@@ -115,9 +119,24 @@ def case_14(client,args,session):
                'VAULT_TEST_SERVICE_INVALID_SIGNATURE',
                'VAULT_TEST_SERVICE_NOT_YET_VALID',
                'VAULT_TEST_SERVICE_MISSING_CLAIMS')
-    values={name:os.getenv(name) for name in (positive,*negatives)}
-    if any(not isinstance(v,str) or not v.strip() for v in values.values()):
-        raise RuntimeError('All independent synthetic signed Service JWT fixtures required')
+    # Re-sign only at actual AT14 execution. A full 15-case campaign may take
+    # longer than the required max 300-second JWT lifetime.
+    private_path=os.getenv('VAULT_AT14_SIGNING_KEY_FILE')
+    issuer=os.getenv('VAULT_AT14_ISSUER')
+    audience=os.getenv('VAULT_AT14_AUDIENCE')
+    if not private_path or not issuer or not audience:
+        raise RuntimeError('AT14 synthetic RSA private key path/issuer/audience absent')
+    key_file=Path(private_path)
+    if (key_file.is_symlink() or not key_file.is_file()
+            or key_file.resolve().is_relative_to(ROOT)
+            or not 0<key_file.stat().st_size<=8192
+            or stat.S_IMODE(key_file.stat().st_mode)!=0o600):
+        raise RuntimeError('AT14 private fixture key missing/unsafe/in source tree')
+    signing_key=serialization.load_pem_private_key(key_file.read_bytes(),password=None)
+    values=build_tokens(signing_key,issuer,audience,args.school_a,args.school_b,
+                        int(time.time()))
+    expect(set(values)=={positive,*negatives},
+           'AT14 missing exact complete token-claim matrix')
     url='/vault/v1/shells/'+args.shell_a+'/materials'
     # The Admin cookie MUST NOT participate in any Service JWT assertion.
     # Strict Gateway CA remains enabled and no redirects may be followed.
