@@ -21,6 +21,7 @@ import time
 from cryptography.hazmat.primitives import serialization
 from make_synthetic_service_jwt import build_tokens
 import httpx
+import jwt
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from wp01_network_boundary_probe import verify_manifest
@@ -157,6 +158,35 @@ def case_14(client,args,session):
                and re.fullmatch(r'[0-9a-f]{64}',actual['sha256']) is not None,
                'JWT source version/SHA differs from owned Admin baseline')
     for key in negatives:
+        # A negative is meaningful only if it is rejected for the intended
+        # claim, not because the entire fixture set aged out during a slow run.
+        claims=jwt.decode(values[key],options={'verify_signature':False,
+            'verify_exp':False,'verify_nbf':False,'verify_aud':False})
+        current=int(time.time())
+        expect(claims.get('iss')==issuer and claims.get('sub')=='synthetic-at14-service',
+               'AT14 invalid negative token baseline issuer/subject')
+        if key=='VAULT_TEST_SERVICE_EXPIRED':
+            expect(claims.get('exp',current)>=0 and claims['exp']<current-15,
+                   'AT14 expired token is not demonstrably expired')
+        else:
+            expect(type(claims.get('exp')) is int and claims['exp']>current+15,
+                   'AT14 negative token expired before intended claim test')
+        if key=='VAULT_TEST_SERVICE_NOT_YET_VALID':
+            expect(claims.get('nbf',0)>current+15,
+                   'AT14 future not-before reached before negative request')
+        else:
+            expect(claims.get('nbf',current+1)<=current,
+                   'AT14 other negative accidentally future-dated')
+        expect((claims.get('aud')!=audience)==(key=='VAULT_TEST_SERVICE_WRONG_AUDIENCE'),
+               'AT14 wrong-audience negative confounded')
+        expect((claims.get('school_id')!=args.school_a)==
+               (key=='VAULT_TEST_SERVICE_FOREIGN_SCHOOL'),
+               'AT14 foreign-school negative confounded')
+        expect((claims.get('scope')!='vault.materials.read')==
+               (key=='VAULT_TEST_SERVICE_WRONG_SCOPE'),
+               'AT14 wrong-scope negative confounded')
+        expect(('jti' not in claims)==(key=='VAULT_TEST_SERVICE_MISSING_CLAIMS'),
+               'AT14 missing-claim negative confounded')
         with httpx.Client(base_url=args.gateway,timeout=35,follow_redirects=False,
                           trust_env=False,verify=str(args.gateway_ca_file)) as bad_client:
             denied=bad_client.get(url,headers={'Authorization':'Bearer '+values[key]})
