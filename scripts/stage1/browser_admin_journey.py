@@ -50,6 +50,45 @@ def valid_json_login(status, content_type, payload):
             and isinstance(payload,dict) and payload.get('authenticated') is True)
 
 
+def submit_json_login(page, origin, events, report):
+    """Read the actual login response before releasing it to the navigating UI.
+
+    Locator.click waits for navigation. Chromium may discard the fetch body's
+    resource identifier by then. Route.fetch buffers the real server response
+    with the context's strict TLS/cookies; fulfill returns that unchanged
+    response to the real UI, including Set-Cookie. Never replay the POST.
+    """
+    login_url=origin+'/auth/login'
+    captured={}
+    def capture(route):
+        require(route.request.method=='POST', 'Unexpected login request method')
+        response=route.fetch(max_redirects=0,timeout=30000)
+        captured['status']=response.status
+        captured['content_type']=response.headers.get('content-type','')
+        try:
+            captured['payload']=response.json()
+        except Exception:
+            captured['payload']=None
+        # Always release the original response, including invalid contracts:
+        # UI behavior can never turn an invalid response into a runner PASS.
+        route.fulfill(response=response)
+    page.route(login_url,capture)
+    try:
+        with page.expect_response(lambda r:r.url==login_url
+                and r.request.method=='POST',timeout=30000) as receipt:
+            page.locator('#login button[type=submit]').click()
+        response=receipt.value
+        events.http('POST',response.url,response.status)
+        require(captured.get('status')==response.status,
+                'Browser login receipt differs from captured server status')
+        if not valid_json_login(captured.get('status'),
+                captured.get('content_type'),captured.get('payload')):
+            report['error_category']='LOGIN_JSON_CONTRACT_MISMATCH'
+            raise BrowserContractError('Admin JSON login contract mismatch')
+    finally:
+        page.unroute(login_url,capture)
+
+
 def safe_http(response,expected,events,report,method,url):
     status=response.status
     events.http(method,url,status)
@@ -259,20 +298,7 @@ def main():
                 'Browser login form CSRF unavailable')
             page.locator('#password').fill(password)
             trace.stage('S1B-LOGIN-POST')
-            with page.expect_response(lambda r: safe_path(r.url)=='/auth/login'
-                    and r.request.method=='POST',timeout=30000) as login_receipt:
-                page.locator('#login button[type=submit]').click()
-            login_response=login_receipt.value
-            trace.http('POST',login_response.url,login_response.status)
-            try:
-                login_payload=login_response.json()
-            except Exception:
-                login_payload=None
-            if not valid_json_login(login_response.status,
-                    login_response.header_value('content-type') or '',login_payload):
-                report['error_category']=http_category(
-                    safe_path(login_response.url),login_response.status)
-                raise BrowserContractError('Admin JSON login contract mismatch')
+            submit_json_login(page,origin,trace,report)
             page.wait_for_url('**/admin',timeout=30000)
             require(same_origin(page.url,origin),'Admin browser redirected outside Gateway')
             page.locator('#workspace').wait_for(state='visible',timeout=30000)
