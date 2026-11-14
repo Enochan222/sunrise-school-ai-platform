@@ -167,6 +167,8 @@ os._exit(97)
             log['results']['cross_school_shell_negative']='PASS'
             log['notebook_id_sha256']=hashlib.sha256(recovered['notebook_id'].encode()).hexdigest()
             log['native_gate']='PASS'
+            if resolve_native_endpoint(ROOT,args.runtime_identity,args.source_sha,args.source_tree,runtime_sha)!=native_endpoint:
+                raise RuntimeError('Native relay changed after AT06 side effects')
             guard_runtime(ROOT,args.runtime_identity,args.source_sha,args.source_tree,runtime_sha)
             log['status']='PASS'
     except Exception as error:
