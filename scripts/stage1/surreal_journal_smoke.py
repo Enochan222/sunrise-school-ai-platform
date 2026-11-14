@@ -27,7 +27,7 @@ from surreal_store import SurrealStore,SurrealConfig,SurrealUnavailable
 from store import Conflict,Indeterminate
 from native import Native
 from wp03_races import first_reservation_races,native_lost_ack
-from executed_runtime_provenance import inspect as inspect_runtime,guard as guard_runtime
+from executed_runtime_provenance import inspect as inspect_runtime,guard as guard_runtime,resolve_native_endpoint
 
 
 def now():return datetime.now(timezone.utc).isoformat()
@@ -43,11 +43,11 @@ def cfg():
                          os.environ[names[3]],os.environ[names[4]])
 
 
-async def recover_native(store,school,key,details,secret):
+async def recover_native(store,school,key,details,secret,native_endpoint):
     op=store.operation(school,key,'shell')
     if not op or op.get('status') not in ('PENDING','QUARANTINED'):
         raise AssertionError('Recovery operation not pending in A SurrealDB')
-    n=Native('http://127.0.0.1:5055',secret)
+    n=Native(native_endpoint,secret)
     matches=await n.find_notebooks_by_marker(op['marker'])
     if len(matches)!=1:
         raise AssertionError('Cannot uniquely reconcile native marker')
@@ -68,6 +68,7 @@ def main():
     if args.runtime_identity is None:
         parser.error('Exact external runtime identity required for real journal execution')
     runtime_sha=inspect_runtime(ROOT,args.runtime_identity,args.source_sha,args.source_tree)
+    native_endpoint=resolve_native_endpoint(ROOT,args.runtime_identity,args.source_sha,args.source_tree,runtime_sha)
     # Resolve ON secret ONCE before any optional Native side effect. Never log its value.
     secret = os.environ.get('OPEN_NOTEBOOK_PASSWORD') or None
     configuration=cfg();school='synthetic-a-'+secrets.token_hex(5)
@@ -83,7 +84,7 @@ def main():
         journal=SurrealStore(configuration,actor)
         reservation,fresh=journal.start_shell(school,key,details)
         assert fresh and reservation['creation_marker'].startswith('sunrise-a-op-v1:')
-        log['results']['fresh_first_reservation_races']=first_reservation_races(configuration,actor,secret)
+        log['results']['fresh_first_reservation_races']=first_reservation_races(configuration,actor,secret,native_endpoint)
         # Validate actual nested first-write outcomes; no successful empty/malformed data.
         race_modes={'same_key_same_body','different_key_same_scope','same_key_different_body'}
         races=log['results']['fresh_first_reservation_races']
@@ -133,25 +134,25 @@ def main():
             code='''import asyncio,os,sys
 from native import Native
 async def run():
- n=Native('http://127.0.0.1:5055',os.environ['OPEN_NOTEBOOK_PASSWORD'])
+ n=Native(os.environ['VAULT_VERIFIED_NATIVE_ENDPOINT'],os.environ['OPEN_NOTEBOOK_PASSWORD'])
  await n.create_notebook('SYNTHETIC CRASH WINDOW NOTEBOOK',marker=os.environ['VAULT_TEST_MARKER'])
 asyncio.run(run())
 os._exit(97)
 '''
             env=dict(os.environ,VAULT_TEST_MARKER=reservation['creation_marker'],
-                     OPEN_NOTEBOOK_PASSWORD=secret)
+                     OPEN_NOTEBOOK_PASSWORD=secret,VAULT_VERIFIED_NATIVE_ENDPOINT=native_endpoint)
             child=subprocess.run([sys.executable,'-c',code],cwd=str(ROOT/'apps/a-vault'),
                                   env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=40)
             if child.returncode!=97:
                 raise RuntimeError('Native create crash child failed before committed boundary')
             # Independent fresh DB connection proves restart/readback, not use of process memory.
             restarted=SurrealStore(configuration,actor)
-            recovered=asyncio.run(recover_native(restarted,school,key,details,secret))
+            recovered=asyncio.run(recover_native(restarted,school,key,details,secret,native_endpoint))
             assert recovered['notebook_id'].startswith('notebook:')
             same,new=restarted.start_shell(school,key,details)
             assert new is False and same['notebook_id']==recovered['notebook_id']
             assert restarted.shell('synthetic-foreign-school',recovered['shell_id']) is None
-            lost_ack=native_lost_ack(configuration,actor,secret)
+            lost_ack=native_lost_ack(configuration,actor,secret,native_endpoint)
             if (not isinstance(lost_ack,dict) or
                     lost_ack.get('native_create_posts')!=1 or
                     lost_ack.get('client_received_post_ack') is not False or
