@@ -65,8 +65,20 @@
 
 The Integration Reviewer checks: matching PR/branch/Tested Revision and file list; final PR Head SHA fetched live and changes since Tested Revision independently checked; exact executable commands with reproducible outputs and exit codes; positive and security-negative tests; no leaked secrets/real files; tests valid for the final material implementation/content revision; downstream regressions; affected AT evidence (not just count); restore evidence where pertinent; independent reviewer finding; no cross-owner runtime change. The owner does **not** need to approve code semantics personally, but must explicitly authorize irreversible operations, paid/data use and release gates.
 
-The repository does not run GitHub Actions or Copilot. Manual test evidence is **not** a branch-protection status check and must never be described as automatically enforced.
+The repository does not use Copilot. Only the two Owner-approved Stage 1 workflows may run: Light CI applies to eligible same-repository Draft/Ready PRs targeting `main` and executes `tests/stage1` only; the manual Native workflow is not automatically complete-runtime acceptance. Pull-request merge-result checkout SHA differs from Head SHA; skipped/blocked/path-filtered CI is not PASS. Manual QA is not automatically enforced by branch protection.
 
 ## Final Head and Squash Merge without a SHA loop
 
 **Three distinct identities:** (A) `Tested Revision` belongs in the committed Evidence file; (B) `Final PR Head` is verified by the reviewer using live GitHub PR metadata immediately before merge, **outside** this self-changing Evidence file; (C) `Merge Verification` is performed *after* squash, by independently reading `main` merge commit, final Git tree and relevant file bytes/hash. Record (B)/(C) in the PR review/merge report or a later separately authorized WORKBOARD update, never by changing this same PR solely to refresh its SHA. Test validity depends on the tested content, not on equality between the Evidence-file commit SHA and PR head.
+
+## Public evidence tier classification (2026-11-14)
+
+- `CI_PASS`: actual identified GitHub Run/Job completed successfully on its recorded checkout SHA; not necessarily PR Head.
+- `NON_NATIVE_REGRESSION_PASS`: applicable unit/component/negative suite truly executed at a fixed revision; Light `tests/stage1` is narrower than complete `pytest tests`.
+- `NATIVE_RUNTIME_PASS`: live dual-DB, worker/Gateway, runtime and strict TLS evidence from a fixed source/image, not source-level simulation.
+- `FORMAL_AT_PASS`: S1-AT01–15 with actual Browser/School scope/independent Restore and dependencies at the same pinned source, not partial checks.
+- `INDEPENDENT_REVIEW_PASS`: separate reviewer verifies provenance, security negatives and required test coverage.
+- `OWNER_UAT_APPROVED`: Owner expressly approves UAT evidence.
+- `R01_APPROVED`: distinct manual R01 signoff, never inferred from any earlier tier.
+
+Public PR comments, Git history and Actions logs/artifacts are disclosure surfaces; keep private paths, raw runtime logs, credentials, real content and backups outside the public repository. The Public Repository does not expose Mac localhost or Docker volumes.
