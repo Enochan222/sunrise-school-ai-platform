@@ -16,7 +16,7 @@ from native import Native
 from native_ack_loss_probe import create_and_drop_ack
 
 
-def first_reservation_races(configuration,actor,secret=None,workers=8):
+def first_reservation_races(configuration,actor,secret,native_endpoint,workers=8):
     evidence={}
     for mode in ('same_key_same_body','different_key_same_scope','same_key_different_body'):
         school='synthetic-first-race-'+secrets.token_hex(8)
@@ -57,7 +57,7 @@ def first_reservation_races(configuration,actor,secret=None,workers=8):
         if secret:
             # Only the one durable FIRST claimant is permitted to create upstream.
             marker=persisted['marker']
-            native=Native('http://127.0.0.1:5055',secret)
+            native=Native(native_endpoint,secret)
             async def create_once():
                 notebook=await native.create_notebook('SYNTHETIC FIRST CLAIM '+mode,marker=marker)
                 identities=await native.find_notebooks_by_marker(marker)
@@ -86,7 +86,7 @@ def first_reservation_races(configuration,actor,secret=None,workers=8):
     return evidence
 
 
-def native_lost_ack(configuration,actor,secret):
+def native_lost_ack(configuration,actor,secret,native_endpoint):
     """Distinct downstream TCP ACK suppression after a real native create commit."""
     school='synthetic-lost-ack-'+secrets.token_hex(8)
     key='lost_ack_'+secrets.token_hex(8)
@@ -95,14 +95,14 @@ def native_lost_ack(configuration,actor,secret):
     journal=SurrealStore(configuration,actor)
     claim,fresh=journal.start_shell(school,key,payload)
     if not fresh:raise AssertionError('Lost-ACK probe did not reserve a fresh operation')
-    receipt=asyncio.run(create_and_drop_ack(secret,claim['creation_marker']))
+    receipt=asyncio.run(create_and_drop_ack(secret,claim['creation_marker'],native_endpoint))
     if receipt['forwarded']!=1 or not receipt['upstream_ack'] or receipt['downstream_ack_sent']:
         raise AssertionError('Lost-ACK TCP fault not proven')
     # Fresh independent DB/Native connections; never POST another notebook.
     resumed=SurrealStore(configuration,actor)
     op=resumed.operation(school,key,'shell')
     if not op or op['status']!='PENDING':raise AssertionError('Missing pre-ACK journal')
-    native=Native('http://127.0.0.1:5055',secret)
+    native=Native(native_endpoint,secret)
     matches=asyncio.run(native.find_notebooks_by_marker(op['marker']))
     if len(matches)!=1:raise AssertionError('Unknown/duplicate native marker after lost ACK')
     committed=resumed.complete_shell(school,key,
