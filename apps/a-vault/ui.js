@@ -185,11 +185,13 @@ function setupAdmin() {
   }
 
   function syncControls() {
-    const blocked = state.writing || Boolean(state.mutation);
+    // Session hydration is asynchronous: visible workspace is not yet write-ready.
+    // Prevent an early click from being silently discarded by canWrite().
+    const blocked = !state.session || state.sessionBusy || state.writing || Boolean(state.mutation);
     $('create-submit').disabled = blocked;
     $('upload-submit').disabled = blocked || !state.shell || Boolean(state.shell.archived);
     $('archive').disabled = blocked || !state.shell || Boolean(state.shell.archived);
-    $('search-submit').disabled = state.searching || !state.shell;
+    $('search-submit').disabled = state.sessionBusy || state.searching || !state.shell;
     $('logout').disabled = state.writing || state.sessionBusy;
     $('switch-school-submit').disabled = blocked || state.sessionBusy;
     $('reconcile').disabled = state.writing;
