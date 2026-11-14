@@ -1,5 +1,7 @@
 # Repository Arrangement and GitHub Rules
 
+> **2026-11-14 HISTORICAL / SUPERSEDED OPERATIONAL SNAPSHOT:** The 2026-11-10/12 status and D08 terms below are preserved as historical evidence. References to a *private* active repo, universal *no Actions*, obsolete `validate-docs` CI or Stage1 forever NOT_STARTED are **not current operating instructions**. Current repository is PUBLIC; only two approved Stage1 workflows may run under [current instructions](../../INSTRUCTIONS.md), [security](../../SECURITY.md), [CI addendum](../decisions/STAGE1_LIMITED_CI_ADDENDUM.md). Do not rewrite original D01–D08 decision text. Live `main` and applicable Stage acceptance contracts govern; prior statuses and commits are snapshots.
+
 > **CURRENT REPOSITORY OVERRIDE (2026-11-10):** Active repo is `Enochan222/sunrise-school-ai-platform`; no GitHub Copilot/Actions; local QA must be executed and evidenced; old repo, old CI, old ADR references below are historical only. Read [current Stage0 rules](NEW_REPO_STAGE0.md).
 
 The **existing** private control repo is `IssacSitHk/sunrise-education-ai-platform`, not a new blank repo. Its main baseline is v0.5; this kit must go through a reviewed **docs-only PR**. For runtime source isolation, recommended future repositories are independently owned `sunrise-vault` A, `sunrise-core` B, `sunrise-bridge` I, `sunrise-frontend` U (provisional names, not verified/created). Alternate monorepo acceptable only with path/owner gated CI and independently versioned Image/Schema migrations. Never claim repos created without verifying.
