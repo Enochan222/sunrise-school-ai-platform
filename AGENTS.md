@@ -8,6 +8,14 @@
 
 **Local S0 validation command:** `python scripts/run_qa_no_actions.py` after installing pinned JSON Schema validator (see `docs/delivery/NEW_REPO_STAGE0.md`). It is not a CI service. The current PR cannot be genuinely auto-protected by tests alone.
 
+## Current public-repository authority and precedence (2026-11-14)
+
+Repository visibility is **PUBLIC** (verified GitHub repository metadata), but application endpoints, Mac loopback services, Docker volumes, school data and secrets remain **PRIVATE**. Public Git read needs no repository authentication; writes and protected-main merges still require an authorized identity and applicable Owner/Planning scope. Do not infer a deployment or data-access permission from repository visibility.
+
+Resolve apparent instruction conflicts by **authority and scope**, not just file timestamp: (1) explicit Owner decisions and approved amendments, (2) latest merged canonical governance instructions, (3) applicable Stage Registry, formal Acceptance and API contracts, (4) exact tested source, tests and runtime identity as *implementation evidence*, (5) PR-specific engineering directions within their delegated scope, (6) historical prompts and old branch snapshots. A later general instruction cannot silently waive a formally approved Stage acceptance contract. Read current `main` governance and the relevant Stage contracts before following a stale branch-local `AGENTS.md` or `INSTRUCTIONS.md`; if formal decisions conflict, stop and request an Owner/Planning resolution.
+
+**CI exception:** historical 2026-11-10 D08 disallowed GitHub Actions and Copilot. Owner's [2026-11-13 Stage 1 Limited CI Addendum](docs/decisions/STAGE1_LIMITED_CI_ADDENDUM.md), amended 2026-11-14 for Draft PR Light CI, authorizes exactly `.github/workflows/stage1-light.yml` and `.github/workflows/stage1-native-integration.yml`, under their stated triggers, security and **$0 Budget / Stop Usage** constraints. No additional workflow, Copilot, paid usage, required path-filtered check, automatic merge or deployment is authorized. A successful Light run covers `tests/stage1` only and is **not** full `pytest tests`, native runtime, formal S1-AT01–15, independent restore, Owner UAT or R01. Distinguish PR head SHA from Actions' synthetic PR merge-result SHA.
+
 ## Stage 控制卡須先讀、再動工
 
 每次實作必須先閱讀當期 `docs/stages/STAGE_XX.md` 新增的 **1–7 項控制卡**以及 [總表](docs/product/STAGE_BOUNDARY_MATRIX.md)、[決策政策](docs/delivery/STAGE_DECISION_POLICY.md)。先核准「目標／驗收／不能撞前期／後期必需接口」，再決定 API DTO、Queue、Hosting 等細節。不得以具體候選方案當既有規範而跳過 Owner/Provider Test。

@@ -1,5 +1,8 @@
 # Stage 0 — Current repository and no-Actions operating contract
 
+> **2026-11-14 operational notice (historical document preserved):** This file records an earlier Stage 0 setup snapshot. The active repository is now **PUBLIC**; Stage0 D01–D08 were approved within bounded planning, and the [later Stage 1 Limited CI Addendum](../decisions/STAGE1_LIMITED_CI_ADDENDUM.md) authorizes exactly two Stage 1 workflows despite historical D08. For current operational instructions use [AGENTS.md](../../AGENTS.md), [INSTRUCTIONS.md](../../INSTRUCTIONS.md) and [GitHub connection runbook](GITHUB_CONNECTION_RUNBOOK.md). Historical private/no-Actions/old-repository/NOT_STARTED statements below are not live status assertions. This notice does not alter the historical decision record or authorize release.
+
+
 **Official new repo:** `Enochan222/sunrise-school-ai-platform` (private). The old `IssacSitHk/sunrise-education-ai-platform` repo is NOT the owner and is NOT to be migrated. Any inherited passages referring to the old repo, old Issues #4/#7, old ADR001–010, old GitHub Free/CI/CODEOWNERS, or old v0.5 baseline are **historical only and not executable operational guidance**. This document and root `AGENTS.md` take precedence.
 
 **No GitHub Copilot or GitHub Actions.** The owner explicitly elected not to use either. Do not reintroduce `.github/workflows/docs-check.yml`, `.github/workflows/validate-docs.yml`, or a required status check on a disabled workflow. The local test runner does not automatically run when PRs are opened. Do not enable unconditional auto-merge or describe absence of status checks as equivalent security.

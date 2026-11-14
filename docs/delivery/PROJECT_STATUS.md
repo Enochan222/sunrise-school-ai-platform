@@ -1,5 +1,8 @@
 # Project Status — v0.7.5 No-Actions Candidate (as of 2026-11-10)
 
+> **2026-11-14 operational notice (historical document preserved):** This file records an earlier Stage 0 setup snapshot. The active repository is now **PUBLIC**; Stage0 D01–D08 were approved within bounded planning, and the [later Stage 1 Limited CI Addendum](../decisions/STAGE1_LIMITED_CI_ADDENDUM.md) authorizes exactly two Stage 1 workflows despite historical D08. For current operational instructions use [AGENTS.md](../../AGENTS.md), [INSTRUCTIONS.md](../../INSTRUCTIONS.md) and [GitHub connection runbook](GITHUB_CONNECTION_RUNBOOK.md). Historical private/no-Actions/old-repository/NOT_STARTED statements below are not live status assertions. This notice does not alter the historical decision record or authorize release.
+
+
 **Current repo:** `Enochan222/sunrise-school-ai-platform` (private). The former IssacSitHk repository is abandoned as active project source and none of its history is carried forward.
 
 | Item | Evidence-based state |

@@ -2,7 +2,7 @@
 
 > **S0 SIGNOFF UPDATE (2026-11-10):** Owner has approved only the **bounded D01–D08 planning decisions** in [Stage0 approval packet](../decisions/STAGE0_APPROVAL_DECISIONS.md). Candidate ADR-011–022 implementation details remain proposals unless independently accepted. No deployment, spend, production school content, or student PII has been authorized.
 
-> **CURRENT REPOSITORY OVERRIDE (2026-11-10):** Active repo is `Enochan222/sunrise-school-ai-platform`; no GitHub Copilot/Actions; local QA must be executed and evidenced; old repo, old CI, old ADR references below are historical only. Read [current Stage0 rules](NEW_REPO_STAGE0.md).
+> **CURRENT GOVERNANCE (2026-11-14):** Active repository `Enochan222/sunrise-school-ai-platform` is PUBLIC. Historical D08 prohibited Actions; [Owner-approved Stage 1 Limited CI Addendum](../decisions/STAGE1_LIMITED_CI_ADDENDUM.md) permits exactly two named Stage 1 workflows without Copilot, paid usage, auto-merge or reduced release gates. Historical old-repo/CI assumptions below are superseded as operational instructions.
 
 **Stage0** = planning/Repo/Owner approval only; NO compulsory runtime Staging, Gateway PoC, DB/Restore. **Runtime Releases R01–R28** = each one owner A/B/I/U changes; each must deliver a real usable journey, data persistence, negative/security tests, owner-local backup restore, prior Release regression, schema/API compatibility, actual Staging evidence + Owner approval. A one-hour Spike isn't release acceptance.
 
@@ -18,7 +18,7 @@ Every Release records: `manifest_id Rnn`, `stage`, `owner_track`, Git SHA & imag
 
 ## Source of Truth and pull requests
 
-The only current source of truth is new private GitHub `Enochan222/sunrise-school-ai-platform`; reviewed 164-file v0.7.5 kit was merged through PR #8 on 2026-11-10. Historical `IssacSitHk`, v0.5, and old ADR-001..010 remain **outside** this repo. Current active ADR-011..022 are **proposals**, not all Owner-approved. Keep `.github/CODEOWNERS` targeting `@Enochan222`, protected PR/squash-only `main`, and **no GitHub Actions/Copilot** per Owner decision. Local GPT-run QA is not a GitHub-enforced PR check; do not unattended-auto-merge, auto-deploy, spend, or import real student data. See [S0 decisions](../decisions/STAGE0_APPROVAL_DECISIONS.md).
+The only current source of truth is public GitHub `Enochan222/sunrise-school-ai-platform`; reviewed 164-file v0.7.5 kit was merged through PR #8 on 2026-11-10. Historical `IssacSitHk`, v0.5, and old ADR-001..010 remain **outside** this repo. Current active ADR-011..022 are **proposals**, not all Owner-approved. Keep `.github/CODEOWNERS` targeting `@Enochan222`, protected PR/squash-only `main`, and **no Copilot or unauthorized GitHub Actions** under the Stage 1 Limited CI Addendum. Local GPT-run QA is not a GitHub-enforced PR check; do not unattended-auto-merge, auto-deploy, spend, or import real student data. See [S0 decisions](../decisions/STAGE0_APPROVAL_DECISIONS.md).
 
 ## Stage-critical gates
 
@@ -35,3 +35,7 @@ A separate U-only release is necessary for newly added Sunrise frontend capabili
 ## v0.7.4 independent contract gate
 
 For each Stage owner, verify **published API consumers can perform the preceding Stage promise**, not just that endpoint exists. Any changed B Course grain / Staff permission / Grade Hash / Evidence status must first pass owner-specific provider tests + negative actor/scope tests; I/U code cannot patch that missing contract. A failed owner Stage means following consumers are blocked, not conditionally marked done. No Runtime acceptance or independent reviewer claimed by packaging QA.
+
+## Evidence and approval separation (public repository addendum)
+
+Public code and green Light CI are not deployed service evidence. Record `CI_PASS`, `NON_NATIVE_REGRESSION_PASS`, `NATIVE_RUNTIME_PASS`, `FORMAL_AT_PASS`, `INDEPENDENT_REVIEW_PASS`, `OWNER_UAT_APPROVED` and `R01_APPROVED` as distinct, independently evidenced states. `stage1-light.yml` executes `tests/stage1` for matching same-repo PRs to `main`; it does not establish full `pytest tests`. `stage1-native-integration.yml` is manual and may require a separate dual-DB workflow repair. Every evidence record distinguishes source head, tested revision, Actions PR merge-result SHA and post-squash merge commit/tree. Stage0 D01–D08, S0–S28, A/B/I/U single Owner, strict TLS/Gateway/IDOR/JWT/CSRF, S1-AT01–15, isolated restore, Owner UAT and human R01 remain unchanged. No release is implied by this governance update.

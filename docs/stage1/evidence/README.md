@@ -65,7 +65,9 @@
 
 The Integration Reviewer checks: matching PR/branch/Tested Revision and file list; final PR Head SHA fetched live and changes since Tested Revision independently checked; exact executable commands with reproducible outputs and exit codes; positive and security-negative tests; no leaked secrets/real files; tests valid for the final material implementation/content revision; downstream regressions; affected AT evidence (not just count); restore evidence where pertinent; independent reviewer finding; no cross-owner runtime change. The owner does **not** need to approve code semantics personally, but must explicitly authorize irreversible operations, paid/data use and release gates.
 
-The repository does not run GitHub Actions or Copilot. Manual test evidence is **not** a branch-protection status check and must never be described as automatically enforced.
+The repository does not use GitHub Copilot. Only the two workflows authorized by [the Stage 1 Limited CI Addendum](../../decisions/STAGE1_LIMITED_CI_ADDENDUM.md) may run. Light CI is same-repository, code-path-filtered and targets PRs to `main`; it runs `tests/stage1` (non-native), not full `pytest tests`. A PR targeting PR #14's implementation branch is outside that Light trigger. Manual test evidence is **not** an automatically enforced required branch-protection check. A CI PASS is not Native, full regression, formal acceptance, independent review, Owner UAT or R01.
+
+**Separate evidence levels:** `CI_PASS`, `NON_NATIVE_REGRESSION_PASS`, `NATIVE_RUNTIME_PASS`, `FORMAL_AT_PASS`, `INDEPENDENT_REVIEW_PASS`, `OWNER_UAT_APPROVED`, `R01_APPROVED`. Each needs its own tested source revision, command/run, actual outcome and reviewer/Owner provenance. Record workflow name, run/job URL, event, PR Head SHA and distinct Actions synthetic merge-result SHA; do not substitute the latter for the former. Record unexecuted tests as `NOT_RUN`. Never infer one status from another.
 
 ## Final Head and Squash Merge without a SHA loop
 
