@@ -12,6 +12,7 @@ from html.parser import HTMLParser
 import hashlib
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -102,24 +103,46 @@ def case_10(client,args,session):
 
 def case_14(client,args,session):
     session=change_school(client,session,args.school_a) if session['school_id']!=args.school_a else session
-    authorized_materials(client,args.shell_a)
-    values={name:os.getenv(name) for name in (
-        'VAULT_TEST_SERVICE_A','VAULT_TEST_SERVICE_WRONG_SCOPE','VAULT_TEST_SERVICE_FOREIGN_SCHOOL')}
-    if any(not x for x in values.values()):
-        raise RuntimeError('Independent signed positive/negative service JWT fixtures required')
-    urls='/vault/v1/shells/'+args.shell_a+'/materials'
-    # The Admin client above holds a valid session cookie. Reusing it for JWT
-    # checks would not prove token-only authorization (or rejection): a valid
-    # Admin cookie could independently grant access to the same endpoint.
-    # Use a fresh cookie-free HTTP client for every Service JWT probe.
+    expected=authorized_materials(client,args.shell_a)
+    by_id={m['source_id']:m for m in expected}
+    expect(args.source_a in by_id and args.source_b not in by_id,
+           'Admin source ownership baseline invalid')
+    positive='VAULT_TEST_SERVICE_A'
+    negatives=('VAULT_TEST_SERVICE_WRONG_SCOPE',
+               'VAULT_TEST_SERVICE_FOREIGN_SCHOOL',
+               'VAULT_TEST_SERVICE_EXPIRED',
+               'VAULT_TEST_SERVICE_WRONG_AUDIENCE',
+               'VAULT_TEST_SERVICE_INVALID_SIGNATURE',
+               'VAULT_TEST_SERVICE_NOT_YET_VALID',
+               'VAULT_TEST_SERVICE_MISSING_CLAIMS')
+    values={name:os.getenv(name) for name in (positive,*negatives)}
+    if any(not isinstance(v,str) or not v.strip() for v in values.values()):
+        raise RuntimeError('All independent synthetic signed Service JWT fixtures required')
+    url='/vault/v1/shells/'+args.shell_a+'/materials'
+    # The Admin cookie MUST NOT participate in any Service JWT assertion.
+    # Strict Gateway CA remains enabled and no redirects may be followed.
     with httpx.Client(base_url=args.gateway,timeout=35,follow_redirects=False,
                       trust_env=False,verify=str(args.gateway_ca_file)) as service_client:
-        allowed=service_client.get(
-            urls,headers={'Authorization':'Bearer '+values['VAULT_TEST_SERVICE_A']})
-        expect(allowed.status_code==200,'Valid scoped Service JWT materials read denied')
-        for key in ('VAULT_TEST_SERVICE_WRONG_SCOPE','VAULT_TEST_SERVICE_FOREIGN_SCHOOL'):
-            bad=service_client.get(urls,headers={'Authorization':'Bearer '+values[key]})
-            expect(bad.status_code in (401,403,404),'Service token bypassed scope/school')
+        allowed=service_client.get(url,headers={'Authorization':'Bearer '+values[positive]})
+    expect(allowed.status_code==200,'Valid scoped Service JWT materials read denied')
+    rows=allowed.json().get('materials')
+    expect(isinstance(rows,list),'JWT returned invalid Materials schema')
+    owned={m.get('source_id'):m for m in rows if isinstance(m,dict)}
+    expect(len(owned)==len(rows) and set(owned)==set(by_id),
+           'JWT response omitted/duplicated/leaked source ownership')
+    for source_id,baseline in by_id.items():
+        actual=owned[source_id]
+        expect(actual.get('version')==baseline.get('version')
+               and actual.get('sha256')==baseline.get('sha256')
+               and isinstance(actual.get('sha256'),str)
+               and re.fullmatch(r'[0-9a-f]{64}',actual['sha256']) is not None,
+               'JWT source version/SHA differs from owned Admin baseline')
+    for key in negatives:
+        with httpx.Client(base_url=args.gateway,timeout=35,follow_redirects=False,
+                          trust_env=False,verify=str(args.gateway_ca_file)) as bad_client:
+            denied=bad_client.get(url,headers={'Authorization':'Bearer '+values[key]})
+        expect(denied.status_code in (401,403,404),
+               'Service JWT negative bypassed expected rejection: '+key)
     return session
 
 
