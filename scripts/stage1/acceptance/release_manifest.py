@@ -32,6 +32,20 @@ RELEASE_STATES=('SOURCE_IMPLEMENTED','NON_NATIVE_TESTS_PASSED',
 ALLOWED=('apps/a-vault/','scripts/stage1/','tests/stage1/',
          'docs/stage1/evidence/','docs/stage1/uat/')
 
+# Narrow, reviewable exceptions for the PR24 source QA / local runtime handoff.
+# Never expand this to all docs/stage1 or repository governance.
+ALLOWED_HANDOFF_FILES=frozenset({
+    'docs/stage1/CHAT_ENGINEERING_COMPLETION_REPORT.md',
+    'docs/stage1/PORTABLE_STAGE1_TEST_HANDOFF.md',
+    'docs/stage1/WORK_OR_LOCAL_RUNTIME_HANDOFF_PROMPT.md',
+})
+
+
+def allowed_stage1_change(path: str) -> bool:
+    return (isinstance(path,str) and
+            (path in ALLOWED_HANDOFF_FILES or path.startswith(ALLOWED)))
+
+
 
 def git(repo,*args):
     return subprocess.run(['git','-C',str(repo),*args],check=True,
@@ -62,7 +76,7 @@ def main():
         verify_clean_source(args.repo_root,args.source_sha,args.source_tree,output=output)
         changed=git(args.repo_root,'diff','--name-only',
                     args.base_sha+'..'+args.source_sha).splitlines()
-        if not changed or any(not path.startswith(ALLOWED) for path in changed):
+        if not changed or any(not allowed_stage1_change(path) for path in changed):
             raise RuntimeError('Non-A source/Workflow/Governance changes found')
         if args.runtime_identity.is_symlink() or args.runtime_identity.stat().st_size>1<<20:
             raise RuntimeError('Unbounded or symlinked runtime manifest')
