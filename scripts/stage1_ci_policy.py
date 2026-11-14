@@ -1,31 +1,64 @@
-"""Static fail-closed guard for the 2026-11-14 *Draft-inclusive* Light CI.
+"""Fail-closed guard for the *exact* Owner-authorized Stage 1 Light workflow.
 
-This is a semantic check of the exact authorized workflow, not an Actions run.
-The historical D08 remains untouched; only Stage1 Limited CI amendment applies.
+The Owner approved one specific workflow and forbids changing its triggers,
+permissions, action pins, jobs, runner or budget in the governance PR.  A
+regular-expression-only YAML policy is unsafe: valid YAML has nested/job-level
+permissions, flow mappings, duplicate keys and merge aliases.  Rather than
+pretending that a subset parser understands GitHub Actions' effective YAML,
+this guard pins the independently reviewed, unchanged workflow *bytes*.
+
+ANY change, including an additional job, job permission, flow/block override,
+YAML alias/merge, or duplicate key, must fail closed until separately reviewed
+and an authorized policy amendment deliberately updates this pinned digest.
+The checks below remain useful as explicit assertions of the pinned contract.
+No non-standard YAML parser or network service is required.
 """
+import hashlib
 import re
 
-ALLOWED_PATHS=("apps/a-vault/**","tests/stage1/**","scripts/stage1/**")
-ALLOWED_TYPES=('opened','synchronize','reopened','ready_for_review')
+# SHA-256 of the exact UTF-8 bytes in main's reviewed stage1-light.yml,
+# GitHub blob dfbdf3cda321a98aa6cc6d3f21a12599c92d6ff5.
+AUTHORIZED_LIGHT_CI_SHA256 = (
+    '9b6c7916240289ac351e89f431f410623e3bc4aa80e9099481f8f50e48b60d27'
+)
+ALLOWED_PATHS = ('apps/a-vault/**', 'tests/stage1/**', 'scripts/stage1/**')
+ALLOWED_TYPES = ('opened', 'synchronize', 'reopened', 'ready_for_review')
 
 
 def check_light_ci(body):
-    """Require only the narrowly approved PR trigger and same-repo read-only job."""
-    if not isinstance(body,str):return False
-    if re.search(r'(?m)^\s*if:\s*.*github\.event\.pull_request\.draft',body):return False
-    if re.search(r'\$\{\{\s*secrets\.',body):return False
-    if re.search(r'(?m)^\s*(?:push|schedule|pull_request_target|workflow_run|workflow_call)\s*:',body):return False
-    if not re.search(r'(?m)^on:\s*\n  pull_request:\s*$',body):return False
-    if not re.search(r'(?m)^    branches:\s*\[main\]\s*$',body):return False
-    types=re.findall(r'(?m)^    types:\s*\[([^\]]+)\]\s*$',body)
-    if len(types)!=1 or tuple(x.strip() for x in types[0].split(','))!=ALLOWED_TYPES:return False
-    path_block=re.search(r'(?m)^    paths:\s*\n((?:      - .*\n)+)',body)
-    if not path_block:return False
-    paths=tuple(re.findall(r"(?m)^      - ['\"]([^'\"]+)['\"]\s*$",path_block.group(1)))
-    if paths!=ALLOWED_PATHS:return False
-    if not re.search(r'(?m)^permissions:\s*\n  contents:\s*read\s*$',body):return False
-    if 'cancel-in-progress: true' not in body:return False
-    if not re.search(r'(?m)^\s*if:\s*\$\{\{\s*github\.event\.pull_request\.head\.repo\.full_name\s*==\s*github\.repository\s*\}\}\s*$',body):return False
-    # A second condition can weaken the same-repo boundary or skip Draft.
-    if len(re.findall(r'(?m)^\s*if:\s*',body))!=1:return False
+    """Accept only the reviewed Draft-capable, same-repo, read-only workflow.
+
+    The digest is a fail-closed *whole-document* allowlist, not a claim to
+    implement a generic YAML validator.  Changing GitHub Actions YAML needs
+    separate workflow authorization and a new review of the audited digest.
+    """
+    if not isinstance(body, str):
+        return False
+    try:
+        digest = hashlib.sha256(body.encode('utf-8')).hexdigest()
+    except UnicodeEncodeError:
+        return False
+    if digest != AUTHORIZED_LIGHT_CI_SHA256:
+        return False
+    # Defense in depth and readable approved policy, including exactly one job.
+    if body.count('\npermissions:\n  contents: read\n') != 1:
+        return False
+    if body.count('\njobs:\n  stage1-light:\n') != 1:
+        return False
+    if len(re.findall(r'(?m)^\s+if:\s*', body)) != 1:
+        return False
+    if not re.search(
+        r'(?m)^    if:\s*\$\{\{\s*github\.event\.pull_request\.head\.repo\.full_name\s*==\s*github\.repository\s*\}\}\s*$',
+        body,
+    ):
+        return False
+    if 'cancel-in-progress: true' not in body or 'persist-credentials: false' not in body:
+        return False
+    if not re.search(r'(?m)^on:\n  pull_request:\n    branches: \[main\]$', body):
+        return False
+    if not re.search(r'(?m)^    types: \[opened, synchronize, reopened, ready_for_review\]$', body):
+        return False
+    for path in ALLOWED_PATHS:
+        if f"      - '{path}'" not in body:
+            return False
     return True
