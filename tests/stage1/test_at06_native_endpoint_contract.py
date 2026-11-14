@@ -24,7 +24,7 @@ def _identity(tmp_path):
             "image_id": "sha256:" + "a" * 64,
             "persistent_volume": role + "-volume",
             "host_relay": {"port": port, "relay_id": role + "-relay"},
-            "published_ports": [{"host_ip": "127.0.0.1", "host_port": port}],
+            "published_ports": [{"container_port": "5055/tcp" if role == "native" else "8000/tcp", "host_ip": "127.0.0.1", "host_port": port}],
         }
     doc = {"context": "desktop-linux", "project": "sunrise-s1-exclusive123",
            "services": services, "source_commit": "a" * 40, "source_tree": "b" * 40}
@@ -51,6 +51,7 @@ def test_wrong_endpoint_or_identity_fails_closed(monkeypatch, tmp_path, tamper):
     doc, path = _identity(tmp_path)
     original = json.loads(json.dumps(doc))
     tamper(doc)
+    path.write_text(json.dumps(doc), encoding="utf-8")
     if doc["project"] != original["project"]:
         live_project = original["project"]
     else:
