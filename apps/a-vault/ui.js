@@ -185,7 +185,9 @@ function setupAdmin() {
   }
 
   function syncControls() {
-    const blocked = state.writing || Boolean(state.mutation);
+    // Workspace visibility precedes /auth/me and shell-list hydration.
+    // No mutation control may enable until the session is ready.
+    const blocked = !state.session || state.sessionBusy || state.writing || Boolean(state.mutation);
     $('create-submit').disabled = blocked;
     $('upload-submit').disabled = blocked || !state.shell || Boolean(state.shell.archived);
     $('archive').disabled = blocked || !state.shell || Boolean(state.shell.archived);
@@ -589,11 +591,13 @@ function setupAdmin() {
           state.session.actor_id !== session.actor_id || state.session.csrf_token !== session.csrf_token)) {
         clearPrivate();
       }
-      state.session = session;
-      api.setCsrf(session.csrf_token);
+      // Validate the server-held school allowlist before publishing a session
+      // to any UI mutation handler.
       if (!Array.isArray(session.available_schools) ||
           session.available_schools.some((id) => typeof id !== 'string' || !id) ||
           !session.available_schools.includes(session.school_id)) throw new GatewayError(403);
+      state.session = session;
+      api.setCsrf(session.csrf_token);
       const select = $('school-choice');
       select.replaceChildren();
       for (const id of session.available_schools) {
@@ -616,6 +620,8 @@ function setupAdmin() {
       if (state.selectedId) await openShell(state.selectedId);
     } catch (error) {
       if (epoch !== state.sessionEpoch) return;
+      // Failed hydration must invalidate even a partially refreshed session.
+      clearPrivate();
       if (error.status !== 401) {
         $('retry-session').hidden = false;
         $('sign-in-again').hidden = false;

@@ -294,6 +294,11 @@ def main():
             for selector,value in (('#year','2026'),('#grade','P4'),
                                    ('#subject',subject),('#stream',stream)):
                 page.locator(selector).fill(value)
+            # Wait for the actual client hydration readiness, not an arbitrary
+            # sleep or the early visible workspace.
+            page.wait_for_function(
+                "() => { const el=document.querySelector('#create-submit'); "
+                "return !!el && !el.disabled; }",timeout=30000)
             page.locator('#create-submit').click()
             page.locator('#detail').wait_for(state='visible',timeout=60000)
             shells=page.request.get(origin+'/vault/v1/shells')
