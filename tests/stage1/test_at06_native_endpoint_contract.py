@@ -45,6 +45,9 @@ def test_verified_dynamic_native_endpoint(monkeypatch, tmp_path):
     lambda doc: doc["services"]["native"]["published_ports"][0].update(host_port=5055),
     lambda doc: doc["services"]["native"]["host_relay"].update(relay_id="foreign-relay"),
     lambda doc: doc["services"]["native"].update(container_id="wrong-container"),
+    lambda doc: doc["services"]["native"].update(network_id="wrong-network"),
+    lambda doc: doc["services"]["on_db"].update(persistent_volume="wrong-volume"),
+    lambda doc: doc["services"]["native"].update(image_id="sha256:"+"b"*64),
     lambda doc: doc.update(project="sunrise-s1-wrongproject"),
 ])
 def test_wrong_endpoint_or_identity_fails_closed(monkeypatch, tmp_path, tamper):
