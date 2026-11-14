@@ -145,6 +145,9 @@ function setupAdmin() {
 
   function clearPrivate() {
     state.sessionEpoch++;
+    // Invalidated async Search will skip its finally/current() branch.
+    // Reset the in-flight flag here so a fresh session can search again.
+    state.searching = false;
     state.session = null;
     state.shells = [];
     state.shell = null;
