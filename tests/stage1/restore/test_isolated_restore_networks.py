@@ -87,3 +87,32 @@ def test_created_target_network_checks_fail_closed(target, case):
         containers['a_db']['NetworkSettings']['Networks'][second['Name']] = {'NetworkID': ''}
     with pytest.raises(restore.BackupInvalid):
         restore.inspect_isolation(args, env, running=set())
+
+
+def test_restore_ownership_caps_are_limited_to_networkless_root_helper(target, monkeypatch, tmp_path):
+    args, env, _, _ = target
+    args.workdir = tmp_path
+    volume = args.project + '_a_db_data'
+    calls = []
+
+    def docker(context, *cmd):
+        if cmd[:2] == ('volume', 'inspect'):
+            return json.dumps([{'Name': volume, 'Labels': {
+                'com.docker.compose.project': args.project,
+                'com.docker.compose.volume': 'a_db_data',
+            }}])
+        calls.append(cmd)
+        return ''
+
+    monkeypatch.setattr(restore, 'docker', docker)
+    restore.restore_new_target_db_owner(args, env, 'a_db', {})
+    root, nonroot = calls
+    for cmd in calls:
+        assert cmd[cmd.index('--network') + 1] == 'none'
+        assert cmd[cmd.index('--cap-drop') + 1] == 'ALL'
+    assert root[root.index('--user') + 1] == '0:0'
+    assert {root[i + 1] for i, x in enumerate(root) if x == '--cap-add'} == {
+        'CHOWN', 'DAC_OVERRIDE',
+    }
+    assert nonroot[nonroot.index('--user') + 1] == '1000:1000'
+    assert '--cap-add' not in nonroot

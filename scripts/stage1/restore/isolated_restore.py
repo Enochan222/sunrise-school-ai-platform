@@ -238,9 +238,10 @@ def restore_new_target_db_owner(args,env,root,manifest):
     helper=str(Path(__file__).parent/'restore_tree_owner.py')
     image=env['ON_RESTORE_IMAGE']
     for mode,user in (('chown','0:0'),('nonroot-probe',uid+':'+gid)):
-        # CAP_CHOWN is granted ONLY to the networkless helper acting on an
-        # independently verified brand-new target. DB itself stays nonroot.
-        permission_cap=['--cap-add','CHOWN'] if mode=='chown' else []
+        # The copied DB directory can be traversable only by its current owner.
+        # The networkless helper must read and hash it before changing ownership.
+        # The subsequent nonroot probe runs with no capabilities.
+        permission_cap=['--cap-add','CHOWN','--cap-add','DAC_OVERRIDE'] if mode=='chown' else []
         docker(args.context,'run','--rm','--network','none','--read-only',
                '--security-opt','no-new-privileges','--cap-drop','ALL',
                *permission_cap,'--user',user,
