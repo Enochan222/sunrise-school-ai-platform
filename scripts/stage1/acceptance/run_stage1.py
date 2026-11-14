@@ -198,7 +198,7 @@ def test_result(at,report):
                 and report.get('native_readback_before_after_equal') is True
                 and isinstance(checks,dict) and all(checks.get(k)=='PASS' for k in (
                     'live_runtime_identity_after_restart','gateway_authenticated_session',
-                    'gateway_owned_native_original_sha','freeze_released_after_checks')))
+                    'gateway_owned_native_original_sha','gateway_checks_passed_after_freeze_release')))
     if at=='S1-AT15':
         return (report.get('at_id')=='S1-AT15'
             and report.get('status')=='PASS'

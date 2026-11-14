@@ -16,7 +16,7 @@ def test_static_relay_ports_unique_and_valid():
 def test_at04_consumer_rejects_prior_false_pass_and_missing_checks():
  old={'at_id':'S1-AT04','status':'PASS','native_readback_before_after_equal':True}
  assert not runner.test_result('S1-AT04',old)
- checks={'live_runtime_identity_after_restart':'PASS','gateway_authenticated_session':'PASS','gateway_owned_native_original_sha':'PASS','freeze_released_after_checks':'PASS'}
+ checks={'live_runtime_identity_after_restart':'PASS','gateway_authenticated_session':'PASS','gateway_owned_native_original_sha':'PASS','gateway_checks_passed_after_freeze_release':'PASS'}
  assert runner.test_result('S1-AT04',{**old,'checks':checks})
  for k in checks:
   assert not runner.test_result('S1-AT04',{**old,'checks':{**checks,k:'FAIL'}})

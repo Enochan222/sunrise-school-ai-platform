@@ -20,9 +20,9 @@ else:
     from evidence_inventory import verify_clean_source
 
 if __package__:
-    from .run_stage1 import verify_browser_evidence
+    from .run_stage1 import verify_browser_evidence,test_result
 else:
-    from run_stage1 import verify_browser_evidence
+    from run_stage1 import verify_browser_evidence,test_result
 
 RELEASE_STATES=('SOURCE_IMPLEMENTED','NON_NATIVE_TESTS_PASSED',
  'NATIVE_RUNTIME_PASSED','INDEPENDENT_RESTORE_PASSED','S1_AT01_15_PASSED',
@@ -123,6 +123,11 @@ def main():
                     or evidence.get('source_commit')!=head
                     or evidence.get('source_tree')!=tree):
                 raise RuntimeError('Case not executed at fixed source: '+at)
+            if at=='S1-AT04':
+                identity_sha=hashlib.sha256(args.runtime_identity.read_bytes()).hexdigest()
+                if (not test_result(at,evidence)
+                        or evidence.get('runtime_identity_sha256')!=identity_sha):
+                    raise RuntimeError('AT04 restart Gateway/relay evidence absent or stale')
             if at=='S1-AT01':
                 if (evidence.get('result')!='FULL_NATIVE_UI_HTTP_JOURNEY_PASS'
                         or evidence.get('formal_s1_at01_15')!='S1-AT01_CANDIDATE_EXECUTED'):

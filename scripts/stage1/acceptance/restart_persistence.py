@@ -135,7 +135,7 @@ def main():
             raise
         record['checks']={k:'PASS' for k in ('live_runtime_identity_after_restart',
             'gateway_authenticated_session','gateway_owned_native_original_sha',
-            'freeze_released_after_checks')}
+            'gateway_checks_passed_after_freeze_release')}
         record['own_restart_freeze_released_after_pass']=True
         record['status']='PASS'
     except Exception as e:

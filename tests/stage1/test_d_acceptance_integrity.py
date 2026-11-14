@@ -211,6 +211,12 @@ def test_release_manifest_keeps_all_higher_gates_unapproved(clean_repo,tmp_path,
         'runtime_identity_sha256':hashlib.sha256(run_path.read_bytes()).hexdigest()}))
     for at in sorted(ids-{'S1-AT01'}):
         data={'at_id':at,'status':'PASS','source_commit':sha,'source_tree':tree}
+        if at=='S1-AT04':
+            data.update({'runtime_identity_sha256':hashlib.sha256(run_path.read_bytes()).hexdigest(),
+                         'native_readback_before_after_equal':True,
+                         'checks':{key:'PASS' for key in ('live_runtime_identity_after_restart',
+                           'gateway_authenticated_session','gateway_owned_native_original_sha',
+                           'gateway_checks_passed_after_freeze_release')}})
         if at=='S1-AT15':
             data.update({'classification':'REAL_HTTP_AT_CANDIDATE_NOT_REVIEWED',
                          'runtime_identity_sha256':hashlib.sha256(run_path.read_bytes()).hexdigest(),
