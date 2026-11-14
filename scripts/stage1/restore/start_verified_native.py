@@ -52,11 +52,14 @@ def main():
             or previous.get('target_context')!=args.context
             or previous.get('db_inventories_equal') is not True):
         p.error('Target has not passed isolated DB inventory gate')
-    target_before=inspect_isolation(args,env)
+    target_before=inspect_isolation(args,env,running={'a_db','on_db'})
     if (previous.get('restored_target_volume_names')!=target_before['volumes']
-            or len(set(target_before['volumes'].values()))!=3):
-        raise BackupInvalid('Restored volume identities changed since DB stage')
+            or previous.get('restored_target_container_ids')!=target_before['containers']
+            or previous.get('restored_target_network_ids')!=target_before['network_ids']):
+        raise BackupInvalid('Restored target identities changed since DB stage')
     compose(args,'start','native',env=env)
+    if inspect_isolation(args,env,running={'a_db','on_db','native'})!=target_before:
+        raise BackupInvalid('Restored target identity changed at Native startup')
     cid=container_id(args,'native',env)
     proof=(Path(__file__).parent/'verify_native.py').read_text(encoding='utf-8')
     last=None
@@ -72,7 +75,7 @@ def main():
         time.sleep(2)
     if output is None:
         raise BackupInvalid('Independent A/ON Native original/graph readback unavailable: '+str(last))
-    target_after=inspect_isolation(args,env)
+    target_after=inspect_isolation(args,env,running={'a_db','on_db','native'})
     if target_after!=target_before:
         raise BackupInvalid('Restored independent target changed during Native readback')
     before=json.loads((args.workdir/'gateway'/'native-pre-capture-readback.json').read_text())
