@@ -129,7 +129,8 @@ def validate(root, check_manifest=True):
     if event:events.append(event.group(1))
   ck(events==(['pull_request'] if name=='stage1-light.yml' else ['workflow_dispatch']),'exact authorized event mode')
   if name=='stage1-light.yml':
-   ck('!github.event.pull_request.draft' in body and 'cancel-in-progress: true' in body and 'paths:' in normalized,'skip Draft and restrict paths/concurrency')
+   from stage1_ci_policy import check_light_ci
+   ck(check_light_ci(body),'Draft-inclusive same-repository PR trigger and reviewed path security')
  ck('GitHub Actions' in load('docs/delivery/NEW_REPO_STAGE0.md') and 'DISABLED' in load('README.md'), 'current No-Actions operating contract present')
  for f in ('AGENTS.md','README.md','INSTRUCTIONS.md','docs/delivery/HANDOVER.md','docs/delivery/PROJECT_STATUS.md'):
   ck('v0.5' in load(f) or 'v0.7' in load(f),f'{f} clear version')
