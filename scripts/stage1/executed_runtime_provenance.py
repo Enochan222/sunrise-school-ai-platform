@@ -62,3 +62,45 @@ def guard(root: Path, path: Path, source_sha: str, source_tree: str, expected_sh
         raise RuntimeError('Missing initial provenance digest')
     if inspect(root,path,source_sha,source_tree)!=expected_sha256:
         raise RuntimeError('Runtime identity changed across executed case')
+
+
+def load_live_services(context: str, project: str) -> dict:
+    """Re-inspect the actual three-service Docker relay identity, not a saved URL."""
+    from runtime_identity import load_containers
+    return load_containers(context, project)
+
+
+def resolve_native_endpoint(root: Path, path: Path, source_sha: str,
+                            source_tree: str, expected_sha256: str) -> str:
+    """Fail closed before ANY Native POST if saved identity differs from live Docker."""
+    if not _SHA64.fullmatch(expected_sha256 or ''):
+        raise RuntimeError('AT06 missing runtime provenance hash')
+    if inspect(root, path, source_sha, source_tree) != expected_sha256:
+        raise RuntimeError('AT06 stale runtime identity hash or Git source')
+    record = json.loads(path.read_bytes())
+    context, project = record.get('context'), record.get('project')
+    if (not isinstance(context,str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,64}',context)
+            or not isinstance(project,str)
+            or not re.fullmatch(r'sunrise-s1-[a-z0-9-]{8,40}',project)):
+        raise RuntimeError('AT06 invalid Docker context or exclusive project')
+    saved = record.get('services')
+    if not isinstance(saved,dict) or set(saved) != {'a_db','on_db','native'}:
+        raise RuntimeError('AT06 missing exact physical services')
+    live = load_live_services(context,project)
+    if not isinstance(live,dict) or set(live) != set(saved):
+        raise RuntimeError('AT06 live Docker service set mismatch')
+    for role in ('a_db','on_db','native'):
+        for field in ('container_id','image_id','network_id','persistent_volume',
+                      'host_relay','published_ports'):
+            if saved[role].get(field) != live[role].get(field):
+                raise RuntimeError('AT06 saved/live Docker relay identity changed: '+role+'/'+field)
+    mappings = live['native']['published_ports']
+    if (not isinstance(mappings,list) or len(mappings)!=1
+            or mappings[0].get('container_port')!='5055/tcp'
+            or mappings[0].get('host_ip')!='127.0.0.1'
+            or type(mappings[0].get('host_port')) is not int
+            or not 1024 <= mappings[0]['host_port'] <= 65535):
+        raise RuntimeError('AT06 native relay has no unique private loopback endpoint')
+    if (live['native']['host_relay'].get('port') != mappings[0]['host_port']):
+        raise RuntimeError('AT06 relay port differs from live published port')
+    return 'http://127.0.0.1:'+str(mappings[0]['host_port'])
