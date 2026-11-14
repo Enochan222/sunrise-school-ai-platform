@@ -20,22 +20,26 @@ def load():
     return mod
 
 
-@pytest.mark.parametrize('engine',('chromium','firefox'))
+@pytest.mark.parametrize('engine',('default','chromium','firefox'))
 def test_browser_engine_explicit_cli_and_preflight_fails_without_network(tmp_path,monkeypatch,engine):
     mod=load()
     outfile=tmp_path/'preflight.json'
-    argv=['browser_admin_journey.py','--browser-engine',engine,
-          '--gateway','http://127.0.0.1:8765','--gateway-ca-file',
+    argv=['browser_admin_journey.py','--gateway','http://127.0.0.1:8765','--gateway-ca-file',
           str(tmp_path/'missing.pem'),'--runtime-identity',str(tmp_path/'missing.json'),
           '--context','desktop-linux','--project','sunrise-s1-test-only',
           '--source-sha','a'*40,'--source-tree','b'*40,'--out',str(outfile)]
+    if engine!='default':
+        argv.extend(['--browser-engine',engine])
     monkeypatch.setattr(sys,'argv',argv)
     with pytest.raises(SystemExit) as stop:
         mod.main()
     assert stop.value.code==1
     report=json.loads(outfile.read_text())
     assert report['status']=='FAIL'
-    assert report['browser_engine']==engine
+    actual_engine='chromium' if engine=='default' else engine
+    assert report['browser_engine']==actual_engine
+    assert report['classification']==('PRECHECK_FAILURE_NOT_CHROMIUM_PASS'
+        if actual_engine=='chromium' else 'PRECHECK_FAILURE_NOT_FIREFOX_PASS')
     assert report['browser_version'] is None
     assert report['failure_stage']=='S1B-STARTUP'
     assert report['error_category']
