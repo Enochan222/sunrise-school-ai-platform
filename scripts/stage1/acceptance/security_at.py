@@ -341,8 +341,12 @@ def main():
     args=p.parse_args()
     args.runtime_identity=Path(args.runtime_identity)
     args.out=Path(args.out)
-    if os.getenv('VAULT_RUNTIME_SYNTHETIC_CONFIRM')!='YES' or (
-        os.getenv('VAULT_OBSERVER_ISOLATED_CONFIRM')!='YES'):
+    if os.getenv('VAULT_RUNTIME_SYNTHETIC_CONFIRM')!='YES':
+        p.error('Exclusive synthetic runtime confirmation required')
+    # AT08 executes local fail-start processes and networkless image probes.
+    # It must not require a nonexistent external observer declaration. Network
+    # acceptance cases still require the independent observer and signed proof.
+    if args.at_id!='S1-AT08' and os.getenv('VAULT_OBSERVER_ISOLATED_CONFIRM')!='YES':
         p.error('External synthetic observer attestation required')
     verify_clean_source(ROOT,args.source_sha,args.source_tree,output=args.out)
     report={'at_id':args.at_id,'status':'NOT_RUN',
