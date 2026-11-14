@@ -1,5 +1,7 @@
 # Sunrise School AI Platform — v0.7.5 Reuse-first Planning Candidate
 
+> **2026-11-14 PUBLIC SOURCE NOTICE:** Repository is now public; it is not a public Gateway, private database or hosted deployment. Older “Stage 1 not implemented” descriptions are historical planning snapshots; live Draft PRs are separately verified. Follow [current instructions](INSTRUCTIONS.md), [security](SECURITY.md), [CI addendum](docs/decisions/STAGE1_LIMITED_CI_ADDENDUM.md). No runtime, student content, Owner UAT or R01 approval is implied.
+
 **Active repository:** https://github.com/Enochan222/sunrise-school-ai-platform  
 **Delivery:** Stage S0 is **documentation-only**. S1–S28 are **NOT IMPLEMENTED / NOT DEPLOYED**.  
 **GitHub Actions:** **HISTORICALLY DISABLED (D08); LIMITED STAGE 1 [A] TWO-WORKFLOW EXCEPTION** (see [addendum](docs/decisions/STAGE1_LIMITED_CI_ADDENDUM.md)). **GitHub Copilot:** **NOT USED.**
