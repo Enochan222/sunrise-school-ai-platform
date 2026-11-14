@@ -11,7 +11,7 @@
 | P1 | `docs/delivery/RELEASE_POLICY.md`, `docs/stage1/evidence/README.md` | Private/no Actions, non-native vs formal evidence ambiguity | Preserve R01/UAT/AT, evidence tier separation |
 | P2 | `docs/delivery/{NEW_REPO_STAGE0,REPO_SETUP,PROJECT_STATUS,HANDOVER}.md` | Historical correct at issuance; misleading as current instructions | Add superseded notices only, do not rewrite historical decisions |
 | P2 | `README.md` | Stage1 historical planned status looks current | Add public/branch/runtime status warning |
-| P0 QA discovery | `scripts/verify_kit.py` | Still asserts `!github.event.pull_request.draft` as required Light CI policy | `QA_CODE_REPAIR_REQUIRED`, out of docs-only scope |
+| P0 QA discovery | `scripts/verify_kit.py` | Historical Draft-skip assertion conflicted with Owner 2026-11-14 Draft-inclusive CI amendment | Owner-authorized minimal static QA code repaired in PR26; 18 targeted tests PASS, full Repository QA still NOT_RUN |
 | P0 CI discovery | Both approved Stage1 workflows | Light only `main` target; Native manual uses stale single DB fixed ports | `CI_WORKFLOW_REPAIR_REQUIRED`, no workflow code changes in this PR |
 
 **Formal unchanged requirements:** D01–D08 original Stage0 decision; S0–S28 Registry and A/B/I/U tracks; A-only dual physical SurrealDB, secure Gateway/strict TLS, JWT/CSRF/school/source IDOR, S1-AT01–15, independent restore, Owner UAT and distinct R01. Public source is not publicly deployed runtime.
