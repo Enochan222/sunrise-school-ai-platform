@@ -18,6 +18,10 @@ def test_service_jwt_acceptance_requires_all_negative_claims_and_private_clients
     assert "trust_env=False" in at14
     assert "set(owned)==set(by_id)" in at14
     assert "actual.get('sha256')==baseline.get('sha256')" in at14
+    assert "claims['exp']>current+15" in at14
+    assert "claims.get('nbf',0)>current+15" in at14
+    assert "key=='VAULT_TEST_SERVICE_WRONG_AUDIENCE'" in at14
+    assert "key=='VAULT_TEST_SERVICE_MISSING_CLAIMS'" in at14
 
 
 def test_admin_search_cannot_start_while_session_hydrates():
