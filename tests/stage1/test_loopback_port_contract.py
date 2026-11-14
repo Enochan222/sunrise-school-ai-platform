@@ -52,7 +52,7 @@ def fixture(service="a_db"):
     relay_doc["NetworkSettings"]["Ports"]={
         f"{port}/tcp":[{"HostIp":"127.0.0.1","HostPort":"48920"}]}
     relay_doc["HostConfig"].update({
-        "PortBindings":{f"{port}/tcp":[{"HostIp":"127.0.0.1","HostPort":""}]},
+        "PortBindings":{f"{port}/tcp":[{"HostIp":"127.0.0.1","HostPort":"48920"}]},
         "ReadonlyRootfs":True,
         "SecurityOpt":["no-new-privileges:true"],
         "CapDrop":["ALL"],

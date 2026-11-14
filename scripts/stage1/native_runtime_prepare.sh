@@ -42,6 +42,14 @@ done
    "$OPEN_NOTEBOOK_PASSWORD" != "$ON_SURREAL_PASSWORD" ]] || exit 78
 [[ "$VAULT_SURREAL_IMAGE_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]] ||
     { echo "Immutable SurrealDB digest required" >&2; exit 78; }
+# Port values must be generated per run, distinct and explicitly bound by Docker.
+# Docker's own bind fails if another process acquires a selected port.
+python - "$VAULT_A_RELAY_PORT" "$VAULT_ON_RELAY_PORT" "$VAULT_NATIVE_RELAY_PORT" "$HERE" <<'PY_PORTS'
+import sys
+sys.path.insert(0,sys.argv[4])
+from loopback_port_contract import validate_explicit_ports
+validate_explicit_ports(dict(zip(('a_db','on_db','native'),sys.argv[1:4])))
+PY_PORTS
 command -v docker >/dev/null || exit 69
 docker --context "$context" info >/dev/null
 docker --context "$context" compose version >/dev/null

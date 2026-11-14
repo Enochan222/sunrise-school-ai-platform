@@ -55,6 +55,7 @@ services:
     user: "${A_SURREAL_IMAGE_UID:?verified nonroot UID}:${A_SURREAL_IMAGE_GID:?verified nonroot GID}"
     ports:
       - target: 8000
+        published: "${VAULT_A_RELAY_PORT:?explicit unique relay port}"
         host_ip: 127.0.0.1
         protocol: tcp
     volumes: ["./loopback_relay.py:/relay.py:ro"]
@@ -71,6 +72,7 @@ services:
     user: "${ON_SURREAL_IMAGE_UID:?verified nonroot UID}:${ON_SURREAL_IMAGE_GID:?verified nonroot GID}"
     ports:
       - target: 8000
+        published: "${VAULT_ON_RELAY_PORT:?explicit unique relay port}"
         host_ip: 127.0.0.1
         protocol: tcp
     volumes: ["./loopback_relay.py:/relay.py:ro"]
@@ -87,6 +89,7 @@ services:
     user: "${ON_SURREAL_IMAGE_UID:?verified nonroot UID}:${ON_SURREAL_IMAGE_GID:?verified nonroot GID}"
     ports:
       - target: 5055
+        published: "${VAULT_NATIVE_RELAY_PORT:?explicit unique relay port}"
         host_ip: 127.0.0.1
         protocol: tcp
     volumes: ["./loopback_relay.py:/relay.py:ro"]

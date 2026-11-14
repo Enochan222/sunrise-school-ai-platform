@@ -25,6 +25,14 @@ def require(value, message):
         raise RuntimeError(message)
 
 
+def validate_explicit_ports(ports):
+    require(isinstance(ports,dict) and set(ports)==set(TARGETS), 'Explicit relay ports required')
+    require(all(isinstance(v,str) and re.fullmatch(r'[0-9]{4,5}',v) for v in ports.values()), 'Invalid relay port')
+    values={k:int(v) for k,v in ports.items()}
+    require(all(1024<=v<=65535 for v in values.values()) and len(set(values.values()))==3, 'Invalid/duplicate relay port')
+    return values
+
+
 def inspect_port_pair(service, backend, relay, project, native_image):
     """Reject public bindings, backend publish, wrong networks and foreign relay."""
     require(service in TARGETS, "Unexpected service name")
@@ -96,7 +104,8 @@ def inspect_port_pair(service, backend, relay, project, native_image):
     hc = relay.get("HostConfig", {}).get("PortBindings") or {}
     require(set(hc) == {port_name}
             and isinstance(hc[port_name],list) and len(hc[port_name]) == 1
-            and hc[port_name][0].get("HostIp") == "127.0.0.1",
+            and hc[port_name][0].get("HostIp") == "127.0.0.1"
+            and str(hc[port_name][0].get("HostPort")) == str(host_port),
             "Configured relay host binding differs from runtime")
     return {"service":service,"relay":relay_name,"port":host_port,
             "relay_container_id":relay["Id"],"relay_image_id":relay["Image"],

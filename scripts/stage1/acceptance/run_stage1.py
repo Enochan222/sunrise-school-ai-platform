@@ -192,6 +192,13 @@ def test_result(at,report):
             and re.fullmatch(r'[a-f0-9]{64}',lost['original_notebook_sha256']) is not None
             and isinstance(report.get('notebook_id_sha256'),str)
             and re.fullmatch(r'[a-f0-9]{64}',report['notebook_id_sha256']) is not None)
+    if at=='S1-AT04':
+        checks=report.get('checks',{})
+        return (report.get('at_id')==at and report.get('status')=='PASS'
+                and report.get('native_readback_before_after_equal') is True
+                and isinstance(checks,dict) and all(checks.get(k)=='PASS' for k in (
+                    'live_runtime_identity_after_restart','gateway_authenticated_session',
+                    'gateway_owned_native_original_sha','freeze_released_after_checks')))
     if at=='S1-AT15':
         return (report.get('at_id')=='S1-AT15'
             and report.get('status')=='PASS'
