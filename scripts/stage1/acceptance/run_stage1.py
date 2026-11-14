@@ -27,7 +27,7 @@ ROOT=Path(__file__).resolve().parents[3]
 STAGE=ROOT/'scripts/stage1'
 AT_DIR=STAGE/'acceptance'
 # Exercise the real HTTP journey before cold capture, but do not adjudicate
-# AT01 until AT04, AT05, AT15 and a genuine Chromium journey have completed.
+# AT01 until AT04, AT05, AT15 and a genuine supported-engine browser journey have completed.
 RUN_ORDER=('S1-AT02','S1-AT03','S1-AT06',
            'S1-AT07','S1-AT08','S1-AT09','S1-AT10','S1-AT11',
            'S1-AT14','S1-AT15','S1-AT04','S1-AT05',
@@ -291,12 +291,84 @@ def run_admin_preflight(config, output, source_sha, source_tree):
     return step,hashlib.sha256(diagnostic.read_bytes()).hexdigest()
 
 
+
+# Common, fail-closed consumer contract. The producer is C-owned and MUST
+# attest the actual launched engine and version; a Firefox login-only PoC or
+# browser-startup record cannot satisfy the eight complete journey checks.
+BROWSER_CHECKS=(
+    'real_browser_login_and_server_school',
+    'real_browser_shell_create',
+    'real_browser_pdf_upload_and_worker_status',
+    'real_browser_scoped_text_search',
+    'real_browser_original_pdf_download',
+    'real_browser_archive',
+    'real_browser_logout_revocation',
+    'no_uncaught_browser_script_errors',
+)
+
+
+def verify_browser_evidence(report,source_sha,source_tree,identity_sha,gateway):
+    """Return engine only for a complete, same-runtime, strict-TLS journey.
+
+    Legacy Chromium producer evidence remains valid on its established fields.
+    A newly enabled Firefox producer must emit explicit actual-engine, NSS
+    trust/cleanup, and strict TLS attestations (no default/fallback PASS).
+    """
+    if not isinstance(report,dict) or not isinstance(gateway,dict):
+        raise IncompleteAT('Missing structured browser evidence or Gateway identity')
+    if (report.get('at_id')!='S1-AT01-BROWSER'
+            or report.get('status')!='PASS'
+            or report.get('classification')!='SYNTHETIC_LOCAL_BROWSER_JOURNEY_CANDIDATE'
+            or report.get('source_commit')!=source_sha
+            or report.get('source_tree')!=source_tree
+            or report.get('runtime_identity_sha256')!=identity_sha
+            or report.get('gateway_scheme')!='https'
+            or gateway.get('tls_verified') is not True
+            or not re.fullmatch(r'[a-f0-9]{64}',str(report.get('gateway_tls_peer_sha256','')))
+            or report.get('gateway_tls_peer_sha256')!=gateway.get('tls_peer_sha256')
+            or any(report.get('checks',{}).get(k)!='PASS' for k in BROWSER_CHECKS)):
+        raise IncompleteAT('Incomplete browser journey, TLS, source or runtime identity')
+    engine=report.get('browser_engine')
+    if engine not in ('chromium','firefox'):
+        raise IncompleteAT('Unknown/missing actual browser engine')
+    version_key='chromium_version' if engine=='chromium' else 'firefox_version'
+    actual_version=report.get(version_key)
+    if (not isinstance(actual_version,str)
+            or re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,3}',actual_version) is None
+            or not isinstance(report.get('playwright_package_version'),str)
+            or re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,3}',report['playwright_package_version']) is None):
+        raise IncompleteAT('Actual browser engine/version evidence missing')
+    if engine=='firefox':
+        # C-owned producer must obtain actual process/version rather than label
+        # a chromium run or feasibility-only Firefox PoC as Firefox acceptance.
+        # Exact C-owned Firefox producer schema. STRICT is a configuration
+        # marker, not independent proof that a TLS peer was verified: the
+        # shared Gateway identity and TLS peer checks above remain mandatory.
+        if (report.get('browser_version')!=actual_version
+                or re.fullmatch(r'159(?:\.[0-9]+){1,3}',actual_version) is None
+                or report.get('playwright_package_version')!='1.65.1'
+                or report.get('browser_tls_verification')!='STRICT'
+                or report.get('firefox_nss_profile')!='ISOLATED_PERSISTENT'
+                or report.get('firefox_nss_ca_trust')!='C,,'
+                or not re.fullmatch(r'[a-f0-9]{64}',str(gateway.get('tls_ca_sha256','')))
+                or not re.fullmatch(r'[a-f0-9]{64}',str(report.get('firefox_nss_ca_sha256','')))
+                or report.get('firefox_nss_ca_sha256')!=gateway['tls_ca_sha256']
+                or not re.fullmatch(r'[a-f0-9]{64}',str(report.get('firefox_profile_path_sha256','')))
+                or not re.fullmatch(r'[a-f0-9]{64}',str(report.get('browser_executable_sha256','')))
+                or report.get('firefox_nss_profile_cleanup')!='PASS'):
+            raise IncompleteAT('Firefox actual-engine/strict-NSS-CA provenance absent')
+    return engine
+
+
 def run_browser_before_cold_capture(config,output,source_sha,source_tree):
-    """Run real Chromium while source Gateway/Worker remain alive."""
+    """Run actual supported browser while Gateway/Worker remain alive."""
     flags=config.get('browser_flags')
     admin=config.get('case_flags',{}).get('S1-AT01')
     if not isinstance(flags,dict) or not isinstance(admin,dict):
         raise IncompleteAT('Real browser and Admin identity scenarios required')
+    requested_engine=flags.get('--browser-engine','chromium')
+    if requested_engine not in ('chromium','firefox'):
+        raise IncompleteAT('Unsupported requested browser engine')
     for key in ('--gateway','--context','--project','--runtime-identity'):
         if not flags.get(key) or flags[key]!=admin.get(key):
             raise IncompleteAT('Browser does not target same Admin runtime identity')
@@ -310,17 +382,16 @@ def run_browser_before_cold_capture(config,output,source_sha,source_tree):
     step=subprocess_case(STAGE/'browser_admin_journey.py',flags,path)
     result=read_json(path)
     _,identity_sha=pinned_runtime_identity(config,source_sha,source_tree)
-    if (result.get('runtime_identity_sha256')!=identity_sha
-            or result.get('at_id')!='S1-AT01-BROWSER'
-            or result.get('source_commit')!=source_sha
-            or result.get('source_tree')!=source_tree
-            or result.get('status')!='PASS'):
-        raise IncompleteAT('Real Chromium did not pass before source cold stop')
+    runtime,_=pinned_runtime_identity(config,source_sha,source_tree)
+    actual_engine=verify_browser_evidence(
+        result,source_sha,source_tree,identity_sha,runtime['gateway'])
+    if actual_engine!=requested_engine:
+        raise IncompleteAT('Actual browser engine differs from requested scenario engine')
     return step,hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def run_full_at01(config,output,source_sha,source_tree,case_reports,preflight):
-    """Bind independent actual restart/restore/school tests and real Chromium probe."""
+    """Bind independent restart/restore/AT15 evidence and real browser probe."""
     if preflight is None:
         raise IncompleteAT('Missing actual native journey preflight')
     dependent=('S1-AT04','S1-AT05','S1-AT15')
@@ -347,18 +418,9 @@ def run_full_at01(config,output,source_sha,source_tree,case_reports,preflight):
     raw=read_json(output/'S1-AT01-native.json')
     ui_path=output/'S1-AT01-browser.json'
     if not ui_path.is_file():
-        raise IncompleteAT('Real Chromium evidence missing before source cold capture')
+        raise IncompleteAT('Real browser evidence missing before source cold capture')
     ui=read_json(ui_path)
-    ui_checks=('real_browser_login_and_server_school','real_browser_shell_create',
-        'real_browser_pdf_upload_and_worker_status','real_browser_scoped_text_search',
-        'real_browser_original_pdf_download','real_browser_archive',
-        'real_browser_logout_revocation','no_uncaught_browser_script_errors')
-    if (ui.get('status')!='PASS' or ui.get('at_id')!='S1-AT01-BROWSER'
-            or ui.get('source_commit')!=source_sha
-            or ui.get('source_tree')!=source_tree
-            or ui.get('runtime_identity_sha256')!=identity_sha
-            or any(ui.get('checks',{}).get(k)!='PASS' for k in ui_checks)):
-        raise IncompleteAT('Actual browser Admin journey missing or wrong revision')
+    verify_browser_evidence(ui,source_sha,source_tree,identity_sha,runtime['gateway'])
     results={**raw['results'],
              'gateway_restart_persistence':'PASS',
              'same_gateway_two_school_idor_negative':'PASS',
@@ -514,7 +576,7 @@ def main():
                     if 'S1-AT01' in selected:
                         if (report['cases']['S1-AT04']['status']!='PASS'
                                 or report['cases']['S1-AT15']['status']!='PASS'):
-                            raise IncompleteAT('Chromium must follow real restart and school negatives')
+                            raise IncompleteAT('Browser must follow real restart and school negatives')
                         browser_preflight=run_browser_before_cold_capture(
                             config,args.output_dir,args.source_sha,args.source_tree)
                     steps,digest=run_restore(config,args.output_dir,args.source_sha,args.source_tree)

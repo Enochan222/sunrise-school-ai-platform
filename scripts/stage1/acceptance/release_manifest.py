@@ -19,6 +19,11 @@ if __package__:
 else:
     from evidence_inventory import verify_clean_source
 
+if __package__:
+    from .run_stage1 import verify_browser_evidence
+else:
+    from run_stage1 import verify_browser_evidence
+
 RELEASE_STATES=('SOURCE_IMPLEMENTED','NON_NATIVE_TESTS_PASSED',
  'NATIVE_RUNTIME_PASSED','INDEPENDENT_RESTORE_PASSED','S1_AT01_15_PASSED',
  'INDEPENDENT_REVIEW_PASSED','OWNER_UAT_PASSED','R01_APPROVED',
@@ -152,11 +157,12 @@ def main():
                         or not re.fullmatch(r'[a-f0-9]{64}',str(at15.get('gateway_tls_peer_sha256','')))
                         or at15['gateway_tls_peer_sha256']!=runtime.get('gateway',{}).get('tls_peer_sha256')
                         or any(at15.get('checks',{}).get(key)!='PASS' for key in required_school_checks)
-                        or browser.get('status')!='PASS'
-                        or browser.get('source_commit')!=head
-                        or browser.get('source_tree')!=tree
-                        or browser.get('runtime_identity_sha256')!=identity_sha):
-                    raise RuntimeError('Executed AT15 school IDOR/Chromium runtime evidence absent')
+                        ):
+                    raise RuntimeError('Executed AT15 school IDOR runtime evidence absent')
+                try:
+                    verify_browser_evidence(browser,head,tree,identity_sha,runtime['gateway'])
+                except (ValueError,TypeError,RuntimeError) as error:
+                    raise RuntimeError('Full supported-engine Browser evidence absent') from error
             if at=='S1-AT05':
                 if evidence.get('restore_evidence_sha256')!=hashlib.sha256(args.restore_evidence.read_bytes()).hexdigest():
                     raise RuntimeError('AT05 did not cite this actual independent restore')

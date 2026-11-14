@@ -102,7 +102,7 @@ def test_at01_requires_executed_bound_at15_not_a_second_gateway(tmp_path):
     runtime={'type':'SUNRISE_S1_A_DUAL_DB_RUNTIME_IDENTITY_UNREVIEWED',
              'source_commit':'a'*40,'source_tree':'b'*40,
              'services':{x:{} for x in ('a_db','on_db','native')},
-             'gateway':{'tls_verified':True,'tls_peer_sha256':'e'*64}}
+             'gateway':{'tls_verified':True,'tls_peer_sha256':'e'*64,'tls_ca_sha256':'f'*64}}
     path=tmp_path/'runtime.json';path.write_text(json.dumps(runtime))
     config={'case_flags':{'S1-AT01':{'--runtime-identity':str(path)}}}
     with pytest.raises(runner.IncompleteAT,match='AT15 executed same-Gateway'):
@@ -181,7 +181,7 @@ def test_release_manifest_keeps_all_higher_gates_unapproved(clean_repo,tmp_path,
              'source_commit':sha,'source_tree':tree,
              'native_source_commit':'5e285b7a2e435895c4ee99ad7e4b8d2af64c3239',
              'on_patch_sha256':'a'*64,'dual_rpc':{'on_viewer_read_only':True},
-             'gateway':{'tls_verified':True,'tls_peer_sha256':'e'*64},
+             'gateway':{'tls_verified':True,'tls_peer_sha256':'e'*64,'tls_ca_sha256':'f'*64},
              'services':{name:{'image_id':'sha256:'+letter*64}
                          for name,letter in [('a_db','b'),('on_db','c'),('native','d')]}}
     run_path=artifacts/'identity.json'
@@ -202,7 +202,12 @@ def test_release_manifest_keeps_all_higher_gates_unapproved(clean_repo,tmp_path,
     # represent real executed Gateway/restore evidence.
     (artifacts/'S1-AT01-native.json').write_text('{"formal_s1_at01_15":"NOT_RUN"}')
     (artifacts/'S1-AT01-browser.json').write_text(json.dumps({
-        'status':'PASS','source_commit':sha,'source_tree':tree,
+        'status':'PASS','at_id':'S1-AT01-BROWSER',
+        'classification':'SYNTHETIC_LOCAL_BROWSER_JOURNEY_CANDIDATE',
+        'source_commit':sha,'source_tree':tree,'gateway_scheme':'https',
+        'gateway_tls_peer_sha256':'e'*64,'browser_engine':'chromium',
+        'chromium_version':'141.0.0.0','playwright_package_version':'1.65.1',
+        'checks':{key:'PASS' for key in runner.BROWSER_CHECKS},
         'runtime_identity_sha256':hashlib.sha256(run_path.read_bytes()).hexdigest()}))
     for at in sorted(ids-{'S1-AT01'}):
         data={'at_id':at,'status':'PASS','source_commit':sha,'source_tree':tree}
