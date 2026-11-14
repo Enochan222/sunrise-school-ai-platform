@@ -191,7 +191,7 @@ function setupAdmin() {
     $('create-submit').disabled = blocked;
     $('upload-submit').disabled = blocked || !state.shell || Boolean(state.shell.archived);
     $('archive').disabled = blocked || !state.shell || Boolean(state.shell.archived);
-    $('search-submit').disabled = state.searching || !state.shell;
+    $('search-submit').disabled = state.sessionBusy || state.searching || !state.shell;
     $('logout').disabled = state.writing || state.sessionBusy;
     $('switch-school-submit').disabled = blocked || state.sessionBusy;
     $('reconcile').disabled = state.writing;
@@ -393,7 +393,7 @@ function setupAdmin() {
     event.preventDefault();
     const id = state.shell?.shell_id;
     const query = $('query').value.trim();
-    if (!state.session || !id || state.searching) return;
+    if (!state.session || state.sessionBusy || !id || state.searching) return;
     if (!query) {
       notice('search-status', '請輸入文字關鍵字。', true);
       return;
