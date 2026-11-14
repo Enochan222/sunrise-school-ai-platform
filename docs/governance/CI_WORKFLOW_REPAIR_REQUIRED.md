@@ -1,0 +1,15 @@
+# CI_WORKFLOW_REPAIR_REQUIRED — 2026-11-14 read-only findings
+
+The only authorised workflows on `main` are `.github/workflows/stage1-light.yml` and `stage1-native-integration.yml` under [the Stage 1 Limited CI Amendment](../decisions/STAGE1_LIMITED_CI_ADDENDUM.md). They are **not changed** by this documentation PR. Historical Stage0 D08 remains original and unchanged.
+
+**CI-01 — stacked PR target:** `stage1-light.yml` uses `pull_request.branches: [main]`, same-repository head guard and code paths `apps/a-vault/**`, `tests/stage1/**`, `scripts/stage1/**`. It allows eligible Draft PRs but does **not** automatically run independently for PR24 targeting PR14's implementation branch. Remedy only via separately authorised branch/stack testing strategy or explicitly approved workflow repair; never silently broaden permissions/triggers.
+
+**CI-02 — Native dual DB mismatch:** manual `stage1-native-integration.yml` invokes a single `surrealdb` Compose service, fixed `http://127.0.0.1:5055/health` and journal `ws://127.0.0.1:8000/rpc`. The live Stage1 architecture has separate `a_db` and `on_db`, Native, identity-bound private relays and real independent restore. Existing manual workflow therefore cannot be represented as current full Stage1 native/restore acceptance. Require separate workflow PR with actual dual DB and security contract tests before dispatching for formal evidence.
+
+**CI-03 — revision identity:** `pull_request` `GITHUB_SHA` and default `actions/checkout` are the synthetic **merge-result** revision, not necessarily the actual PR HEAD. Record tested checkout SHA, actual Head SHA, tree and changed Blobs; Light runs `python -m pytest -q tests/stage1` only, not complete `pytest tests` or Mac native TLS/Browser/Restore.
+
+**CI-04 — stale local QA:** `scripts/verify_kit.py` still requires the string `!github.event.pull_request.draft` for Light CI, directly contradicting the approved removal of Draft skip. This code/test assertion is a known false failure on current policy. Do not edit QA code under docs-only authorization; separately approve a minimal fixture/expectation repair with regression.
+
+**CI-05 — billing/security settings unknown:** Official GitHub documentation in November 2026 states standard public-repository hosted runners are free. This is not verified Owner-specific budget/Stop Usage balance or proof that manual Native workflow can safely run. Ruleset Protect main 26914637 requires PR/squash-only/linear history and prohibits ref deletion/force updates; no required CI check rule observed. Fork approvals, Actions account settings, spending and secret alerts are not retrievable by the currently exposed connector and remain NOT_VERIFIED. No budget, paid runners, new workflow, auto-merge, Copilot or real school data authorised.
+
+**Owners and next actions:** Planning approves a separately scoped technical CI change; authorised workflow writer tests it on correct branch and modern dual DB, then independent QA. Owner alone checks Billing/fork/secret reporting settings. Do not contaminate PR14 or PR24 products with this governance work.
