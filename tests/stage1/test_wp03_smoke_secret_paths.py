@@ -6,6 +6,7 @@ integration tests remain mandatory under exact reviewed SHA.
 import importlib.util
 import json
 import os
+import subprocess
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -51,6 +52,10 @@ def prepare(monkeypatch,tmp_path,secret=None,race_mode='good',ack_mode='good',db
         '--source-sha','a'*40,'--source-tree','b'*40])
     monkeypatch.setattr(module,'inspect_runtime',lambda *a: 'c'*64)
     monkeypatch.setattr(module,'guard_runtime',lambda *a: None)
+    # Component-test-only endpoint: actual provenance rejects missing/wrong
+    # source, stale Docker identity and non-loopback targets in separate tests.
+    endpoint='http://127.0.0.1:65055'
+    monkeypatch.setattr(module,'resolve_native_endpoint',lambda *a: endpoint)
     if secret is None:monkeypatch.delenv('OPEN_NOTEBOOK_PASSWORD',raising=False)
     else:monkeypatch.setenv('OPEN_NOTEBOOK_PASSWORD',secret)
     monkeypatch.setattr(module,'cfg',lambda: SimpleNamespace(database='synthetic-unique-journal'))
@@ -74,11 +79,13 @@ def prepare(monkeypatch,tmp_path,secret=None,race_mode='good',ack_mode='good',db
         def shell(self,school,shellid):
             return None  # foreign school denied
     monkeypatch.setattr(module,'SurrealStore',FakeStore)
-    def race_runner(cfg,actor,loaded_secret):
+    def race_runner(cfg,actor,loaded_secret,native_endpoint):
+        assert native_endpoint==endpoint
         calls['races'].append(loaded_secret)
         return races(loaded_secret,race_mode)
     monkeypatch.setattr(module,'first_reservation_races',race_runner)
-    def lost_ack(cfg,actor,loaded_secret):
+    def lost_ack(cfg,actor,loaded_secret,native_endpoint):
+        assert native_endpoint==endpoint
         calls['lost_ack'].append(loaded_secret)
         if ack_mode=='exception':raise RuntimeError('TCP ACK dropped before native create')
         if ack_mode=='incomplete':return {'native_create_posts':0}
@@ -88,8 +95,12 @@ def prepare(monkeypatch,tmp_path,secret=None,race_mode='good',ack_mode='good',db
     def child(*args,**kwargs):
         calls['subprocess'].append(kwargs.get('env',{}).get('OPEN_NOTEBOOK_PASSWORD'))
         return SimpleNamespace(returncode=97)
-    monkeypatch.setattr(module.subprocess,'run',child)
-    async def recovery(store,school,key,details,loaded_secret):
+    # Replace the smoke module's subprocess binding, NOT the shared stdlib
+    # subprocess.run used by real Git SHA/tree/Runtime provenance checks.
+    monkeypatch.setattr(module,'subprocess',
+                        SimpleNamespace(run=child,DEVNULL=subprocess.DEVNULL))
+    async def recovery(store,school,key,details,loaded_secret,native_endpoint):
+        assert native_endpoint==endpoint
         calls['recover'].append(loaded_secret)
         calls['recovered']=True
         return {'notebook_id':'notebook:original','shell_id':'shell-unique'}
@@ -166,3 +177,21 @@ def test_no_native_password_does_not_mask_bad_db_races(monkeypatch,tmp_path):
     with pytest.raises(RuntimeError):m.main()
     evidence=json.loads(file.read_text())
     assert evidence['status']=='FAIL' and evidence['error_type']=='RuntimeError'
+
+def test_child_stub_does_not_mutate_global_subprocess(monkeypatch,tmp_path):
+    """The child is fake in this component case; real SHA/tree probes remain real."""
+    original_run=subprocess.run
+    module,_,_=prepare(monkeypatch,tmp_path,'synthetic-secret')
+    assert subprocess.run is original_run
+    assert module.subprocess.run([],env={}).returncode==97
+    real=subprocess.run([sys.executable,'-c','print("GLOBAL_SUBPROCESS_INTACT")'],
+                        capture_output=True,text=True,check=True,timeout=10)
+    assert real.stdout.strip()=='GLOBAL_SUBPROCESS_INTACT'
+
+
+def test_runtime_provenance_git_fail_closed_with_wp03_stub(monkeypatch,tmp_path):
+    """Untrusted non-repository root MUST fail the real source verifier."""
+    prepare(monkeypatch,tmp_path,'synthetic-secret')
+    from executed_runtime_provenance import _git
+    with pytest.raises(subprocess.CalledProcessError):
+        _git(tmp_path,'HEAD')

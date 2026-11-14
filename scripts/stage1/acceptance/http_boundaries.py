@@ -23,6 +23,9 @@ from make_synthetic_service_jwt import build_tokens
 import httpx
 import jwt
 
+# The trusted repository root, independent of the current working directory.
+ROOT = Path(__file__).resolve().parents[3]
+
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from wp01_network_boundary_probe import verify_manifest
 from runtime_identity import tls_gateway_identity
