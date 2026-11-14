@@ -16,3 +16,5 @@
 | Runtime, Dual-DB, Strict TLS, Browser, Restore, formal AT, Owner UAT/R01 | Real Mac/owner gated source and runtime | NOT_RUN; outside governance PR |
 
 **Required before merge:** independently check exact changed paths, Markdown paths/fences, generated manifest hashes and links, no secret-like contents and no unwarranted changes to Stage0 decisions/Stage1 AT, then run full repo QA in an authorised clean environment or obtain an evidence-backed exception for only a documented obsolete assertion. A PR is not equal to passing QA. If QA or privacy/security blocker remains, keep PR DRAFT/UNMERGED.
+
+**Additional independently verified settings limitation (2026-11-14):** Repository metadata `allow_auto_merge=true` although policy forbids auto-merge. This is a settings-level **GOVERNANCE_CONTROL_GAP**, not an action taken in this PR. Owner must disable or document compensating control; PR merge remains blocked. GitHub Actions repository `/actions/permissions` query is unsupported by this connector, so repository fork/workflow permission and budget settings stay `NOT_VERIFIED`.
