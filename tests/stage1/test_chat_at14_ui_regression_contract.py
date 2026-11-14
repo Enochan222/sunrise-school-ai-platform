@@ -35,3 +35,13 @@ def test_admin_search_cannot_start_while_session_hydrates():
 def test_formal_regression_runs_complete_tests_directory():
     source = (ROOT / 'scripts/stage1/acceptance/regression.py').read_text()
     assert "'-q','tests']" in source
+
+
+def test_session_revocation_clears_stale_search_in_flight_state():
+    """A stale search finalizer must not leave Search disabled forever."""
+    source=(ROOT / 'apps/a-vault/ui.js').read_text()
+    clear=source.split('function clearPrivate() {',1)[1].split('function showError(',1)[0]
+    assert 'state.sessionEpoch++;' in clear
+    assert 'state.searching = false;' in clear
+    search=source.split('async function search(event) {',1)[1].split('function makeKey()',1)[0]
+    assert 'if (current()) {' in search and 'state.searching = false;' in search
