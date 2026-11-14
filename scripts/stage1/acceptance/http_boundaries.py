@@ -108,6 +108,12 @@ def case_10(client,args,session):
 
 def case_14(client,args,session):
     session=change_school(client,session,args.school_a) if session['school_id']!=args.school_a else session
+    # Both schools must actually be provisioned by the authoritative Gateway.
+    # Otherwise an unknown-school rejection does not exercise school IDOR.
+    allowed=session.get('available_schools')
+    expect(isinstance(allowed,list) and args.school_a in allowed and
+           args.school_b in allowed and args.school_a!=args.school_b,
+           'AT14 requires both synthetic schools independently provisioned')
     expected=authorized_materials(client,args.shell_a)
     by_id={m['source_id']:m for m in expected}
     expect(args.source_a in by_id and args.source_b not in by_id,
