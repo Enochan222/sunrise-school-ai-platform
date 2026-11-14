@@ -135,10 +135,11 @@ def build_app(cfg:Settings|None=None,native=None):
                     len(claims['sub'])>256 or
                     any(unicodedata.category(c)=='Cc' for c in claims['sub']) or
                     not isinstance(claims['jti'],str) or not claims['jti'] or
+                    any(type(claims[name]) not in (int, float) for name in ('exp','iat','nbf')) or
                     claims['exp']-claims['iat']>300):
                     raise HTTPException(403,'Service scope denied')
                 return {'school_id':claims['school_id'],'actor_id':claims['sub'],'service':True,'csrf':None}
-            except jwt.PyJWTError:
+            except (jwt.PyJWTError, TypeError, ValueError, OverflowError):
                 raise HTTPException(401,'Invalid service token')
         token=req.cookies.get(SESSION_COOKIE)
         if not token:raise HTTPException(401,'Authentication required')

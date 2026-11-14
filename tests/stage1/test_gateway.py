@@ -392,3 +392,64 @@ def test_pdf_upload_new_key_cannot_bypass_uncertain_result(tmp_path):
         assert c.post(route,headers={**h,'Idempotency-Key':'original-key'},**opts).status_code==503
         assert c.post(route,headers={**h,'Idempotency-Key':'another-key'},**opts).status_code==409
         assert len(n.sources)==1
+
+
+@pytest.mark.parametrize('escaped', [False, True])
+def test_env_service_public_key_authenticates_and_rejects_wrong_issuer(tmp_path, monkeypatch, escaped):
+    """Exercise the documented env path, not a directly constructed Settings key."""
+    import time
+    import jwt
+    from config import from_env
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.hazmat.primitives import serialization
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    public = key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo).decode()
+    base = cfg(tmp_path)
+    values = {
+        'VAULT_ADMIN_PASSWORD_HASH': base.admin_hash,
+        'VAULT_SESSION_SECRET': base.session_secret,
+        'VAULT_ENCRYPTION_KEY': base.encryption_key,
+        'VAULT_SCHOOL_ID': base.school_id, 'VAULT_ACTOR_ID': base.actor_id,
+        'VAULT_NATIVE_URL': base.native_url, 'VAULT_NATIVE_PASSWORD': base.native_password,
+        'VAULT_STORE_BACKEND': 'synthetic_sqlite', 'VAULT_SQLITE_FILE': base.sqlite_file,
+        'VAULT_SERVICE_PUBLIC_KEY_PEM': public.replace('\n', r'\n') if escaped else public,
+        'VAULT_SERVICE_ISSUER': 'synthetic-issuer', 'VAULT_SERVICE_AUDIENCE': 'sunrise-a',
+    }
+    for name, value in values.items():
+        monkeypatch.setenv(name, value)
+    now = int(time.time())
+    claims = dict(sub='synthetic-service', school_id='school-a', iss='synthetic-issuer',
+                  aud='sunrise-a', iat=now, nbf=now, exp=now+120,
+                  jti='env-key-test', scope='vault.shell.read')
+    with TestClient(build_app(from_env(), native=NativeFixture())) as client:
+        def request(payload):
+            return client.get('/vault/v1/shells', headers={
+                'Authorization': 'Bearer '+jwt.encode(payload, key, algorithm='RS256')})
+        assert request(claims).status_code == 200
+        assert request({**claims, 'iss': 'untrusted-issuer'}).status_code == 401
+
+
+@pytest.mark.parametrize('claim,value', [('exp', 'future'), ('iat', 'past'),
+    ('exp', 'numeric'), ('iat', 'numeric'), ('exp', True), ('iat', False),
+    ('nbf', 'numeric'), ('exp', []), ('iat', {}), ('nbf', []),
+    ('exp', float('nan')), ('iat', float('inf'))])
+def test_signed_service_token_malformed_dates_are_denied(tmp_path, claim, value):
+    import time
+    import jwt
+    from dataclasses import replace
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.hazmat.primitives import serialization
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    public = key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo).decode()
+    settings = replace(cfg(tmp_path), service_public_key=public,
+                       service_issuer='issuer', service_audience='audience')
+    now = int(time.time())
+    claims = dict(sub='service', school_id='school-a', iss='issuer', aud='audience',
+                  iat=now, nbf=now, exp=now+120, jti='bad-date', scope='vault.shell.read')
+    claims[claim] = str(claims[claim]) if value == 'numeric' else value
+    with TestClient(build_app(settings, native=NativeFixture())) as client:
+        response = client.get('/vault/v1/shells', headers={
+            'Authorization': 'Bearer '+jwt.encode(claims, key, algorithm='RS256')})
+        assert response.status_code in (401, 403)
