@@ -2,7 +2,7 @@
 
 > **S0 SIGNOFF UPDATE (2026-11-10):** Owner has approved only the **bounded D01–D08 planning decisions** in [Stage0 approval packet](../decisions/STAGE0_APPROVAL_DECISIONS.md). Candidate ADR-011–022 implementation details remain proposals unless independently accepted. No deployment, spend, production school content, or student PII has been authorized.
 
-> **CURRENT REPOSITORY OVERRIDE (2026-11-10):** Active repo is `Enochan222/sunrise-school-ai-platform`; no GitHub Copilot/Actions; local QA must be executed and evidenced; old repo, old CI, old ADR references below are historical only. Read [current Stage0 rules](NEW_REPO_STAGE0.md).
+> **CURRENT PUBLIC SOURCE NOTICE (2026-11-14):** Active repository is PUBLIC. Original 2026-11-10 Stage0 D08 no-Actions choice stays in the historical approval, with a later [Stage1 Limited CI Addendum](../decisions/STAGE1_LIMITED_CI_ADDENDUM.md) authorising exactly two workflows. GitHub Copilot, extra workflows, paid usage, unattended merge and public production data remain unapproved.
 
 **Stage0** = planning/Repo/Owner approval only; NO compulsory runtime Staging, Gateway PoC, DB/Restore. **Runtime Releases R01–R28** = each one owner A/B/I/U changes; each must deliver a real usable journey, data persistence, negative/security tests, owner-local backup restore, prior Release regression, schema/API compatibility, actual Staging evidence + Owner approval. A one-hour Spike isn't release acceptance.
 
@@ -18,7 +18,7 @@ Every Release records: `manifest_id Rnn`, `stage`, `owner_track`, Git SHA & imag
 
 ## Source of Truth and pull requests
 
-The only current source of truth is new private GitHub `Enochan222/sunrise-school-ai-platform`; reviewed 164-file v0.7.5 kit was merged through PR #8 on 2026-11-10. Historical `IssacSitHk`, v0.5, and old ADR-001..010 remain **outside** this repo. Current active ADR-011..022 are **proposals**, not all Owner-approved. Keep `.github/CODEOWNERS` targeting `@Enochan222`, protected PR/squash-only `main`, and **no GitHub Actions/Copilot** per Owner decision. Local GPT-run QA is not a GitHub-enforced PR check; do not unattended-auto-merge, auto-deploy, spend, or import real student data. See [S0 decisions](../decisions/STAGE0_APPROVAL_DECISIONS.md).
+The only current source of truth is public GitHub `Enochan222/sunrise-school-ai-platform`; reviewed 164-file v0.7.5 kit was merged through PR #8 on 2026-11-10. Historical `IssacSitHk`, v0.5, and old ADR-001..010 remain **outside** this repo. Current active ADR-011..022 are **proposals**, not all Owner-approved. Keep `.github/CODEOWNERS` targeting `@Enochan222`, protected PR/squash-only `main`, no Copilot and **only the two separately approved Stage1 CI workflows** under the later Owner addendum. Local GPT-run QA is not a GitHub-enforced PR check; do not unattended-auto-merge, auto-deploy, spend, or import real student data. See [S0 decisions](../decisions/STAGE0_APPROVAL_DECISIONS.md).
 
 ## Stage-critical gates
 
@@ -35,3 +35,7 @@ A separate U-only release is necessary for newly added Sunrise frontend capabili
 ## v0.7.4 independent contract gate
 
 For each Stage owner, verify **published API consumers can perform the preceding Stage promise**, not just that endpoint exists. Any changed B Course grain / Staff permission / Grade Hash / Evidence status must first pass owner-specific provider tests + negative actor/scope tests; I/U code cannot patch that missing contract. A failed owner Stage means following consumers are blocked, not conditionally marked done. No Runtime acceptance or independent reviewer claimed by packaging QA.
+
+## Public source and release boundary (2026-11-14)
+
+Public Git access does **not** expose private Sunrise Gateway, Mac localhost, A/ON physical DBs, school/student information, real teaching material, backups or signing keys. The approved Stage1 Light workflow only tests its recorded non-native checkout (`tests/stage1`, not complete `pytest tests`). Record Head SHA, synthetic merge-result checkout SHA, Tested Revision, runtime identity and post-squash `main` separately. CI PASS cannot imply real Browser, strict TLS/IDOR, independent Restore, formal S1-AT01–15, independent review, Owner UAT or R01. Stage0 original D01–D08 wording remains unchanged; only the scope-limited later CI amendment overrides historical Actions prohibition for S1. No auto-merge, paid settings or new workflows.

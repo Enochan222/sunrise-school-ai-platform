@@ -1,31 +1,19 @@
-# GitHub connectivity and ChatGPT connector operating procedure
+# GitHub Public Repository — Connectivity and Write-boundary Runbook
 
-**Active repository:** `Enochan222/sunrise-school-ai-platform` (private)
-**Scope:** GitHub transport troubleshooting, not Stage 0 product acceptance.
+**Active repository**: `Enochan222/sunrise-school-ai-platform`, now PUBLIC. The 2026-11-10 `Could not resolve host: github.com` was an observed error in **one container**, not a permanent GitHub outage or permission verdict. See [AGENTS](../../AGENTS.md), [Security](../../SECURITY.md) and [Limited CI Addendum](../decisions/STAGE1_LIMITED_CI_ADDENDUM.md).
 
-## Verified on 2026-11-10
+| Path | Public Git read | Authorized write | Access Owner Mac `127.0.0.1` |
+|---|---|---|---|
+| Browser/github.com and normal `git clone/fetch` | Yes if DNS/network works | Only with GitHub authentication, protected ref and Owner lease | No |
+| Connected GitHub Plugin / REST API | Yes within connector scope | Yes only via permitted API action plus explicit Owner lease | No |
+| Owner Mac Terminal `git clone/fetch/push` | Yes if connected | Yes with credentials, branch and sole-writer consent | Only locally and with real services |
+| Chat/Linux/container Terminal | Environment-specific DNS and egress | Not inferred by Public status | No |
+| GitHub Actions runner | Workflow/event-controlled checkout | Only its pinned read-only token, no privileged fork secrets | No |
 
-- The container provides Git 2.47.3, but `git ls-remote https://github.com/Enochan222/sunrise-school-ai-platform.git HEAD` fails with `Could not resolve host: github.com`.
-- `getent hosts github.com` and `curl -I https://github.com` also fail at DNS resolution. This happens **before** credential or Git push authorization checks.
-- The connected GitHub app authenticates as `Enochan222`, reports repository write permission and can read the protected `main`.
-- GitHub Ruleset `Protect main` requires pull requests, prohibits deletion and force-push, and requires linear history. There is **no required GitHub Actions status check**.
-- Per Owner decision, do **not** enable GitHub Copilot or GitHub Actions.
+**Separate failure modes:** DNS (`Could not resolve host`), GitHub credentials (401/403), connector scope, branch ruleset, and personal Owner write lease. A connector commit does not prove a literal terminal `git push` worked. Check working directory and exact Head/Tree; use a clean git checkout or safe exact-parent Git Data API write, never force push. Public clone does not connect to private Mac Docker, SurrealDB volumes or a local Gateway.
 
-## Supported operational fallback
+**Authorized Actions:** only `stage1-light.yml` (same-repo, path-filtered `main`-target PRs, Draft allowed, `tests/stage1`) and `stage1-native-integration.yml` (separately permitted manual dispatch). PR #24 targets PR #14's Stage1 implementation branch and is not covered by the Light `branches: [main]` trigger. Pull-request `GITHUB_SHA`/checkout may be a synthetic merge-result SHA, not PR Head: record both. The current Manual Native workflow still contains old single-DB/fixed-port assumptions: do not claim modern dual-DB acceptance from its presence.
 
-Use the connected GitHub app to create a feature branch, commit files, open a pull request and squash-merge after reviewing actual test evidence. The connector uses GitHub API operations and **does not require Git DNS access from the local container**.
+**Cost / security:** GitHub 2026 documentation says standard public GitHub-hosted runners are free, but this does not establish the Owner account's Billing settings, availability or permission to increase budgets. Preserve the Owner's $0 Budget/Stop Usage, no new workflows, paid services, auto-merge or extra privileges. No real school/student content, raw logs, credentials, local private paths or backup keys in public PRs, Actions logs/artifacts or Git history. A missing/skipped run is NOT_RUN, and CI PASS never equals formal S1 AT, Owner UAT or R01.
 
-This is an alternative transport to `git push`, not a repair to the container network or proof that literal `git push` succeeds. Do not silently call connector-based commits a successful local Git push.
-
-For new files, prefer a single Git tree+commit for a coordinated set of changes; verify the branch SHA and file contents after the remote write. For repository changes, create a PR to `main`, record the exact test commands/environment/commit SHA, and re-fetch the merged commit and files. Do not write directly to protected `main`.
-
-## Actual runtime and safeguards
-
-- With GitHub Actions disabled, GitHub cannot automatically verify ChatGPT's test statements. A PR is not a passing test. Require evidence from executed tests, real API/DB checks for runtime stages, and a recorded approval decision for private student data or production actions.
-- Stage 0 Master Kit v0.7.5 is **not imported** merely because an archive exists in a chat. Maintain `stage0/STAGE0_BASELINE.json` as the authoritative import/approval status.
-- Do not upload API tokens, school/student records or production backups to the repository.
-- When using a different runtime with working outbound DNS, ordinary `git clone`, `git fetch` and `git push` can be used with authorized credentials. Avoid disabling TLS verification, editing `/etc/hosts` to guessed IP addresses or posting a Personal Access Token into a chat.
-
-## Diagnostic distinction
-
-`Could not resolve host` = DNS/network boundary problem. Authentication errors (`401`, `403`, `Permission denied`) can only be evaluated **after** connectivity exists. In this environment, the connected GitHub app is the supported remote transport.
+**Release:** read current `main`, ruleset, PR Head/Base, changed blobs, exact test reports and independent reviewer before any authorized manual squash merge; then re-read the final `main` commit/tree/blobs.
