@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Real Chromium A-only Admin journey, secret-free stage-scoped diagnostic.
+"""Real Chromium/Firefox A-only Admin journey, secret-free stage-scoped diagnostic.
 
 IMPLEMENTED_UNTESTED. Requires separately fixed synthetic local Gateway,
-real Native Worker, Playwright and Chromium. NEVER a synthetic UI mock PASS.
+real Native Worker and Playwright browser. NEVER a synthetic UI mock PASS.
 """
 from __future__ import annotations
 
 import argparse
+from contextlib import ExitStack
 from datetime import datetime, timezone
 import hashlib
 from importlib.metadata import version as package_version
@@ -14,6 +15,8 @@ import json
 import os
 from pathlib import Path
 import secrets
+import shutil
+import tempfile
 import subprocess
 import sys
 import time
@@ -49,8 +52,64 @@ def safe_http(response,expected,events,report,method,url):
     return response
 
 
+def firefox_context(pw,ca_file,stack,report):
+    """Strict NSS-only, isolated persistent Firefox; no Keychain/enterprise roots.
+
+    The caller must first bind CA SHA, TLS peer, source and runtime identity.
+    ExitStack closes the persistent context before deleting the NSS directory.
+    """
+    import re
+    certutil=shutil.which('certutil')
+    require(bool(certutil) and Path(certutil).is_file(),
+            'NSS certutil binary unavailable; cannot attest Firefox trust')
+    executable=Path(pw.firefox.executable_path)
+    require(executable.is_file() and not executable.is_symlink(),
+            'Playwright-managed Firefox executable missing/unsafe')
+    require(report['playwright_package_version']=='1.65.1',
+            'Firefox NSS integration requires PoC-verified Playwright 1.65.1')
+    private_root=Path(stack.enter_context(
+        tempfile.TemporaryDirectory(prefix='sunrise-s1-ffx-nss-')))
+    profile=private_root/'profile'
+    profile.mkdir(mode=0o700)
+    report['firefox_profile_path_sha256']=hashlib.sha256(
+        str(profile).encode('utf-8')).hexdigest()
+    nickname='Sunrise-Synthetic-Gateway-CA'
+    def nss(*arguments):
+        # Never persist command output: NSS failures may include private paths.
+        completed=subprocess.run([certutil,*arguments],
+            capture_output=True,text=True,timeout=20,check=False)
+        require(completed.returncode==0,'Firefox private NSS CA setup failed')
+        return completed.stdout
+    db='sql:'+str(profile)
+    nss('-N','--empty-password','-d',db)
+    nss('-A','-d',db,'-n',nickname,'-t','C,,','-i',str(ca_file))
+    listing=nss('-L','-d',db)
+    require(any(line.split()[:1]==[nickname] and 'C,,' in line
+                for line in listing.splitlines()),
+            'Firefox isolated NSS profile CA trust not verified')
+    report['firefox_nss_ca_sha256']=hashlib.sha256(ca_file.read_bytes()).hexdigest()
+    report['firefox_nss_profile']='ISOLATED_PERSISTENT'
+    report['firefox_nss_ca_trust']='C,,'
+    context=pw.firefox.launch_persistent_context(
+        user_data_dir=str(profile),headless=True,accept_downloads=True,
+        ignore_https_errors=False,
+        firefox_user_prefs={'security.enterprise_roots.enabled':False})
+    stack.callback(context.close)
+    browser=context.browser
+    require(browser is not None,'Persistent Firefox actual Browser not observable')
+    actual=browser.version
+    require(isinstance(actual,str) and re.fullmatch(r'159(?:\.[0-9]+)+',actual),
+            'Firefox binary version differs from PoC-verified 159.x')
+    report['firefox_version']=actual
+    report['browser_version']=actual
+    report['browser_executable_sha256']=hashlib.sha256(
+        executable.read_bytes()).hexdigest()
+    return context,private_root
+
+
 def main():
     parser=argparse.ArgumentParser()
+    parser.add_argument('--browser-engine',choices=('chromium','firefox'),default='chromium')
     parser.add_argument('--gateway',required=True)
     parser.add_argument('--gateway-ca-file',required=True,type=Path)
     parser.add_argument('--runtime-identity',required=True,type=Path)
@@ -102,7 +161,8 @@ def main():
             'error_category':category,'error_type':type(error).__name__,
             'stage_ids':list(STAGES),'redacted_events':[{
                 'stage':'S1B-STARTUP','event':'browser','class':category}],
-            'classification':'PRECHECK_FAILURE_NOT_CHROMIUM_PASS',
+            'browser_engine':args.browser_engine,'browser_version':None,
+            'classification':'PRECHECK_FAILURE_NOT_BROWSER_PASS',
             'finished_utc':datetime.now(timezone.utc).isoformat()}
         args.out.write_text(json.dumps(evidence,sort_keys=True,indent=2)+'\n')
         print(json.dumps({'at_id':evidence['at_id'],'status':'FAIL',
@@ -112,7 +172,9 @@ def main():
     trace=Events()
     report={'at_id':'S1-AT01-BROWSER','status':'NOT_RUN',
         'source_commit':args.source_sha,'source_tree':args.source_tree,
-        'browser_engine':'chromium','source_classification':'IMPLEMENTED_UNTESTED',
+        'browser_engine':args.browser_engine,'browser_version':None,
+        'browser_tls_verification':'STRICT',
+        'source_classification':'IMPLEMENTED_UNTESTED',
         'classification':'SYNTHETIC_LOCAL_BROWSER_JOURNEY_CANDIDATE',
         'started_utc':datetime.now(timezone.utc).isoformat(),
         'checks':{},'gateway_scheme':target.scheme,
@@ -127,12 +189,18 @@ def main():
         token=secrets.token_hex(8)
         subject='Synthetic Browser Maths'
         stream='ui_'+token
-        with sync_playwright() as pw:
-            browser=pw.chromium.launch(headless=True)
-            report['chromium_version']=browser.version
-            try:
-                # Default TLS verification stays enabled, no ignore_https_errors.
+        profile_root=None
+        with sync_playwright() as pw, ExitStack() as session:
+            if args.browser_engine=='firefox':
+                context,profile_root=firefox_context(pw,ca,session,report)
+            else:
+                browser=pw.chromium.launch(headless=True)
+                session.callback(browser.close)
+                report['chromium_version']=browser.version
+                report['browser_version']=browser.version
                 context=browser.new_context(accept_downloads=True,ignore_https_errors=False)
+            try:
+                # Both engines use strict TLS and same-origin request filtering.
                 external_attempts=[]
                 def route_guard(route):
                     requested=route.request.url
@@ -298,7 +366,12 @@ def main():
                 report['original_pdf_sha256']=digest
                 report['status']='PASS'
             finally:
-                browser.close()
+                # ExitStack closes Chromium Browser or Firefox persistent context.
+                # The Firefox temporary NSS profile is deleted after context.close.
+                pass
+        if profile_root is not None:
+            require(not profile_root.exists(),'Firefox NSS profile cleanup failed')
+            report['firefox_nss_profile_cleanup']='PASS'
     except Exception as error:
         report['status']='FAIL'
         report['error_type']=type(error).__name__
