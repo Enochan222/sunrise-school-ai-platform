@@ -184,6 +184,7 @@ def main():
         'checks':{},'gateway_scheme':target.scheme,
         'runtime_identity_sha256':runtime_sha,
         'gateway_tls_peer_sha256':gateway['tls_peer_sha256']}
+    profile_root=None
     try:
         trace.stage('S1B-STARTUP')
         from playwright.sync_api import sync_playwright
@@ -193,7 +194,6 @@ def main():
         token=secrets.token_hex(8)
         subject='Synthetic Browser Maths'
         stream='ui_'+token
-        profile_root=None
         with sync_playwright() as pw, ExitStack() as session:
             if args.browser_engine=='firefox':
                 context,profile_root=firefox_context(pw,ca,session,report)
