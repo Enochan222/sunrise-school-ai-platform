@@ -81,6 +81,16 @@ def native(path,method='GET',body=None):
     return json.loads(payload)
 
 
+def validated_on_identity(env):
+    names=('SURREAL_NAMESPACE','SURREAL_DATABASE',
+           'VAULT_EXPECTED_ON_NAMESPACE','VAULT_EXPECTED_ON_DATABASE')
+    values=[env.get(name,'') for name in names]
+    if (any(not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]{1,63}',v) for v in values)
+            or values[:2]!=values[2:]):
+        raise RuntimeError('Native ON database identity missing or mismatched')
+    return values[0],values[1]
+
+
 def main():
     if os.environ.get('VAULT_RUNTIME_SYNTHETIC_CONFIRM')!='YES':
         raise SystemExit(69)
@@ -103,8 +113,7 @@ def main():
     if (not isinstance(owners,list) or not isinstance(shells,list)
             or not 0<len(owners)<=10000 or len(shells)>10000):
         raise RuntimeError('A SourceOwner/Shell proof missing, empty or unbounded')
-    on_ns=os.environ['ON_GRAPH_NAMESPACE']
-    on_db=os.environ['ON_GRAPH_DATABASE']
+    on_ns,on_db=validated_on_identity(os.environ)
     shell_index={(r['school_id'],r['shell_id']):r for r in shells}
     identities=[]
     rights_versions=[]

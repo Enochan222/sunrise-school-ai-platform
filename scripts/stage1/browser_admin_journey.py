@@ -43,6 +43,13 @@ def git_id(revision):
         check=True,capture_output=True,text=True,timeout=12).stdout.strip()
 
 
+def valid_json_login(status, content_type, payload):
+    return (type(status) is int and status == 200
+            and isinstance(content_type,str)
+            and content_type.split(';',1)[0].strip().lower() == 'application/json'
+            and isinstance(payload,dict) and payload.get('authenticated') is True)
+
+
 def safe_http(response,expected,events,report,method,url):
     status=response.status
     events.http(method,url,status)
@@ -194,6 +201,9 @@ def main():
         token=secrets.token_hex(8)
         subject='Synthetic Browser Maths'
         stream='ui_'+token
+        # Playwright's Node API client has its own trust store; this process
+        # is already bound to the runtime identity's CA above.
+        os.environ['NODE_EXTRA_CA_CERTS']=str(ca.resolve())
         with sync_playwright() as pw, ExitStack() as session:
             if args.browser_engine=='firefox':
                 context,profile_root=firefox_context(pw,ca,session,report)
@@ -253,14 +263,16 @@ def main():
                     and r.request.method=='POST',timeout=30000) as login_receipt:
                 page.locator('#login button[type=submit]').click()
             login_response=login_receipt.value
-            # HTML form response is a 303 /admin redirect, not the JSON
-            # login API's HTTP 200. Reject off-origin/unknown Location.
             trace.http('POST',login_response.url,login_response.status)
-            if not valid_admin_login_redirect(
-                    login_response.status,login_response.header_value('location')):
+            try:
+                login_payload=login_response.json()
+            except Exception:
+                login_payload=None
+            if not valid_json_login(login_response.status,
+                    login_response.header_value('content-type') or '',login_payload):
                 report['error_category']=http_category(
                     safe_path(login_response.url),login_response.status)
-                raise BrowserContractError('HTML Admin login redirect contract mismatch')
+                raise BrowserContractError('Admin JSON login contract mismatch')
             page.wait_for_url('**/admin',timeout=30000)
             require(same_origin(page.url,origin),'Admin browser redirected outside Gateway')
             page.locator('#workspace').wait_for(state='visible',timeout=30000)

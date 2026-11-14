@@ -89,10 +89,20 @@ def native_readback(context,container_id,owner_snapshot,proof_script):
     payload=json.dumps(owner_snapshot,sort_keys=True,separators=(',',':'))
     if len(payload.encode('utf-8'))>4<<20:
         raise RuntimeError('A metadata input unbounded')
+    # Caller verifies these host values against the pinned runtime identity.
+    expected_ns=os.environ.get('ON_GRAPH_NAMESPACE','')
+    expected_db=os.environ.get('ON_GRAPH_DATABASE','')
+    if any(not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]{1,63}',v)
+           for v in (expected_ns,expected_db)):
+        raise RuntimeError('Attested ON namespace/database unavailable')
+    env=os.environ.copy()
+    env['VAULT_EXPECTED_ON_NAMESPACE']=expected_ns
+    env['VAULT_EXPECTED_ON_DATABASE']=expected_db
     cmd=['docker','--context',context,'exec','-i',
-         '-e','VAULT_RUNTIME_SYNTHETIC_CONFIRM=YES',container_id,
+         '-e','VAULT_RUNTIME_SYNTHETIC_CONFIRM=YES',
+         '-e','VAULT_EXPECTED_ON_NAMESPACE','-e','VAULT_EXPECTED_ON_DATABASE',container_id,
          '/app/.venv/bin/python','-c',proof_script]
-    attempt=subprocess.run(cmd,input=payload,capture_output=True,text=True,timeout=120)
+    attempt=subprocess.run(cmd,input=payload,capture_output=True,text=True,timeout=120,env=env)
     if attempt.returncode!=0:
         raise RuntimeError('Independent Native Graph/original verification failed')
     record=json.loads(attempt.stdout)

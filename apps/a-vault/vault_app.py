@@ -205,7 +205,7 @@ def build_app(cfg:Settings|None=None,native=None):
                 with maintenance_lock:
                     mutation_count[0]-=1
         response.headers.update({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',
-            'X-Frame-Options':'DENY','Referrer-Policy':'no-referrer',
+            'X-Frame-Options':'DENY','Referrer-Policy':'same-origin',
             'Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'"})
         return response
 
