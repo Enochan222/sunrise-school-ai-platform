@@ -184,38 +184,71 @@ def test_cold_bundle_digest_is_streamed_not_loaded_whole(tmp_path,monkeypatch):
     assert r.sha256_file(target)==expected
 
 
-def test_service_jwt_probe_uses_cookie_free_client(monkeypatch):
-    # AT14 must not accidentally authorize a JWT through an existing Admin
-    # session cookie. This test is a local fixture, NOT real HTTP acceptance.
+def test_service_jwt_probe_uses_cookie_free_client(tmp_path,monkeypatch):
+    """Real synthetic RS256 signing, real PyJWT verification, no HTTP network.
+
+    This unit test must follow the JIT AT14 contract. A former fake three-
+    bearer fixture no longer exercises the actual credential requirements.
+    """
     from types import SimpleNamespace
+    import jwt
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
     import http_boundaries as h
-    monkeypatch.setenv('VAULT_TEST_SERVICE_A','synthetic-allow')
-    monkeypatch.setenv('VAULT_TEST_SERVICE_WRONG_SCOPE','synthetic-wrong-scope')
-    monkeypatch.setenv('VAULT_TEST_SERVICE_FOREIGN_SCHOOL','synthetic-foreign')
+
+    key=rsa.generate_private_key(public_exponent=65537,key_size=2048)
+    private=key.private_bytes(serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,serialization.NoEncryption())
+    public=key.public_key().public_bytes(serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo)
+    path=tmp_path/'synthetic-only-private-key.pem'
+    path.write_bytes(private)
+    path.chmod(0o600)
+    monkeypatch.setenv('VAULT_AT14_SIGNING_KEY_FILE',str(path))
+    monkeypatch.setenv('VAULT_AT14_ISSUER','synthetic-issuer')
+    monkeypatch.setenv('VAULT_AT14_AUDIENCE','synthetic-audience')
+    material={'source_id':'source:owned-a','version':1,'sha256':'a'*64}
     admin=object()
-    monkeypatch.setattr(h,'authorized_materials',lambda client,shell: (
-        [] if client is admin else (_ for _ in ()).throw(AssertionError('Wrong client'))))
-    calls=[]
+    def materials(client,shell):
+        assert client is admin and shell=='shell-a'
+        return [material]
+    monkeypatch.setattr(h,'authorized_materials',materials)
+    responses=[]
     class CookieFree:
         def __init__(self,**kwargs):
             assert kwargs['trust_env'] is False
             assert kwargs['follow_redirects'] is False
+            assert str(kwargs['verify'])=='/synthetic/test-only/ca.pem'
         def __enter__(self):return self
         def __exit__(self,*exc):return False
-        def get(self,path,headers):
-            assert path=='/vault/v1/shells/shell-a/materials'
+        def get(self,resource,headers):
+            assert resource=='/vault/v1/shells/shell-a/materials'
             assert set(headers)=={'Authorization'}
-            calls.append(headers['Authorization'])
-            return SimpleNamespace(status_code=(
-                200 if headers['Authorization']=='Bearer synthetic-allow' else 403))
+            assert headers['Authorization'].startswith('Bearer ')
+            token=headers['Authorization'][7:]
+            try:
+                claims=jwt.decode(token,public,algorithms=['RS256'],
+                    issuer='synthetic-issuer',audience='synthetic-audience',
+                    options={'require':['sub','iss','aud','exp','iat','nbf','jti',
+                                        'school_id','scope']},leeway=5)
+            except jwt.PyJWTError:
+                code=401
+            else:
+                code=(200 if claims.get('school_id')=='synthetic-a'
+                      and 'vault.materials.read' in claims['scope'].split()
+                      else 403)
+            responses.append(code)
+            return SimpleNamespace(status_code=code,
+                json=lambda: {'materials':[dict(material)]} if code==200 else {})
     monkeypatch.setattr(h.httpx,'Client',CookieFree)
     session={'school_id':'synthetic-a'}
-    args=SimpleNamespace(school_a='synthetic-a',shell_a='shell-a',
-                         gateway='https://127.0.0.1:8080',
+    args=SimpleNamespace(school_a='synthetic-a',school_b='synthetic-b',
+                         source_a='source:owned-a',source_b='source:foreign-b',
+                         shell_a='shell-a',gateway='https://127.0.0.1:8080',
                          gateway_ca_file=Path('/synthetic/test-only/ca.pem'))
     assert h.case_14(admin,args,session) is session
-    assert calls==['Bearer synthetic-allow','Bearer synthetic-wrong-scope',
-                   'Bearer synthetic-foreign']
+    assert responses==[200,403,403,401,401,401,401,401]
+
 
 
 def test_at12_rejects_stale_restore_evidence_from_different_git_tree(tmp_path):
