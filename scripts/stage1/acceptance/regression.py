@@ -33,7 +33,7 @@ def main():
     if os.environ.get('VAULT_RUNTIME_SYNTHETIC_CONFIRM')!='YES':
         p.error('Only synthetic regression suite authorized')
     env=os.environ.copy()
-    cmd=[sys.executable,'-m','pytest','-q','tests/stage1']
+    cmd=[sys.executable,'-m','pytest','-q','tests']
     proc=subprocess.run(cmd,cwd=str(args.repo_root),env=env,
         capture_output=True,text=True,timeout=600)
     verify_clean_source(args.repo_root,args.source_sha,args.source_tree,output=args.out)
