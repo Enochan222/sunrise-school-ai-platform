@@ -16,6 +16,46 @@ sys.path.insert(0,str(ROOT/'scripts/stage1'))
 from acceptance import security_at as security
 
 
+def test_missing_secret_probe_rejects_invalid_baseline(monkeypatch):
+    for name in list(security.os.environ):
+        if name.startswith('VAULT_'):
+            monkeypatch.delenv(name, raising=False)
+    with pytest.raises(AssertionError, match='baseline'):
+        security.negative_startups()
+
+
+def test_missing_secret_probe_checks_each_attributable_failure(monkeypatch, tmp_path):
+    from argon2 import PasswordHasher
+    values={'VAULT_ADMIN_PASSWORD_HASH':PasswordHasher().hash('synthetic-password'),
+            'VAULT_SESSION_SECRET':'s'*48, 'VAULT_ENCRYPTION_KEY':'e'*48,
+            'VAULT_SCHOOL_ID':'synthetic-school', 'VAULT_ACTOR_ID':'synthetic-admin',
+            'VAULT_NATIVE_URL':'http://127.0.0.1:12345',
+            'VAULT_NATIVE_PASSWORD':'synthetic-native-password',
+            'VAULT_SURREAL_USER':'synthetic-user', 'VAULT_SURREAL_PASSWORD':'p'*48,
+            'VAULT_MAINTENANCE_FILE':str(tmp_path/'freeze')}
+    for name in list(security.os.environ):
+        if name.startswith('VAULT_'):
+            monkeypatch.delenv(name, raising=False)
+    for name,value in values.items():
+        monkeypatch.setenv(name,value)
+    security.negative_startups()
+
+
+def test_missing_secret_probe_rejects_unrelated_process_error(monkeypatch):
+    monkeypatch.setattr(security.subprocess,'run',lambda *a,**k: SimpleNamespace(returncode=0))
+    class FailedChild:
+        returncode=1
+        def wait(self, timeout):
+            return self.returncode
+        def communicate(self, timeout):
+            return b'', b'unrelated import failure'
+        def poll(self):
+            return self.returncode
+    monkeypatch.setattr(security.subprocess,'Popen',lambda *a,**k: FailedChild())
+    with pytest.raises(AssertionError, match='not attributable'):
+        security.negative_startups()
+
+
 def fixture(tmp_path,monkeypatch):
     key=Ed25519PrivateKey.generate()
     public=key.public_key().public_bytes_raw()

@@ -33,23 +33,33 @@ def ensure(condition,reason):
 def negative_startups():
     import tempfile
     base=os.environ.copy()
-    keys=('VAULT_NATIVE_PASSWORD','VAULT_ENCRYPTION_KEY',
-          'VAULT_SESSION_SECRET','VAULT_SURREAL_PASSWORD','VAULT_SURREAL_USER')
-    for key in keys:
+    base['VAULT_STORE_BACKEND']='surreal'
+    # A failure caused by some other missing setting proves nothing about the
+    # secret under test. Validate the exact baseline without opening a DB.
+    baseline=subprocess.run([sys.executable,'-c','from config import from_env; from_env()'],
+        cwd=str(ROOT/'apps/a-vault'),env=base,stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=10)
+    ensure(baseline.returncode==0,'Gateway secret probe baseline configuration invalid')
+    errors={'VAULT_NATIVE_PASSWORD':'VAULT_NATIVE_PASSWORD',
+            'VAULT_ENCRYPTION_KEY':'VAULT_ENCRYPTION_KEY',
+            'VAULT_SESSION_SECRET':'VAULT_SESSION_SECRET',
+            'VAULT_SURREAL_PASSWORD':'Missing/unsafe A database password',
+            'VAULT_SURREAL_USER':'Missing/unsafe A database user'}
+    for key,expected_error in errors.items():
         env=base.copy()
         env.pop(key,None)
-        env['VAULT_STORE_BACKEND']='surreal'
         # Never execute a process on an already occupied fixed port.
         with tempfile.TemporaryDirectory() as tmp:
             child=subprocess.Popen([sys.executable,'-m','uvicorn','server:app',
                 '--host','127.0.0.1','--port','0','--no-access-log'],
                 cwd=str(ROOT/'apps/a-vault'),env=env,
-                stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+                stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
             try:
-                try:status=child.wait(timeout=5)
+                try:_,error=child.communicate(timeout=5)
                 except subprocess.TimeoutExpired:
                     raise AssertionError('Unsafe config unexpectedly started serving with missing '+key)
-                ensure(status!=0,'Missing '+key+' incorrectly accepted at fail-start')
+                ensure(child.returncode!=0 and expected_error.encode() in error,
+                       'Missing '+key+' rejection was not attributable to that setting')
             finally:
                 if child.poll() is None:
                     child.terminate()

@@ -29,7 +29,7 @@ class Settings:
     surreal_user: str = ''
     surreal_password: str = ''
     surreal_namespace: str = 'open_notebook'
-    surreal_database: str = 'open_notebook' 
+    surreal_database: str = 'open_notebook'
 
     def allowed_schools(self):
         return self.school_allowlist or (self.school_id,)
