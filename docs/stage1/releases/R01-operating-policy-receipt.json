@@ -1,0 +1,24 @@
+{
+  "type": "OWNER_LOCAL_OPERATING_POLICY_CHAT_RECEIPT",
+  "recorded_utc": "2026-11-15T15:36:43.819828+00:00",
+  "question_item_ids": [
+    "[\"request_user_input_async\",\"call_3fcbe6e014a7413cb5b71458f695bb88\",0]",
+    "[\"request_user_input_async\",\"call_3fcbe6e014a7413cb5b71458f695bb88\",1]"
+  ],
+  "region_verbatim": "Hong Kong",
+  "operating_policy_reply_verbatim": "採用，補齊 manifest 供最後簽署",
+  "R01_approval": "NOT_GRANTED_BY_THIS_RECEIPT",
+  "scope": "LOCAL_ISOLATED_SYNTHETIC_ONLY",
+  "policy": {
+    "operator": "OWNER_MANAGED_EXISTING_MAC_PRIVATE_LAN",
+    "country_region": "Hong Kong",
+    "budget": "ZERO_NO_PAID_AUTHORITY",
+    "external_ai": "OFF",
+    "data": "SYNTHETIC_ONLY",
+    "backup": "FULL_COLD_BACKUP_BEFORE_EACH_ACCEPTANCE_MUTATION; RETAIN_VOLUMES_EVIDENCE_UNTIL_SEPARATE_OWNER_DELETION_AUTHORITY",
+    "keys": "SEPARATE_FROM_BACKUP; OUTSIDE_GIT",
+    "recovery_point": "LATEST_VERIFIED_COLD_BACKUP",
+    "observed_restore": "13.700125 seconds DB+Native readback only; no complete service SLA",
+    "excluded": "HOSTED_SERVICE_OFF_HOST_DISASTER_RECOVERY_REAL_DATA_NOT_AUTHORIZED"
+  }
+}

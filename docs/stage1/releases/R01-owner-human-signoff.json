@@ -1,0 +1,27 @@
+{
+  "type": "OWNER_R01_LOCAL_SYNTHETIC_CLOSEOUT_HUMAN_CHAT_RECEIPT",
+  "recorded_utc": "2026-11-15T15:45:45Z",
+  "authorization_origin": "OWNER_EXPLICIT_MESSAGE_IN_CURRENT_CHAT",
+  "owner_reply_verbatim": "我明確批准 Sunrise Stage 1 R01 本地隔離合成環境技術驗收結案。批准綁定 Manifest SHA256：7b335b921a9d08c26341b1099875bc7721af5edb0ace03dbebde9c351c52220d；Implementation：7ebe3d89e49ca5623030427c73804da12021552b。此批准不授權部署、付費、Hosted Native Workflow、真實資料或其他擴大範圍操作。請繼續最終獨立審核、建立真實 Owner receipt，再按 Repo 規則進行 docs-only PR 收尾。",
+  "approved_manifest_payload_sha256": "7b335b921a9d08c26341b1099875bc7721af5edb0ace03dbebde9c351c52220d",
+  "approved_operating_policy_receipt_sha256": "4156005350d0001dec7722821be0b4dc0762e159d5a89e553505b408227ab95b",
+  "implementation_commit": "7ebe3d89e49ca5623030427c73804da12021552b",
+  "implementation_tree": "658d687edd7f63139db5750d0b8aea06b091acdd",
+  "publication_baseline_main": "b024b12202400e142970b676d1dd24b05af7eaf4",
+  "scope": "R01_STAGE1_LOCAL_ISOLATED_SYNTHETIC_ACCEPTANCE_CLOSEOUT_ONLY",
+  "approved": true,
+  "excluded": [
+    "deployment",
+    "paid_services",
+    "hosted_native_workflow_dispatch",
+    "real_school_or_student_data",
+    "public_or_hosted_service",
+    "off_host_disaster_recovery",
+    "expanded_authority",
+    "stage2_readiness"
+  ],
+  "signature_method": "EXPLICIT_HUMAN_CHAT_RECEIPT_HASH_BOUND_NOT_CRYPTOGRAPHIC",
+  "cryptographic_owner_signature": "NOT_CLAIMED",
+  "independent_review": "PUBLIC_EVIDENCE_REVIEW_AND_PR_QA_REQUIRED_BEFORE_MERGE",
+  "notes": "Preserves approved manifest payload byte-for-byte; does not change its pre-signature PENDING fields. This separate receipt records the later human approval. Not a Windows private-key signature."
+}
