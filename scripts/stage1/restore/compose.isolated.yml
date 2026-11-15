@@ -1,0 +1,55 @@
+# WP08 isolated synthetic Dual Physical SurrealDB Restore · IMPLEMENTED_UNTESTED.
+# New target Compose project only; NO host-published ports, no Gateway.
+services:
+  a_db:
+    image: ${A_DB_RESTORE_IMAGE:?immutable exact A DB image ID}
+    user: "${A_RESTORE_UID:?verified source DB UID}:${A_RESTORE_GID:?verified source DB GID}"
+    command: ["start","--log","warn","--user","${A_SURREAL_USER:?A root}","--pass","${A_SURREAL_PASSWORD:?A password}","rocksdb:/mydata/mydatabase.db"]
+    volumes: [a_db_data:/mydata]
+    networks: [a_db_private]
+    restart: "no"
+    security_opt: [no-new-privileges:true]
+  on_db:
+    image: ${ON_DB_RESTORE_IMAGE:?immutable exact ON DB image ID}
+    user: "${ON_RESTORE_UID:?verified ON DB UID}:${ON_RESTORE_GID:?verified ON DB GID}"
+    command: ["start","--log","warn","--user","${ON_SURREAL_USER:?ON root}","--pass","${ON_SURREAL_PASSWORD:?ON password}","rocksdb:/mydata/mydatabase.db"]
+    volumes: [on_db_data:/mydata]
+    networks: [on_db_private]
+    restart: "no"
+    security_opt: [no-new-privileges:true]
+  native:
+    image: ${ON_RESTORE_IMAGE:?immutable exact ON API/Worker image ID}
+    environment:
+      OPEN_NOTEBOOK_PASSWORD: ${OPEN_NOTEBOOK_PASSWORD:?Native private password}
+      OPEN_NOTEBOOK_ENCRYPTION_KEY: ${OPEN_NOTEBOOK_ENCRYPTION_KEY:?Native encryption key}
+      OPEN_NOTEBOOK_PASSWORD_FILE: ""
+      CORS_ORIGINS: "https://127.0.0.1:9999"
+      SURREAL_URL: ws://on_db:8000/rpc
+      SURREAL_USER: ${ON_SURREAL_USER:?ON root}
+      SURREAL_PASSWORD: ${ON_SURREAL_PASSWORD:?ON password}
+      SURREAL_NAMESPACE: ${ON_GRAPH_NAMESPACE:?Native namespace}
+      SURREAL_DATABASE: ${ON_GRAPH_DATABASE:?Native database}
+      ON_GRAPH_NAMESPACE: ${ON_GRAPH_NAMESPACE:?Native namespace}
+      ON_GRAPH_DATABASE: ${ON_GRAPH_DATABASE:?Native database}
+      VAULT_RUNTIME_SYNTHETIC_CONFIRM: "YES"
+      OPEN_NOTEBOOK_ENABLE_DOCLING: "false"
+      OPEN_NOTEBOOK_ENABLE_CRAWL4AI: "false"
+      OPEN_NOTEBOOK_WORKER_MAX_TASKS: "1"
+      HTTP_PROXY: ""
+      HTTPS_PROXY: ""
+      ALL_PROXY: ""
+      NO_PROXY: "on_db,native,localhost,127.0.0.1"
+    volumes: [native_data:/app/data]
+    networks: [on_db_private]
+    depends_on: [on_db]
+    restart: "no"
+    security_opt: [no-new-privileges:true]
+networks:
+  a_db_private:
+    internal: true
+  on_db_private:
+    internal: true
+volumes:
+  a_db_data: {}
+  on_db_data: {}
+  native_data: {}

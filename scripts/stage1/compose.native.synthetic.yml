@@ -1,0 +1,114 @@
+# Stage 1 A-only · IMPLEMENTED_UNTESTED. Require a new exclusive -p project.
+# Physical A/ON/Native private networks remain internal; ONLY relay publishes dynamic loopback ports.
+services:
+  a_db:
+    image: surrealdb/surrealdb:v2.3.10
+    user: "${A_SURREAL_IMAGE_UID:?verified nonroot image UID}:${A_SURREAL_IMAGE_GID:?verified nonroot image GID}"
+    command: ["start", "--log", "warn", "--user", "${A_SURREAL_USER:?A DB root}", "--pass", "${A_SURREAL_PASSWORD:?A DB secret}", "rocksdb:/mydata/mydatabase.db"]
+    expose: ["8000"]
+    volumes: [a_db_data:/mydata]
+    networks: [a_db_private]
+    restart: "no"
+    security_opt: [no-new-privileges:true]
+  on_db:
+    image: surrealdb/surrealdb:v2.3.10
+    user: "${ON_SURREAL_IMAGE_UID:?verified nonroot image UID}:${ON_SURREAL_IMAGE_GID:?verified nonroot image GID}"
+    command: ["start", "--log", "warn", "--user", "${ON_SURREAL_USER:?ON DB root}", "--pass", "${ON_SURREAL_PASSWORD:?ON DB secret}", "rocksdb:/mydata/mydatabase.db"]
+    expose: ["8000"]
+    volumes: [on_db_data:/mydata]
+    networks: [on_db_private]
+    restart: "no"
+    security_opt: [no-new-privileges:true]
+  native:
+    build:
+      context: ${ON_PATCHED_DIR:?verified pinned staging copy}
+      target: runtime
+    image: sunrise-on-s1-v1.15.1-text-only:local
+    expose: ["5055"]
+    environment:
+      OPEN_NOTEBOOK_PASSWORD: ${OPEN_NOTEBOOK_PASSWORD:?Native secret}
+      OPEN_NOTEBOOK_ENCRYPTION_KEY: ${OPEN_NOTEBOOK_ENCRYPTION_KEY:?Encryption secret}
+      OPEN_NOTEBOOK_PASSWORD_FILE: ""
+      CORS_ORIGINS: ${VAULT_GATEWAY_ORIGIN:?private verified Gateway origin}
+      SURREAL_URL: ws://on_db:8000/rpc
+      SURREAL_USER: ${ON_SURREAL_USER:?ON DB root}
+      SURREAL_PASSWORD: ${ON_SURREAL_PASSWORD:?ON DB secret}
+      SURREAL_NAMESPACE: ${ON_GRAPH_NAMESPACE:?ON Namespace}
+      SURREAL_DATABASE: ${ON_GRAPH_DATABASE:?ON Database}
+      OPEN_NOTEBOOK_ENABLE_DOCLING: "false"
+      OPEN_NOTEBOOK_ENABLE_CRAWL4AI: "false"
+      OPEN_NOTEBOOK_WORKER_MAX_TASKS: "1"
+      HTTP_PROXY: ""
+      HTTPS_PROXY: ""
+      ALL_PROXY: ""
+      NO_PROXY: localhost,127.0.0.1,on_db,native
+    volumes: [native_data:/app/data]
+    depends_on: [on_db]
+    networks: [on_db_private]
+    restart: "no"
+    security_opt: [no-new-privileges:true]
+# NO credentials/volumes on relays; DB/Native only on internal networks.
+  a_relay:
+    image: sunrise-on-s1-v1.15.1-text-only:local
+    entrypoint: ["/app/.venv/bin/python", "-I", "/relay.py"]
+    command: ["--role", "a_db", "--listen", "8000"]
+    user: "${A_SURREAL_IMAGE_UID:?verified nonroot UID}:${A_SURREAL_IMAGE_GID:?verified nonroot GID}"
+    ports:
+      - target: 8000
+        published: "${VAULT_A_RELAY_PORT:?explicit unique relay port}"
+        host_ip: 127.0.0.1
+        protocol: tcp
+    volumes: ["./loopback_relay.py:/relay.py:ro"]
+    networks: [a_db_private, loopback_publish]
+    depends_on: [a_db]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: "no"
+  on_relay:
+    image: sunrise-on-s1-v1.15.1-text-only:local
+    entrypoint: ["/app/.venv/bin/python", "-I", "/relay.py"]
+    command: ["--role", "on_db", "--listen", "8000"]
+    user: "${ON_SURREAL_IMAGE_UID:?verified nonroot UID}:${ON_SURREAL_IMAGE_GID:?verified nonroot GID}"
+    ports:
+      - target: 8000
+        published: "${VAULT_ON_RELAY_PORT:?explicit unique relay port}"
+        host_ip: 127.0.0.1
+        protocol: tcp
+    volumes: ["./loopback_relay.py:/relay.py:ro"]
+    networks: [on_db_private, loopback_publish]
+    depends_on: [on_db]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: "no"
+  native_relay:
+    image: sunrise-on-s1-v1.15.1-text-only:local
+    entrypoint: ["/app/.venv/bin/python", "-I", "/relay.py"]
+    command: ["--role", "native", "--listen", "5055"]
+    user: "${ON_SURREAL_IMAGE_UID:?verified nonroot UID}:${ON_SURREAL_IMAGE_GID:?verified nonroot GID}"
+    ports:
+      - target: 5055
+        published: "${VAULT_NATIVE_RELAY_PORT:?explicit unique relay port}"
+        host_ip: 127.0.0.1
+        protocol: tcp
+    volumes: ["./loopback_relay.py:/relay.py:ro"]
+    networks: [on_db_private, loopback_publish]
+    depends_on: [native]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: "no"
+networks:
+  a_db_private:
+    internal: true
+  on_db_private:
+    internal: true
+  loopback_publish:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.host_binding_ipv4: "127.0.0.1"
+volumes:
+  a_db_data: {}
+  on_db_data: {}
+  native_data: {}

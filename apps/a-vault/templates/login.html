@@ -1,0 +1,29 @@
+<!doctype html>
+<!-- Sunrise Stage 1 A-only: candidate WP07 port / IMPLEMENTED_UNTESTED -->
+<html lang="zh-Hant-HK">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>管理員登入 | Sunrise 教材庫</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+<body data-page="login">
+  <header class="masthead"><div class="wrap masthead-inner"><p class="brand">Sunrise <span>教材庫</span></p></div></header>
+  <main class="wrap login">
+    <section class="panel" aria-labelledby="login-title">
+      <h1 id="login-title">管理員登入</h1>
+      <p>請使用管理員密碼登入所屬學校的教材庫。</p>
+      <form id="login" method="post" action="/auth/login">
+        <input type="hidden" name="csrf" value="__SUNRISE_LOGIN_CSRF__">
+        <label for="password">管理員密碼</label>
+        <input id="password" type="password" name="password" required autocomplete="current-password">
+        <button type="submit">登入</button>
+      </form>
+      <p id="login-status" class="notice" role="status" aria-atomic="true"></p>
+      <a id="reload-login" href="/auth/login" hidden>重新載入登入頁</a>
+      <p class="help">Sunrise A Vault · 本地合成開發環境；未獲准公開部署。</p>
+    </section>
+  </main>
+</body>
+</html>
