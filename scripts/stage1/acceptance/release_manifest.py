@@ -10,7 +10,7 @@ from datetime import datetime,timezone
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import subprocess
 
@@ -52,6 +52,60 @@ def git(repo,*args):
         capture_output=True,text=True,timeout=20).stdout.strip()
 
 
+def source_blob(repo, revision, path, limit=64 << 20):
+    entries=git(repo,'ls-tree',revision,'--',path).splitlines()
+    if (len(entries)!=1 or entries[0].split()[:2] not in
+            (['100644','blob'],['100755','blob'])):
+        raise RuntimeError('Packaging manifest requires a regular source blob: '+path)
+    spec=revision+':'+path
+    if int(git(repo,'cat-file','-s',spec))>limit:
+        raise RuntimeError('Packaging manifest source blob too large')
+    return subprocess.run(['git','-C',str(repo),'cat-file','blob',spec],
+        check=True,capture_output=True,timeout=20).stdout
+
+
+def verify_packaging_manifest(repo, base_sha, source_sha):
+    def read(revision):
+        rows=source_blob(repo,revision,'FILE_MANIFEST.sha256',1 << 20).decode('utf-8').splitlines()
+        if not rows or len(rows)>8192:
+            raise RuntimeError('Unbounded packaging manifest')
+        result={}
+        for row in rows:
+            match=re.fullmatch(r'([0-9a-f]{64})  (.+)',row)
+            if not match:
+                raise RuntimeError('Malformed packaging manifest')
+            digest,path=match.groups()
+            if (path in result or path=='FILE_MANIFEST.sha256' or '\\' in path
+                    or any(ord(char)<32 or ord(char)==127 for char in path)
+                    or PurePosixPath(path).is_absolute()
+                    or PurePosixPath(path).as_posix()!=path
+                    or '..' in PurePosixPath(path).parts):
+                raise RuntimeError('Unsafe or duplicate packaging manifest entry')
+            result[path]=digest
+        return result
+    before,after=read(base_sha),read(source_sha)
+    for path in before.keys() | after.keys():
+        if before.get(path)==after.get(path):
+            continue
+        if not allowed_stage1_change(path):
+            raise RuntimeError('Non-A packaging manifest entry changed: '+path)
+        if path not in after:
+            if git(repo,'ls-tree',source_sha,'--',path):
+                raise RuntimeError('Packaging manifest dropped existing A coverage: '+path)
+        elif hashlib.sha256(source_blob(repo,source_sha,path)).hexdigest()!=after[path]:
+            raise RuntimeError('Packaging manifest hash mismatch: '+path)
+
+
+def verify_stage1_changes(repo, base_sha, source_sha):
+    changed=git(repo,'diff','--name-only',base_sha+'..'+source_sha).splitlines()
+    if not changed or any(path!='FILE_MANIFEST.sha256'
+                          and not allowed_stage1_change(path) for path in changed):
+        raise RuntimeError('Non-A source/Workflow/Governance changes found')
+    if 'FILE_MANIFEST.sha256' in changed:
+        verify_packaging_manifest(repo,base_sha,source_sha)
+    return changed
+
+
 def main():
     p=argparse.ArgumentParser()
     p.add_argument('--repo-root',required=True,type=Path)
@@ -74,10 +128,7 @@ def main():
         head=git(args.repo_root,'rev-parse','HEAD')
         tree=git(args.repo_root,'rev-parse','HEAD^{tree}')
         verify_clean_source(args.repo_root,args.source_sha,args.source_tree,output=output)
-        changed=git(args.repo_root,'diff','--name-only',
-                    args.base_sha+'..'+args.source_sha).splitlines()
-        if not changed or any(not allowed_stage1_change(path) for path in changed):
-            raise RuntimeError('Non-A source/Workflow/Governance changes found')
+        changed=verify_stage1_changes(args.repo_root,args.base_sha,args.source_sha)
         if args.runtime_identity.is_symlink() or args.runtime_identity.stat().st_size>1<<20:
             raise RuntimeError('Unbounded or symlinked runtime manifest')
         runtime=json.loads(args.runtime_identity.read_text())
