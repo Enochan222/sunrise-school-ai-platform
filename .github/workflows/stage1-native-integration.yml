@@ -54,6 +54,7 @@ jobs:
           test -f scripts/stage1/compose.native.synthetic.yml || exit 2
           test -f scripts/stage1/loopback_port_contract.py || exit 2
           test -f scripts/stage1/native_runtime_smoke.py || exit 2
+          test -f scripts/stage1/verify_surreal_image_user.py || exit 2
           SOURCE_TREE="$(git rev-parse HEAD^{tree})"
           echo "TESTED_SHA=$TARGET_REF TESTED_TREE=$SOURCE_TREE"
           # Only synthetic credentials. They remain in this step's process environment.
@@ -113,6 +114,17 @@ jobs:
               echo 'SurrealDB v2.3.10 tag does not match approved immutable registry digest'; exit 2;
             }
           docker run --rm --network none surrealdb/surrealdb:v2.3.10 version | grep -F '2.3.10'
+          # Resolve the verified image identity in the caller shell.
+          # Bootstrap exports stay in its child; relay checks also need these values.
+          SURREAL_IMAGE_ID="$(docker --context "$VAULT_DOCKER_CONTEXT" image inspect surrealdb/surrealdb:v2.3.10 --format '{{.Id}}')"
+          VERIFIED_IMAGE_USER="$(python scripts/stage1/verify_surreal_image_user.py \
+            --context "$VAULT_DOCKER_CONTEXT" --image "$SURREAL_IMAGE_ID" \
+            --digest "$VAULT_SURREAL_IMAGE_DIGEST")"
+          [[ "$VERIFIED_IMAGE_USER" =~ ^[1-9][0-9]*:[1-9][0-9]*$ ]] || exit 78
+          IMAGE_UID="${VERIFIED_IMAGE_USER%%:*}"; IMAGE_GID="${VERIFIED_IMAGE_USER##*:}"
+          (( IMAGE_UID <= 65534 && IMAGE_GID <= 65534 )) || exit 78
+          export A_SURREAL_IMAGE_UID="$IMAGE_UID" A_SURREAL_IMAGE_GID="$IMAGE_GID"
+          export ON_SURREAL_IMAGE_UID="$IMAGE_UID" ON_SURREAL_IMAGE_GID="$IMAGE_GID"
           # Canonical PR14 dual-DB bootstrap: separate A/ON networks and volumes;
           # only no-secret relay services may bind 127.0.0.1 host ports.
           bash scripts/stage1/native_runtime_prepare.sh
