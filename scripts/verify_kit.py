@@ -98,7 +98,7 @@ def validate(root, check_manifest=True):
  ck(not any((root/'docs/decisions').glob('ADR-010-*.md')),'no active replacement GitHub ADR010')
  adrs=list((root/'docs/decisions').glob('ADR-*.md'))
  ck(sorted(int(p.name.split('-')[1]) for p in adrs)==list(range(11,23)),'new ADR011..022 only (legacy GitHub ADRs untouched)')
- ck((root/'.github/CODEOWNERS').read_text().endswith('* @Enochan222\n'),'new repo CODEOWNERS owner matches')
+ ck((root/'.github/CODEOWNERS').read_text().endswith('* @IssacSitHk\n'),'new repo CODEOWNERS owner matches')
  # Historical D08 remains unchanged; only two Owner-approved Stage1 workflow files are permitted.
  wfdir=root/'.github/workflows'
  present={p.name for p in wfdir.iterdir() if p.is_file()} if wfdir.exists() else set()
