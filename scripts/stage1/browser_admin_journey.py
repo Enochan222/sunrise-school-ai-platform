@@ -89,6 +89,19 @@ def submit_json_login(page, origin, events, report):
         page.unroute(login_url,capture)
 
 
+def wait_for_archive_refresh(page, title, timeout=30000):
+    """Archive visibility precedes openShell's authenticated materials refresh.
+
+    Wait for its actual rendered material and completion control before logout;
+    never suppress a request failure caused by racing session revocation.
+    """
+    page.locator('#materials').get_by_text(title,exact=True).wait_for(
+        state='visible',timeout=timeout)
+    page.wait_for_function(
+        "() => { const el=document.querySelector('#refresh-materials'); "
+        "return !!el && !el.disabled; }",timeout=timeout)
+
+
 def safe_http(response,expected,events,report,method,url):
     status=response.status
     events.http(method,url,status)
@@ -396,6 +409,7 @@ def main():
             safe_http(shell,200,trace,report,'GET',shell_url)
             require(bool(shell.json().get('archived')),
                     'Real Browser Archive did not persist')
+            wait_for_archive_refresh(page,title)
             report['checks']['real_browser_archive']='PASS'
             trace.stage('S1B-LOGOUT')
             page.locator('#logout').click()
