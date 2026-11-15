@@ -1,5 +1,87 @@
 # Sunrise Stage 1 [A] — WORKBOARD (authoritative engineering progress index)
 
+**Reviewer reconciliation draft — proposed in a separate docs-only PR; not merged.** Repository `Enochan222/sunrise-school-ai-platform`. Inspected current implementation `main` is `7ebe3d89e49ca5623030427c73804da12021552b`, tree `658d687edd7f63139db5750d0b8aea06b091acdd` (2026-11-15). Local Git history contains PR #28 workflow repair (`dba110d7aed07a8298fb6428fd32a73115ad6314`), PR #14 A-only Vault integration (`d7499142f1b86c8242a5915a6e0ceff42297f9c9`) and PR #30 owner-scoped AT13 Manifest validator repair (current main). The coordinator fetched live main before this docs branch: implementation SHA/tree match the identities above. Post-merge verification remains required if this reconciliation is later merged. See [final technical evidence](evidence/FINAL_ACCEPTANCE_MAIN_7ebe3d89.md).
+
+Requirements remain the [official Stage 1 card](../stages/STAGE_01.md), formal acceptance controls, effective Owner decisions and A-only contracts. [Implementation Plan](IMPLEMENTATION_PLAN.md) defines sequence and evidence; it does not amend formal ATs. [Evidence policy](evidence/README.md) separates Tested Revision, independently fetched Final PR Head, and post-squash main commit/tree/file identity. The original dated snapshot is retained below as history. Its PR state and narrower historic claim assignments do not override later effective Owner instructions or merged governance.
+
+## 1. Current gate reconciliation
+
+| Gate | Evidence-bound state | Remaining work / limitation |
+|---|---|---|
+| Stage 1 planning | COMPLETE within approved planning scope | No release authority inferred |
+| A-only implementation publication | PR #14, #28 and #30 are present in inspected main history | Separately verify live remote merge/head/tree and exact file hashes |
+| Fresh formal S1-AT01–15 campaign | 15/15 actual local cases PASS on `7ebe3d89…`; runner aggregate `ALL_15_LOCAL_CASES_PASS_REVIEW_PENDING` | This is a candidate execution result; final independent release review remains distinct |
+| Fresh full regression | 500 actual tests PASS on the same source | Non-native regression is not a substitute for actual formal runtime |
+| Fresh independent evidence audit | All15 source/artifact/dependency hashes, supported browser, three signed Windows observations, complete synthetic data attestation and audit artifact verified | Does not assert universal correctness, human GitHub review or complete stdout where original runner stores hashes |
+| Independent complete restore | Second full actual dual-DB/Native restore PASS on the new frozen recovery artifact | Separate physical target/volumes/networks; no source or formal restore target mutation |
+| Actual backup integrity negatives | Wrong key, missing actual PDF, actual different DB snapshot, corrupted actual DB bytes and stale Native image all rejected at exact expected gates | Five unique fresh targets remained uncreated; corruption integrity rejection is not semantic index rebuild proof |
+| Separate semantic index fault | PASS_EXPECTED_FAILURE on a distinct new fully restored target | Actual source/source_embedding fulltext indexes removed; private scoped search HTTP500 and Native readback rejected; target remains isolated, no rebuild claim |
+| Owner UAT | **ACCEPTED_MAIN7e_SOURCE_BOUND**: Owner explicitly answered “接受最新版本的 Owner UAT” for current `7ebe3d89…` local synthetic campaign | Acceptance covers the stated prior personal steps and current delegated Browser/restart/full dual-DB/original restore,500 tests and independent review; exact question reference, recorded UTC and receipt hash are recorded in section 4; no R01/deploy/paid authority |
+| GitHub-hosted Native workflow | NOT_RUN | Local full runtime and hosted workflow are different evidence tiers |
+| Signed Release Manifest / operational decisions | PENDING | AT13 emits an unsigned source/regression candidate, not final Owner signoff; privacy/rights/hosting/region/budget/secrets/RPO/RTO decisions need their actual approved scope |
+| R01 / hosted deployment | NOT_APPROVED / NOT_AUTHORIZED by this reconciliation | Separate explicit Owner release approval required; technical PASS never grants deployment authority |
+
+The current runtime uses synthetic data, physically independent A and ON DBs, private Native API/worker, strict HTTPS Gateway and separately pinned external Windows keys. No B/I/U runtime, real school/student data, paid/external AI or new hosting authority is created here. Root-supplied new cold bundle SHA-256 is `ffd3d226c5006bcf5f755f60eb183a111b1e3150b9c918ccac150b512b145bc4`; runtime identity SHA-256 is `e37a6d9cf8e2c2a1c7e1f7e11b08b6d36b915ed72ff5484148d67f690a42f07a`. Observer key pin is `286dddb2422577620cefd857261ba4b0cc5d6548144aaca0b15e3838625fe021`. Private credentials, originals, raw backups, private logs and machine addresses remain outside public evidence.
+
+## 2. Fresh current-source AT evidence map
+
+All rows below are bound to source `7ebe3d89e49ca5623030427c73804da12021552b` and tree `658d687edd7f63139db5750d0b8aea06b091acdd`. Each artifact contains its actual UTC and execution metadata. Hashes identify reviewed artifacts; they do not replace the artifacts or imply final release approval.
+
+| AT | Actual case | Evidence SHA-256 | Independent verification |
+|---|---|---|---|
+| S1-AT01 | PASS | `a261630b50745211d7b65ce83e839bf271dc9bbccec43e45c20ee56fa3058ebd` | Source, report and runner/dependency provenance verified |
+| S1-AT02 | PASS | `a22f754048f6216afd59b2b2950638ecc0c54a4d47f62991bfef5244da3f616d` | Source, report and runner/dependency provenance verified |
+| S1-AT03 | PASS | `1c02d338bc18187fb336b650e8280ba43c00136477c0a7373ebe9cd880fc6e42` | Source, report and runner/dependency provenance verified |
+| S1-AT04 | PASS | `810c0dc7eaa528f05b0c5fd7924f69ed3eae415ce4e6b8a881c93bf32acd5e60` | Source, report and runner/dependency provenance verified |
+| S1-AT05 | PASS | `433801f48754ef82b01cda26b25e3f8e77ecee88238aee16a9bcc4bd3f52f4e8` | Source, report and runner/dependency provenance verified |
+| S1-AT06 | PASS | `fb4ef44e084106ea991ce51119d335b99ec3a2e493c32ef305dd20ac4e220a8d` | Source, report and runner/dependency provenance verified |
+| S1-AT07 | PASS | `6bc76cadbedf2b1ba628fa06cfcc39dd97f0be5e4fc93f78c21660468af871d7` | Source, report and runner/dependency provenance verified |
+| S1-AT08 | PASS | `dc21ba9c1c61f7756aa8de71d8f212dc7f9fe9b8a15d8e0924ee369513b6695e` | Source, report and runner/dependency provenance verified |
+| S1-AT09 | PASS | `f5ff2a1c6a99dce260593f68ef7d3f32ddbfacf0c7937b49ae312cdff06196be` | Source, report and runner/dependency provenance verified |
+| S1-AT10 | PASS | `8961e797de4d2419110fdf6f094068be9711476f361b71f3462f9df0ca5b3e37` | Source, report and runner/dependency provenance verified |
+| S1-AT11 | PASS | `e164307e7dc8e4220c0294ebd2615318f84425a537344fabf0a1d8f046e6df94` | Source, report and runner/dependency provenance verified |
+| S1-AT12 | PASS | `9d35b682179a37b97a58bd0b5cb830e7deeb262b2af1fa3f0f79640aecc1ac96` | Source, report and runner/dependency provenance verified |
+| S1-AT13 | PASS | `85ad77c13eee8f92f8c8cbd3daf9288e86a2cec441af699165f463d6bdec513b` | Source, report and runner/dependency provenance verified |
+| S1-AT14 | PASS | `1c052712c52a94e60bdb6b1b0c12a7424165a3e9e8e87f0bf9e2cca7219c5998` | Source, report and runner/dependency provenance verified |
+| S1-AT15 | PASS | `e1c6705296a46c3cebb73c445d13fd3272cc8b90c8e8f27c02829aa778bbdd68` | Source, report and runner/dependency provenance verified |
+
+AT13 remains `S1_AT13_SOURCE_REGRESSION_CANDIDATE_NOT_R01`; its `R01_APPROVED` gate is `NOT_RUN`. The external observations are actual signed receipt verification bound to the execution time, not a replay of old network tests or copied signatures. The independent audit verified all three service-port observations and their source/runtime/target host identities, signature, and freshness at each original case start.
+
+## 3. WP reconciliation for final reviewer decision
+
+| WP | Deliverable / dependency | Current status | Evidence and remaining condition |
+|---|---|---|---|
+| WP00 | Pinned ON source/patches and synthetic infrastructure; S0 | DONE (merged implementation + verified local synthetic evidence) | Current source/image/runtime provenance and actual cold restore verified; implementation/local runtime evidence complete; no R01 or deployment approval inferred |
+| WP01 | Private Native/API/DB/worker/ingress; WP00 | DONE (merged implementation + verified local synthetic evidence) | Fresh signed external boundary observations and denial evidence verified; implementation/local runtime evidence complete; no R01 or deployment approval inferred |
+| WP02 | Single Admin/session/CSRF/secrets/service JWT; WP01 | DONE (merged implementation + verified local synthetic evidence) | Fresh AT07/08/14 and signed data/audit evidence verified; implementation/local runtime evidence complete; no R01 or deployment approval inferred |
+| WP03 | Durable Journal/CAS, unique Shell↔Notebook; WP02 | DONE (merged implementation + verified local synthetic evidence) | Real lost-ACK/crash recovery and three fresh eight-worker contention modes verified in current AT06; implementation/local runtime evidence complete; no R01 or deployment approval inferred |
+| WP04 | SourceOwner/immutable version/hash/rights/graph; WP03 | DONE (merged implementation + verified local synthetic evidence) | Fresh AT11/12/15 plus before/after restore metadata verified; implementation/local runtime evidence complete; no R01 or deployment approval inferred |
+| WP05 | Original PDF/extraction/worker/ready/retry; WP04 | DONE (merged implementation + verified local synthetic evidence) | Fresh real Native upload/worker/search/original SHA and restore readback verified; implementation/local runtime evidence complete; no R01 or deployment approval inferred |
+| WP06 | Eight A APIs/scoped search/original download; WP04/05 | DONE (merged implementation + verified local synthetic evidence) | Fresh scope/IDOR/first-byte/service and graph negatives verified; implementation/local runtime evidence complete; no R01 or deployment approval inferred |
+| WP07 | A-only Admin UI; WP03/05/06 | DONE (merged implementation + verified local synthetic evidence) | Fresh supported-engine browser and AT01 dependency hashes verified; latest-source Owner UAT ACCEPTED for stated personal/delegated local synthetic scope |
+| WP08 | Consistent full cold backup/independent restore; WP03–06 | DONE (merged implementation + verified local synthetic evidence) | Fresh second restore and five actual integrity negatives PASS; separate true fulltext index fault also PASS_EXPECTED_FAILURE; implementation/local runtime evidence complete; no R01 or deployment approval inferred |
+| WP09 | All15/regression/UAT/release gate; WP00–08 | IN_PROGRESS (implementation merged) | New full15 and500 regression PASS, independent artifact/signature audit complete; latest source-bound UAT ACCEPTED; final documentation/release review, signed manifest and Owner R01 remain pending |
+
+WP00–08 DONE here means merged implementation plus verified current-source local synthetic requirements/security/fault/regression evidence and dependencies. It does not mean Stage1 Release DONE. WP09 remains IN_PROGRESS pending final documentation/release gates. A complete WP table, local full15 PASS or merged docs PR never authorizes R01 or deployment. Do not use PENDING_REVIEW to imply an already merged source PR is still unmerged.
+
+## 4. Owner acceptance provenance and prior source-bound results
+
+The coordinator relayed Owner’s new explicit answer “接受最新版本的 Owner UAT” to the latest-source acceptance question. The question stated full15 local cases including Browser/restart/full dual-DB plus original restore,500 regression tests and independent review, distinguishing prior personal actions from current delegated automation. Scope is `LOCAL_SYNTHETIC_ONLY` on `7ebe3d89e49ca5623030427c73804da12021552b` / tree `658d687edd7f63139db5750d0b8aea06b091acdd`. Receipt: [owner-uat-acceptance.json](evidence/artifacts/final-main-7ebe3d89/owner-uat-acceptance.json), SHA-256 `8f44b439f5f18b31f3fe7d7f19a33aa2ff29ce93fec18cb2d013e8a11fe5638b`; recorded UTC `2026-11-15T15:21:56.379317+00:00` (recording time, not an invented click timestamp). Question reference: `["request_user_input_async","call_3c1db2e59e4f435997a3a1bae63421a1",0]`. This is explicit chat acceptance, not a Windows-signed UAT approval. R01, deployment, paid operation and outstanding operational decisions are not covered.
+
+### Prior source-bound results and failures retained
+
+The first new-main `d7499142f1b86c8242a5915a6e0ceff42297f9c9` campaign genuinely had14 PASS and AT13 FAIL, aggregate FAIL. AT13 rejected the repository-wide `FILE_MANIFEST.sha256` packaging change although the three changed Manifest entries were A-only and matched exact Git blobs. The failed report/trace was retained, not relabelled. PR #30 repaired this with a bounded manifest validator; no artificial base SHA or acceptance waiver was used. The new full campaign above is on the repaired actual main and new runtime/signatures/artifacts.
+
+An independent second restore and five actual recovery integrity faults also passed on that earlier d749 source. A third independent d749 target demonstrated actual source fulltext-index removal caused scoped search HTTP500 and failed Native readback. Those are historical source-bound results; they do not count as the repaired-source execution. Earlier all15 results on `6b2a9f…` and accepted UAT on `a547e089…` remain bounded to their original campaign and Owner scope. Latest `7ebe3d89…` UAT was subsequently and separately explicitly accepted by Owner; it was not inferred from the earlier acceptance. The pre-acceptance reviewer draft and machine summary remain retained as dated provenance, alongside original raw campaign records.
+
+## 5. Reviewer-only documentation publication and merge
+
+This is a separate serial docs-only reviewer reconciliation. Keep the changed-file list explicit; normally WORKBOARD, actual-number evidence after the PR exists if required by the authorized scope, and `FILE_MANIFEST.sha256`. Do not change formal Stage cards/ATs, Owner decisions, runtime code or workflows in this reconciliation. Verify all new/changed document Manifest entries and expected file coverage; verify_kit accepts additional pre-existing unlisted files, so its PASS alone does not prove every new evidence file is listed. Run the pinned governance QA, verify_kit and diff check on the actual docs Tested Revision. Recheck live main and conflicting PRs, independently fetch Final Head and assess subsequent changes, then manually squash only under actual delegated gates. After squash separately verify main merge commit/tree/actual file hashes. No auto-merge, bypass, force push or inferred R01 approval.
+
+## 6. Historical reviewer snapshot — 2026-11-14 (verbatim)
+
+# Sunrise Stage 1 [A] — WORKBOARD (authoritative engineering progress index)
+
 **Repository:** `Enochan222/sunrise-school-ai-platform`  
 **Reviewer snapshot (2026-11-14):** `main` `a88e9b9596e2166de8a195c173649c9fbbfc2642`; PR #14 `d1460557f7c6f469e9bf508d1f1c92b2af073695` / tree `1a111872dfb3b4dceb2c84a28f04a796660365fc` (UNMERGED; always recheck live refs before action).
 **Source of requirements:** [Stage 1 official card](../stages/STAGE_01.md), [S0 decisions](../decisions/STAGE0_APPROVAL_DECISIONS.md), [candidate API inventory](../architecture/API_INVENTORY.json); [Implementation Plan v1.1](IMPLEMENTATION_PLAN.md) defines implementation sequence, not a replacement for formal requirements.  

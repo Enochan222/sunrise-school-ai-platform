@@ -1,0 +1,320 @@
+[
+  {
+    "artifact": "canonical-native-bootstrap.json",
+    "command": [
+      "bash",
+      "scripts/stage1/native_runtime_prepare.sh"
+    ],
+    "cwd": "$TESTED_CHECKOUT",
+    "start": "2026-11-15T14:26:45.913002+00:00",
+    "end": "2026-11-15T14:26:56.778808+00:00",
+    "exit_code": 0,
+    "private_original_metadata_sha256": "98a23a581fb0024c25db55ee4c361696fd44cd4c66abb946ae4c1d4ce5d2d025"
+  },
+  {
+    "artifact": "compile.json",
+    "command": [
+      "$CAMPAIGN_ROOT/product/bin/python",
+      "-m",
+      "compileall",
+      "-q",
+      "apps/a-vault",
+      "scripts/stage1",
+      "tests"
+    ],
+    "cwd": "$TESTED_CHECKOUT",
+    "source_commit": "7ebe3d89e49ca5623030427c73804da12021552b",
+    "source_tree": "658d687edd7f63139db5750d0b8aea06b091acdd",
+    "started_utc": "2026-11-15T14:31:09.528382+00:00",
+    "completed_utc": "2026-11-15T14:31:09.633129+00:00",
+    "exit_code": 0,
+    "private_original_metadata_sha256": "2a8f6feb48ae2d6dee4c2a670ebc742af6163d9b854cec3047c78711df8720f3"
+  },
+  {
+    "artifact": "diff-check.json",
+    "command": [
+      "git",
+      "diff",
+      "--check",
+      "dba110d7aed07a8298fb6428fd32a73115ad6314",
+      "7ebe3d89e49ca5623030427c73804da12021552b"
+    ],
+    "cwd": "$TESTED_CHECKOUT",
+    "source_commit": "7ebe3d89e49ca5623030427c73804da12021552b",
+    "source_tree": "658d687edd7f63139db5750d0b8aea06b091acdd",
+    "started_utc": "2026-11-15T14:31:10.481042+00:00",
+    "completed_utc": "2026-11-15T14:31:10.514247+00:00",
+    "exit_code": 0,
+    "private_original_metadata_sha256": "c00a06283f9b50557c2b0caf5ca287a4c40a76c4fde776d23a4bd1532256a805"
+  },
+  {
+    "artifact": "docker-version.json",
+    "command": [
+      "docker",
+      "--context",
+      "desktop-linux",
+      "version",
+      "--format",
+      "{{json .}}"
+    ],
+    "cwd": "$TESTED_CHECKOUT",
+    "source_commit": "7ebe3d89e49ca5623030427c73804da12021552b",
+    "source_tree": "658d687edd7f63139db5750d0b8aea06b091acdd",
+    "started_utc": "2026-11-15T14:31:10.438457+00:00",
+    "completed_utc": "2026-11-15T14:31:10.520634+00:00",
+    "exit_code": 0,
+    "private_original_metadata_sha256": "0b266020cf8e56c45a4eed47f12c1c3945ceee8f9cb6dc5f37a5a668c7a706aa"
+  },
+  {
+    "artifact": "final-docker-readonly-check.json",
+    "command": [
+      "docker",
+      "--context",
+      "desktop-linux",
+      "ps",
+      "--format",
+      "{{.ID}} {{.Label \"com.docker.compose.project\"}} {{.Label \"com.docker.compose.service\"}}"
+    ],
+    "exit_code": 0,
+    "elapsed_seconds": 0.12201816699234769,
+    "private_original_metadata_sha256": "99af73da7e233bd5cf0156232b6180414c877460716f21324e5f443a55feab78",
+    "stdout_sha256": "8bf91cea97326206a8ea90e255357d4239bd171a906bf4bd9b04025bc0c9b788",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "artifact": "full-pytest.json",
+    "command": [
+      "$CAMPAIGN_ROOT/product/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "tests"
+    ],
+    "cwd": "$TESTED_CHECKOUT",
+    "source_commit": "7ebe3d89e49ca5623030427c73804da12021552b",
+    "source_tree": "658d687edd7f63139db5750d0b8aea06b091acdd",
+    "started_utc": "2026-11-15T14:30:51.974559+00:00",
+    "completed_utc": "2026-11-15T14:31:09.500789+00:00",
+    "exit_code": 0,
+    "private_original_metadata_sha256": "64ae140a854b93e9b165b5ece93175fb21819777908733c30812a64dcc7da853"
+  },
+  {
+    "artifact": "governance-freeze.json",
+    "command": [
+      "$CAMPAIGN_ROOT/governance/bin/python",
+      "-m",
+      "pip",
+      "freeze"
+    ],
+    "cwd": "$TESTED_CHECKOUT",
+    "source_commit": "7ebe3d89e49ca5623030427c73804da12021552b",
+    "source_tree": "658d687edd7f63139db5750d0b8aea06b091acdd",
+    "started_utc": "2026-11-15T14:31:10.192478+00:00",
+    "completed_utc": "2026-11-15T14:31:10.438256+00:00",
+    "exit_code": 0,
+    "private_original_metadata_sha256": "1867fd77a2a1cf97efe916eb22881309a0e052bfc20b1ff935aaf323f717d0eb"
+  },
+  {
+    "artifact": "governance-pip-check.json",
+    "command": [
+      "$CAMPAIGN_ROOT/governance/bin/python",
+      "-m",
+      "pip",
+      "check"
+    ],
+    "cwd": "$TESTED_CHECKOUT",
+    "source_commit": "7ebe3d89e49ca5623030427c73804da12021552b",
+    "source_tree": "658d687edd7f63139db5750d0b8aea06b091acdd",
+    "started_utc": "2026-11-15T14:31:09.703118+00:00",
+    "completed_utc": "2026-11-15T14:31:10.111114+00:00",
+    "exit_code": 0,
+    "private_original_metadata_sha256": "1abbe73a8ec8ac00d1b4e2fa3ea7472b899e59076f60f65d1b4dc7f36d700528"
+  },
+  {
+    "artifact": "governance.json",
+    "command": [
+      "$CAMPAIGN_ROOT/governance/bin/python",
+      "scripts/run_qa_no_actions.py"
+    ],
+    "cwd": "$TESTED_CHECKOUT",
+    "source_commit": "7ebe3d89e49ca5623030427c73804da12021552b",
+    "source_tree": "658d687edd7f63139db5750d0b8aea06b091acdd",
+    "started_utc": "2026-11-15T14:30:58.416743+00:00",
+    "completed_utc": "2026-11-15T14:31:16.855930+00:00",
+    "exit_code": 0,
+    "private_original_metadata_sha256": "e3a0a7592c512614ec2a487f8ece3b58aed5f625bbf04c436e518c8c289ab7e6"
+  },
+  {
+    "artifact": "node-version.json",
+    "command": [
+      "node",
+      "--version"
+    ],
+    "cwd": "$TESTED_CHECKOUT",
+    "source_commit": "7ebe3d89e49ca5623030427c73804da12021552b",
+    "source_tree": "658d687edd7f63139db5750d0b8aea06b091acdd",
+    "started_utc": "2026-11-15T14:31:10.431205+00:00",
+    "completed_utc": "2026-11-15T14:31:10.480808+00:00",
+    "exit_code": 0,
+    "private_original_metadata_sha256": "9e2d959351850cc0153c50ca4091f4c9b0907a05a09aca9c8cebeb06a605cf01"
+  },
+  {
+    "artifact": "node.json",
+    "command": [
+      "node",
+      "--check",
+      "apps/a-vault/ui.js"
+    ],
+    "cwd": "$TESTED_CHECKOUT",
+    "source_commit": "7ebe3d89e49ca5623030427c73804da12021552b",
+    "source_tree": "658d687edd7f63139db5750d0b8aea06b091acdd",
+    "started_utc": "2026-11-15T14:31:09.633352+00:00",
+    "completed_utc": "2026-11-15T14:31:09.701370+00:00",
+    "exit_code": 0,
+    "private_original_metadata_sha256": "32a70caa6440fc3a46ffa154c0c9e76ab18574287565adb88e52873ea19ed529"
+  },
+  {
+    "artifact": "product-freeze.json",
+    "command": [
+      "$CAMPAIGN_ROOT/product/bin/python",
+      "-m",
+      "pip",
+      "freeze"
+    ],
+    "cwd": "$TESTED_CHECKOUT",
+    "source_commit": "7ebe3d89e49ca5623030427c73804da12021552b",
+    "source_tree": "658d687edd7f63139db5750d0b8aea06b091acdd",
+    "started_utc": "2026-11-15T14:31:10.111363+00:00",
+    "completed_utc": "2026-11-15T14:31:10.388593+00:00",
+    "exit_code": 0,
+    "private_original_metadata_sha256": "19d9b8383c644ff47774fd4fee590f304a8e0a6410a1fb4d3f5cd7ac0fcf09a7"
+  },
+  {
+    "artifact": "product-pip-check.json",
+    "command": [
+      "$CAMPAIGN_ROOT/product/bin/python",
+      "-m",
+      "pip",
+      "check"
+    ],
+    "cwd": "$TESTED_CHECKOUT",
+    "source_commit": "7ebe3d89e49ca5623030427c73804da12021552b",
+    "source_tree": "658d687edd7f63139db5750d0b8aea06b091acdd",
+    "started_utc": "2026-11-15T14:31:09.701627+00:00",
+    "completed_utc": "2026-11-15T14:31:10.192273+00:00",
+    "exit_code": 0,
+    "private_original_metadata_sha256": "83c5272a7be0271b10025e734a2608fd84a1613e61220369f7836d9aa2be8812"
+  },
+  {
+    "artifact": "python-versions.json",
+    "command": [
+      "$CAMPAIGN_ROOT/product/bin/python",
+      "-c",
+      "import sys,platform;print(sys.version);print(platform.platform())"
+    ],
+    "cwd": "$TESTED_CHECKOUT",
+    "source_commit": "7ebe3d89e49ca5623030427c73804da12021552b",
+    "source_tree": "658d687edd7f63139db5750d0b8aea06b091acdd",
+    "started_utc": "2026-11-15T14:31:10.388910+00:00",
+    "completed_utc": "2026-11-15T14:31:10.430495+00:00",
+    "exit_code": 0,
+    "private_original_metadata_sha256": "811d517b02b592d10f9ab291d9b9fbd7aa82321ae62ea79aa7239591506e856a"
+  },
+  {
+    "artifact": "runtime-identity-initial-capture.json",
+    "command": [
+      "$CAMPAIGN_ROOT/product/bin/python",
+      "scripts/stage1/runtime_identity.py",
+      "--context",
+      "desktop-linux",
+      "--project",
+      "sunrise-s1-final-r01-f58c825fd9",
+      "--source-root",
+      "$CAMPAIGN_ROOT/merge-preview",
+      "--gateway-url",
+      "<GATEWAY_TLS_ORIGIN>",
+      "--gateway-ca-file",
+      "$CAMPAIGN_ROOT/private/ca.pem",
+      "--compose-file",
+      "$CAMPAIGN_ROOT/merge-preview/scripts/stage1/compose.native.synthetic.yml",
+      "--on-patch-sha256",
+      "e02d793b9a3972ad5aacda41fc74ef2899c3917be0fc71701950b46e509e00d6",
+      "--surreal-namespace",
+      "sunrise_a",
+      "--surreal-database",
+      "sunrise_a",
+      "--on-namespace",
+      "open_notebook",
+      "--on-database",
+      "open_notebook",
+      "--out",
+      "$CAMPAIGN_ROOT/runtime-identity-initial.json"
+    ],
+    "cwd": "$TESTED_CHECKOUT",
+    "start": "2026-11-15T14:28:38.739984+00:00",
+    "end": "2026-11-15T14:28:40.907982+00:00",
+    "exit_code": 0,
+    "private_original_metadata_sha256": "d580989916db9337c3c432a372660c45365aad1e4c7d01eae344189a3288e0d3"
+  },
+  {
+    "artifact": "stage1.json",
+    "command": [
+      "$CAMPAIGN_ROOT/product/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "tests/stage1"
+    ],
+    "cwd": "$TESTED_CHECKOUT",
+    "source_commit": "7ebe3d89e49ca5623030427c73804da12021552b",
+    "source_tree": "658d687edd7f63139db5750d0b8aea06b091acdd",
+    "started_utc": "2026-11-15T14:30:51.974772+00:00",
+    "completed_utc": "2026-11-15T14:31:09.528183+00:00",
+    "exit_code": 0,
+    "private_original_metadata_sha256": "fb01edd75314a81a06cfc083c36e0fe04ec736e108c79edb6958e6d9cb3a91d2"
+  },
+  {
+    "artifact": "two-school-fixtures.json",
+    "command": [
+      "$PINNED_ENV_ROOT/product/bin/python",
+      "$CAMPAIGN_ROOT/make-http-fixtures.py"
+    ],
+    "cwd": "$TESTED_CHECKOUT",
+    "start": "2026-11-15T14:28:40.961846+00:00",
+    "end": "2026-11-15T14:28:51.291159+00:00",
+    "exit_code": 0,
+    "private_original_metadata_sha256": "821e662990f5f335cc0b090e3b5891df57ab627eca5772ebebaf0084cd2b7e4c"
+  },
+  {
+    "artifact": "verify-kit.json",
+    "command": [
+      "$CAMPAIGN_ROOT/governance/bin/python",
+      "scripts/verify_kit.py"
+    ],
+    "cwd": "$TESTED_CHECKOUT",
+    "source_commit": "7ebe3d89e49ca5623030427c73804da12021552b",
+    "source_tree": "658d687edd7f63139db5750d0b8aea06b091acdd",
+    "started_utc": "2026-11-15T14:31:09.501174+00:00",
+    "completed_utc": "2026-11-15T14:31:09.702949+00:00",
+    "exit_code": 0,
+    "private_original_metadata_sha256": "e521e52495c8e0066623b793ab9488748f077b0eed9332ee6299741ba1973c57"
+  },
+  {
+    "artifact": "workflow-contracts.json",
+    "command": [
+      "$CAMPAIGN_ROOT/product/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "scripts/test_stage1_native_workflow.py",
+      "scripts/test_stage1_ci_policy.py"
+    ],
+    "cwd": "$TESTED_CHECKOUT",
+    "source_commit": "7ebe3d89e49ca5623030427c73804da12021552b",
+    "source_tree": "658d687edd7f63139db5750d0b8aea06b091acdd",
+    "started_utc": "2026-11-15T14:30:51.974868+00:00",
+    "completed_utc": "2026-11-15T14:30:58.416421+00:00",
+    "exit_code": 0,
+    "private_original_metadata_sha256": "7e2f6b2aa63ffddab603ee2ba46627eee996d5cecce9a332e698c9c0cb969a74"
+  }
+]

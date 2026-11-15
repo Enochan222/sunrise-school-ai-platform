@@ -1,0 +1,19 @@
+{
+  "type": "OWNER_UAT_ACCEPTANCE_CHAT_RECEIPT",
+  "recorded_utc": "2026-11-15T15:21:56.379317+00:00",
+  "question_item_id": "[\"request_user_input_async\",\"call_3c1db2e59e4f435997a3a1bae63421a1\",0]",
+  "owner_reply_verbatim": "接受最新版本的 Owner UAT",
+  "owner_UAT": "ACCEPTED",
+  "source_commit": "7ebe3d89e49ca5623030427c73804da12021552b",
+  "source_tree": "658d687edd7f63139db5750d0b8aea06b091acdd",
+  "runtime_identity_sha256": "e37a6d9cf8e2c2a1c7e1f7e11b08b6d36b915ed72ff5484148d67f690a42f07a",
+  "scope": "LOCAL_SYNTHETIC_ONLY: prior personal trial plus latest delegated automation and independent evidence review including restart/dualDB-original restore",
+  "formal15_run_sha256": "4cdcf3912d04491028be37fcf56c8265aa920ea39dcfa3599fbbf693cb490075",
+  "excluded_authority": [
+    "R01",
+    "deployment",
+    "paid_services",
+    "hosted_native_dispatch"
+  ],
+  "cryptographic_owner_signature": "NOT_CLAIMED_CHAT_CONFIRMATION_ONLY"
+}
