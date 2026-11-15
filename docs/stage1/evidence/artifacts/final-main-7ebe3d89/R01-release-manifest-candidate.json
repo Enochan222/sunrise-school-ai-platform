@@ -1,0 +1,172 @@
+{
+  "type": "R01_RELEASE_MANIFEST_CANDIDATE_NOT_AUTHORIZED",
+  "manifest_id": "R01",
+  "stage": 1,
+  "owner_track": "A",
+  "source_commit": "7ebe3d89e49ca5623030427c73804da12021552b",
+  "source_tree": "658d687edd7f63139db5750d0b8aea06b091acdd",
+  "environment": "OWNER_APPROVED_LOCAL_ISOLATED_SYNTHETIC_ACCEPTANCE_ONLY",
+  "captured_runtime_identity_sha256": "e37a6d9cf8e2c2a1c7e1f7e11b08b6d36b915ed72ff5484148d67f690a42f07a",
+  "four_service_owners": {
+    "A": {
+      "state": "IMPLEMENTED_LOCAL_TECHNICAL_ACCEPTANCE_PASS",
+      "git_sha": "7ebe3d89e49ca5623030427c73804da12021552b",
+      "physical_component_image_ids": {
+        "a_db": "sha256:90ed01369decb50684b3c0366ae92bd2eb2a78f39f336760b6f9af0d06e1474e",
+        "native": "sha256:5cd67e713a800073434769378f4323335d52edd3202b313db03db5f9cebb006a",
+        "on_db": "sha256:90ed01369decb50684b3c0366ae92bd2eb2a78f39f336760b6f9af0d06e1474e"
+      },
+      "surreal_registry_digest": "sha256:e3322f21b3135dd4893e6487874481333b03bc731d7da200d716a8564b4f0a92",
+      "native_image_kind": "LOCAL_BUILD_IMMUTABLE_IMAGE_ID_NOT_REGISTRY_DIGEST",
+      "gateway_execution": "PINNED_PYTHON_3_11_11_HOST_PROCESS_NOT_CONTAINERIZED",
+      "db_migration_hash": "2cc946d2368d1ab1d3e51d07b32ac57ff0021bb4bc3be7c007e5e681261ee6ea",
+      "schema_version_candidate": "A_STAGE1_INITIAL_SCHEMA_SHA256:2cc946d2368d1ab1d3e51d07b32ac57ff0021bb4bc3be7c007e5e681261ee6ea",
+      "schema_version_note": "Candidate schema identity is exact executed SCHEMA SQL; no invented numeric DB version marker",
+      "minimal_implemented_api": "vault/v1 S1 eight routes; S2 consumer freeze not claimed",
+      "compose_sha256": "587a6a16e8709e9be386e48b537c81e038fd74f2f199fc37802819150598a29a"
+    },
+    "B": {
+      "state": "NOT_IMPLEMENTED_NOT_DEPLOYED",
+      "git_sha": null,
+      "image_digest": null,
+      "schema": null,
+      "changed": false
+    },
+    "I": {
+      "state": "NOT_IMPLEMENTED_NOT_DEPLOYED",
+      "git_sha": null,
+      "image_digest": null,
+      "schema": null,
+      "changed": false
+    },
+    "U": {
+      "state": "NOT_IMPLEMENTED_NOT_DEPLOYED",
+      "git_sha": null,
+      "image_digest": null,
+      "schema": null,
+      "changed": false
+    }
+  },
+  "native_source": {
+    "commit": "5e285b7a2e435895c4ee99ad7e4b8d2af64c3239",
+    "tree": "2d101001de594c7d6a0e4aaeb8e85ac4c52980af",
+    "patch_provenance_sha256": "e02d793b9a3972ad5aacda41fc74ef2899c3917be0fc71701950b46e509e00d6"
+  },
+  "api_contracts": {
+    "a_openapi_sha256": "dc501dc18bcc3c4d5b2a30781f45f3225780fc564827cb6dc0001e2c6c3ef0bd",
+    "status": "CANDIDATE_S1_PROVIDER_TESTED_NOT_S2_CONSUMER_FREEZE"
+  },
+  "feature_flags": {
+    "embedding": "OFF",
+    "external_ai": "OFF_PRIVATE_NATIVE_NETWORK_AND_NO_PROVIDER_CREDENTIALS",
+    "raw_native_public_access": "DENIED",
+    "gateway_tls": "STRICT",
+    "a_on_db_physical_isolation": true
+  },
+  "security_data_classification": "SYNTHETIC_ONLY_OWNER_SIGNED_FULL_A_NATIVE_DB_AND_ORIGINALS_REVIEW",
+  "backup_restore": {
+    "recovery_point": "formal_loop_09c5040b472f1738",
+    "cold_bundle_sha256": "ffd3d226c5006bcf5f755f60eb183a111b1e3150b9c918ccac150b512b145bc4",
+    "formal_restore_evidence_sha256": "a96eac76b9301d44f747160ac1711c859d01a70de97197136c7aa9d151c892c5",
+    "two_physical_dbs_and_originals_keys": true,
+    "same_source_before_after_verified": true,
+    "observed_db_and_native_readback_restore_seconds": 13.700125,
+    "whole_gateway_user_availability_rto": "NOT_RUN_NOT_THE_RESTORE_TARGET_SCOPE",
+    "rpo_observation": "Zero verified inventory/original differences at the explicit frozen recovery point; no ongoing backup SLA inferred",
+    "backup_frequency": "OWNER_OPERATIONAL_DECISION_PENDING",
+    "offline_key_escrow_status": "LOCAL_PRIVATE_TEST_ESCROW_USED; OFF_HOST_DISASTER_POLICY_NOT_APPROVED"
+  },
+  "rollback": "Retain frozen source/volumes; restore exact tested image/schema/recovery point into new isolated target; unsafe image-only downgrade prohibited; no destructive rollback",
+  "uat": {
+    "status": "ACCEPTED",
+    "receipt_sha256": "8f44b439f5f18b31f3fe7d7f19a33aa2ff29ce93fec18cb2d013e8a11fe5638b",
+    "scope": "LOCAL_SYNTHETIC_ONLY"
+  },
+  "technical_review": {
+    "status": "VERIFIED_LATEST_LOCAL_CASES",
+    "review_sha256": "1baa656688def171a67c134eb1bf7652f31f0bbcb474acbd6abf5a84ff078301",
+    "human_release_signoff": "PENDING"
+  },
+  "evidence": {
+    "formal15_run_sha256": "4cdcf3912d04491028be37fcf56c8265aa920ea39dcfa3599fbbf693cb490075",
+    "cases": {
+      "S1-AT01": {
+        "status": "PASS",
+        "evidence_sha256": "a261630b50745211d7b65ce83e839bf271dc9bbccec43e45c20ee56fa3058ebd"
+      },
+      "S1-AT02": {
+        "status": "PASS",
+        "evidence_sha256": "a22f754048f6216afd59b2b2950638ecc0c54a4d47f62991bfef5244da3f616d"
+      },
+      "S1-AT03": {
+        "status": "PASS",
+        "evidence_sha256": "1c02d338bc18187fb336b650e8280ba43c00136477c0a7373ebe9cd880fc6e42"
+      },
+      "S1-AT04": {
+        "status": "PASS",
+        "evidence_sha256": "810c0dc7eaa528f05b0c5fd7924f69ed3eae415ce4e6b8a881c93bf32acd5e60"
+      },
+      "S1-AT05": {
+        "status": "PASS",
+        "evidence_sha256": "433801f48754ef82b01cda26b25e3f8e77ecee88238aee16a9bcc4bd3f52f4e8"
+      },
+      "S1-AT06": {
+        "status": "PASS",
+        "evidence_sha256": "fb4ef44e084106ea991ce51119d335b99ec3a2e493c32ef305dd20ac4e220a8d"
+      },
+      "S1-AT07": {
+        "status": "PASS",
+        "evidence_sha256": "6bc76cadbedf2b1ba628fa06cfcc39dd97f0be5e4fc93f78c21660468af871d7"
+      },
+      "S1-AT08": {
+        "status": "PASS",
+        "evidence_sha256": "dc21ba9c1c61f7756aa8de71d8f212dc7f9fe9b8a15d8e0924ee369513b6695e"
+      },
+      "S1-AT09": {
+        "status": "PASS",
+        "evidence_sha256": "f5ff2a1c6a99dce260593f68ef7d3f32ddbfacf0c7937b49ae312cdff06196be"
+      },
+      "S1-AT10": {
+        "status": "PASS",
+        "evidence_sha256": "8961e797de4d2419110fdf6f094068be9711476f361b71f3462f9df0ca5b3e37"
+      },
+      "S1-AT11": {
+        "status": "PASS",
+        "evidence_sha256": "e164307e7dc8e4220c0294ebd2615318f84425a537344fabf0a1d8f046e6df94"
+      },
+      "S1-AT12": {
+        "status": "PASS",
+        "evidence_sha256": "9d35b682179a37b97a58bd0b5cb830e7deeb262b2af1fa3f0f79640aecc1ac96"
+      },
+      "S1-AT13": {
+        "status": "PASS",
+        "evidence_sha256": "85ad77c13eee8f92f8c8cbd3daf9288e86a2cec441af699165f463d6bdec513b"
+      },
+      "S1-AT14": {
+        "status": "PASS",
+        "evidence_sha256": "1c052712c52a94e60bdb6b1b0c12a7424165a3e9e8e87f0bf9e2cca7219c5998"
+      },
+      "S1-AT15": {
+        "status": "PASS",
+        "evidence_sha256": "e1c6705296a46c3cebb73c445d13fd3272cc8b90c8e8f27c02829aa778bbdd68"
+      }
+    },
+    "full_regression": 500,
+    "raw_formal_child_traces": 18,
+    "raw_trace_limit": "All18 immediate child stdout/stderr retained; nested pytest stdout inside regression.py only hashed by that child. Separate same-source full500 console and independent500 console retained."
+  },
+  "release_decision": {
+    "R01": "NOT_APPROVED",
+    "verdict": "NO_GO_PENDING_SEPARATE_RELEASE_AUTHORITY_AND_MANIFEST_SIGNOFF",
+    "deployment": "NOT_AUTHORIZED",
+    "paid_services": "NOT_AUTHORIZED",
+    "hosted_native": "NOT_RUN_NO_DISPATCH_AUTHORIZED",
+    "host_region_network_operator_policy": "OWNER_SIGNOFF_PENDING_NOT_INFERRED_FROM_TIMEZONE",
+    "rights_privacy_production": "NOT_AUTHORIZED_SYNTHETIC_ONLY"
+  },
+  "signature": {
+    "status": "UNSIGNED_PENDING_RELEASE_AUTHORITY",
+    "do_not_infer_approval_from_case_pass": true
+  },
+  "recorded_utc": "2026-11-15T15:21:56.379317+00:00"
+}
