@@ -1,0 +1,60 @@
+{
+  "type": "SOURCE_BOUND_LOCAL_ACCEPTANCE_AND_OWNER_UAT",
+  "formal15_source": {
+    "commit": "6b2a9f61613b7fc2903ec01b2a2113105c638e19",
+    "tree": "851a3f7faf4a4b42958495f9f5dbfde7667d4b70"
+  },
+  "formal15_cases": {
+    "S1-AT01": "PASS",
+    "S1-AT02": "PASS",
+    "S1-AT03": "PASS",
+    "S1-AT04": "PASS",
+    "S1-AT05": "PASS",
+    "S1-AT06": "PASS",
+    "S1-AT07": "PASS",
+    "S1-AT08": "PASS",
+    "S1-AT09": "PASS",
+    "S1-AT10": "PASS",
+    "S1-AT11": "PASS",
+    "S1-AT12": "PASS",
+    "S1-AT13": "PASS",
+    "S1-AT14": "PASS",
+    "S1-AT15": "PASS"
+  },
+  "integration_tested_source": {
+    "commit": "a547e089cae027999fb2854837b533ede24d05b6",
+    "tree": "5c7260fee0e7486861de015085bc97c90410165f"
+  },
+  "owner_UAT": "ACCEPTED",
+  "owner_reply_verbatim": "接受這份 UAT 結果",
+  "accepted_recorded_utc": "2026-11-15T09:58:16.236389+00:00",
+  "manual_scope": [
+    "login",
+    "create_shell",
+    "upload_pdf",
+    "search_download",
+    "logout_relogin"
+  ],
+  "delegated_scope": [
+    "empty_shell_isolation",
+    "archive",
+    "archived_search_download_hash",
+    "archive_persisted_after_relogin"
+  ],
+  "delegated_checks": {
+    "synthetic_positive_search_download_baseline": "PASS",
+    "empty_shell_has_no_foreign_results": "PASS",
+    "archive_state_and_upload_hidden": "PASS",
+    "archived_search_and_original_download": "PASS",
+    "archive_persisted_after_relogin": "PASS"
+  },
+  "runtime_identity_sha256": "669b3af68b458d221fd4cbe49e5118052d5db4fb0291e0708d70bb10b92e100e",
+  "delegated_test_exit_code": 0,
+  "delegated_test_completed_utc": "2026-11-15T09:52:15.443119+00:00",
+  "independent_agent_review": "NO_ACTIONABLE_P1_P2_IN_REVIEWED_SCOPE",
+  "R01": "NOT_APPROVED",
+  "human_github_review": "PENDING",
+  "hosted_native": "NOT_RUN",
+  "formal15_latest_integration": "NOT_RUN",
+  "owner_acceptance_evidence": "Explicit chat response, not a claimed private-key signature"
+}
