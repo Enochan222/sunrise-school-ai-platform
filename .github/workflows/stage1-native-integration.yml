@@ -3,11 +3,11 @@ on:
   workflow_dispatch:
     inputs:
       target_ref:
-        description: 'Exact reviewed tested 40-hex Git SHA'
+        description: 'Exact reviewed Stage 1 A source commit (40 lowercase hex)'
         type: string
         required: true
       surreal_digest:
-        description: 'Compatible approved SurrealDB v2.3.10 image 64-hex SHA256 digest'
+        description: 'Approved SurrealDB v2.3.10 registry digest (64 lowercase hex, without sha256:)'
         type: string
         required: true
 permissions:
@@ -21,155 +21,134 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - name: Validate requested revision and image digest
+      - name: Validate manually selected source and immutable image digest
         shell: bash
         env:
           TARGET_REF: ${{ inputs.target_ref }}
           SURREAL_DIGEST: ${{ inputs.surreal_digest }}
         run: |
           set -Eeuo pipefail
-          [[ "$TARGET_REF" =~ ^[0-9a-f]{40}$ ]] || { echo 'Expected a full commit SHA'; exit 2; }
-          [[ "$SURREAL_DIGEST" =~ ^[0-9a-f]{64}$ ]] || { echo 'Expected a full image digest'; exit 2; }
-          echo "WORKFLOW_SHA=$GITHUB_SHA REQUESTED_SHA=$TARGET_REF UTC=$(date -u +%FT%TZ)"
-      - name: Checkout reviewed Stage 1 SHA
+          [[ "$TARGET_REF" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid 40-hex reviewed source SHA'; exit 2; }
+          [[ "$SURREAL_DIGEST" =~ ^[0-9a-f]{64}$ ]] || { echo 'Invalid 64-hex approved SurrealDB digest'; exit 2; }
+          [[ "$GITHUB_REF" == refs/heads/main ]] || { echo 'Manual dispatch must originate on main'; exit 2; }
+          echo "DISPATCH_SHA=$GITHUB_SHA TARGET_REF=$TARGET_REF UTC=$(date -u +%FT%TZ)"
+      - name: Checkout exact reviewed source, not floating PR head
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # reviewed v4.2.2
         with:
           ref: ${{ inputs.target_ref }}
           persist-credentials: false
-      - name: Python 3.12 driver
+      - name: Python 3.12 synthetic test driver
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # reviewed v5.6.0
         with:
           python-version: '3.12'
-      - name: Pinned real Native Runtime smoke (NO deployment)
+      - name: Pinned dual-physical-DB native bootstrap and bounded smoke (NOT formal AT)
         shell: bash
         env:
-          SOURCE_PIN: 5e285b7a2e435895c4ee99ad7e4b8d2af64c3239
-          TREE_PIN: 2d101001de594c7d6a0e4aaeb8e85ac4c52980af
           TARGET_REF: ${{ inputs.target_ref }}
           SURREAL_DIGEST: ${{ inputs.surreal_digest }}
         run: |
           set -Eeuo pipefail
-          [[ "$TARGET_REF" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid reviewed SHA'; exit 2; }
-          [[ "$(git rev-parse HEAD)" == "$TARGET_REF" ]] || { echo 'Tested git SHA mismatch'; exit 2; }
-          [[ "$SURREAL_DIGEST" =~ ^[0-9a-f]{64}$ ]] || { echo 'Missing immutable SurrealDB digest'; exit 2; }
-          echo "TESTED_SHA=$TARGET_REF UTC=$(date -u +%FT%TZ)"
-          SURREAL_USER="sunrise_$(python -c 'import secrets; print(secrets.token_hex(5))')"
-          SURREAL_PASSWORD="$(python -c 'import secrets; print(secrets.token_urlsafe(42))')"
-          OPEN_NOTEBOOK_PASSWORD="$(python -c 'import secrets; print(secrets.token_urlsafe(42))')"
-          OPEN_NOTEBOOK_ENCRYPTION_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
-          for value in "$SURREAL_PASSWORD" "$OPEN_NOTEBOOK_PASSWORD" "$OPEN_NOTEBOOK_ENCRYPTION_KEY"; do echo "::add-mask::$value"; done
-          export SURREAL_USER SURREAL_PASSWORD OPEN_NOTEBOOK_PASSWORD OPEN_NOTEBOOK_ENCRYPTION_KEY
-          export ON_SOURCE_DIR="$RUNNER_TEMP/on-verified"
-          export ON_PATCHED_DIR="$RUNNER_TEMP/on-patched"
-          COMPOSE="scripts/stage1/compose.native.synthetic.yml"
-          OVERRIDE="$RUNNER_TEMP/surreal-immutable-override.yml"
-          IMAGE="surrealdb/surrealdb@sha256:$SURREAL_DIGEST"
-          trap 'docker compose -f "$COMPOSE" -f "$OVERRIDE" down --volumes --remove-orphans >/dev/null 2>&1 || true' EXIT
-          git clone --quiet https://github.com/lfnovo/open-notebook.git "$ON_SOURCE_DIR"
-          git -C "$ON_SOURCE_DIR" checkout --quiet --detach "$SOURCE_PIN"
-          [[ "$(git -C "$ON_SOURCE_DIR" rev-parse HEAD)" == "$SOURCE_PIN" ]]
-          [[ "$(git -C "$ON_SOURCE_DIR" rev-parse HEAD^{tree})" == "$TREE_PIN" ]]
-          bash scripts/stage1/prepare_native_checkout.sh
-          echo "PINNED_SOURCE_AND_PATCH_PROVENANCE=VERIFIED"
-          cat "$ON_PATCHED_DIR/.sunrise-patch-provenance.json"
-          sha256sum scripts/stage1/{patch_pinned_native.py,prepare_native_checkout.sh,native_runtime_smoke.py,compose.native.synthetic.yml}
-          docker pull "$IMAGE"
-          docker run --rm --network none "$IMAGE" version | tee "$RUNNER_TEMP/surreal-version.txt"
-          grep -F '2.3.10' "$RUNNER_TEMP/surreal-version.txt"
-          printf 'services:\n  surrealdb:\n    image: surrealdb/surrealdb@sha256:%s\n' "$SURREAL_DIGEST" > "$OVERRIDE"
-          docker compose -f "$COMPOSE" -f "$OVERRIDE" config --quiet
-          docker compose -f "$COMPOSE" -f "$OVERRIDE" up --build -d
-          docker image inspect sunrise-on-s1-v1.15.1-text-only:local --format '{{.Id}}'
-          docker image inspect "$IMAGE" --format '{{.Id}} {{json .RepoDigests}}'
-          READY=0
-          for attempt in $(seq 1 80); do
-            if curl --silent --fail http://127.0.0.1:5055/health >/dev/null 2>&1; then READY=1; break; fi
-            sleep 3
+          [[ "$TARGET_REF" =~ ^[0-9a-f]{40}$ && "$SURREAL_DIGEST" =~ ^[0-9a-f]{64}$ ]] || exit 2
+          [[ "$(git rev-parse HEAD)" == "$TARGET_REF" ]] || { echo 'Target source SHA mismatch'; exit 2; }
+          test -f scripts/stage1/native_runtime_prepare.sh || { echo 'Dual-DB bootstrap absent at requested SHA'; exit 2; }
+          test -f scripts/stage1/compose.native.synthetic.yml || exit 2
+          test -f scripts/stage1/loopback_port_contract.py || exit 2
+          test -f scripts/stage1/native_runtime_smoke.py || exit 2
+          SOURCE_TREE="$(git rev-parse HEAD^{tree})"
+          echo "TESTED_SHA=$TARGET_REF TESTED_TREE=$SOURCE_TREE"
+          # Only synthetic credentials. They remain in this step's process environment.
+          secret() { python -c 'import secrets;print(secrets.token_urlsafe(48))'; }
+          export A_SURREAL_USER=stage1_a_ci A_SURREAL_PASSWORD="$(secret)"
+          export A_SURREAL_NAMESPACE=stage1_a A_SURREAL_DATABASE=journal_ci
+          export ON_SURREAL_USER=stage1_on_ci ON_SURREAL_PASSWORD="$(secret)"
+          export ON_GRAPH_NAMESPACE=stage1_on ON_GRAPH_DATABASE=notebooks_ci
+          export ON_GRAPH_VIEWER_USER=stage1_viewer ON_GRAPH_VIEWER_PASSWORD="$(secret)"
+          export OPEN_NOTEBOOK_PASSWORD="$(secret)" OPEN_NOTEBOOK_ENCRYPTION_KEY="$(secret)"
+          for name in A_SURREAL_PASSWORD ON_SURREAL_PASSWORD ON_GRAPH_VIEWER_PASSWORD OPEN_NOTEBOOK_PASSWORD OPEN_NOTEBOOK_ENCRYPTION_KEY; do
+            echo "::add-mask::${!name}"
           done
-          [[ "$READY" == 1 ]] || { echo 'FAIL: ON API startup/migration'; exit 1; }
+          export VAULT_RUNTIME_SYNTHETIC_CONFIRM=YES VAULT_EXCLUSIVE_SYNTHETIC_PROJECT=YES
+          export VAULT_DOCKER_CONTEXT=default
+          export VAULT_SYNTHETIC_PROJECT="sunrise-s1-gha-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          export VAULT_SURREAL_IMAGE_DIGEST="sha256:$SURREAL_DIGEST"
+          export ON_SOURCE_DIR="$RUNNER_TEMP/on-upstream-pinned"
+          export ON_PATCHED_DIR="$RUNNER_TEMP/on-patched-fresh"
+          # This synthetic CORS origin / CA satisfies bootstrap configuration only.
+          # No TLS Gateway is started or counted as an acceptance PASS here.
+          export VAULT_GATEWAY_ORIGIN=https://127.0.0.1:9443
+          export VAULT_GATEWAY_CA_FILE="$RUNNER_TEMP/synthetic-gateway-ca.pem"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -subj '/CN=Sunrise CI Synthetic CA' \
+            -keyout "$RUNNER_TEMP/synthetic-gateway-ca-key.pem" \
+            -out "$VAULT_GATEWAY_CA_FILE" >/dev/null 2>&1
+          # Choose three distinct ephemeral loopback ports. A later Docker bind
+          # conflict fails closed; this does not claim a reserved-port lease.
+          read -r VAULT_A_RELAY_PORT VAULT_ON_RELAY_PORT VAULT_NATIVE_RELAY_PORT < <(
+            python - <<'PY_PORTS'
+          import socket
+          ports=[]
+          for _ in range(3):
+              for attempt in range(30):
+                  with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as s:
+                      s.bind(('127.0.0.1',0))
+                      port=s.getsockname()[1]
+                  if port not in ports:
+                      ports.append(port)
+                      break
+              else:
+                  raise SystemExit('Unable to obtain three distinct loopback ports')
+          print(*ports)
+          PY_PORTS
+          )
+          export VAULT_A_RELAY_PORT VAULT_ON_RELAY_PORT VAULT_NATIVE_RELAY_PORT
           python -m pip install --disable-pip-version-check -r apps/a-vault/requirements-dev.txt
-          # Run WP03 in this SAME shell on the already started private services.
-          # Temporary credentials need not persist across Github Actions steps.
-          # A journal namespace/database stays isolated from native Open Notebook.
-          for file in apps/a-vault/surreal_store.py scripts/stage1/surreal_journal_smoke.py; do
-            [[ -f "$file" ]] || { echo "WP03 reviewed target lacks $file"; exit 2; }
+          git clone --quiet https://github.com/lfnovo/open-notebook.git "$ON_SOURCE_DIR"
+          git -C "$ON_SOURCE_DIR" checkout --quiet --detach 5e285b7a2e435895c4ee99ad7e4b8d2af64c3239
+          [[ "$(git -C "$ON_SOURCE_DIR" rev-parse HEAD)" == 5e285b7a2e435895c4ee99ad7e4b8d2af64c3239 ]] || exit 2
+          [[ "$(git -C "$ON_SOURCE_DIR" rev-parse HEAD^{tree})" == 2d101001de594c7d6a0e4aaeb8e85ac4c52980af ]] || exit 2
+          [[ -z "$(git -C "$ON_SOURCE_DIR" status --porcelain)" ]] || exit 2
+          docker pull surrealdb/surrealdb:v2.3.10
+          docker image inspect surrealdb/surrealdb:v2.3.10 \
+            --format '{{json .RepoDigests}}' | grep -F "@sha256:$SURREAL_DIGEST" >/dev/null || {
+              echo 'SurrealDB v2.3.10 tag does not match approved immutable registry digest'; exit 2;
+            }
+          docker run --rm --network none surrealdb/surrealdb:v2.3.10 version | grep -F '2.3.10'
+          # Canonical PR14 dual-DB bootstrap: separate A/ON networks and volumes;
+          # only no-secret relay services may bind 127.0.0.1 host ports.
+          bash scripts/stage1/native_runtime_prepare.sh
+          for service in a_db on_db native; do
+            python scripts/stage1/loopback_port_contract.py \
+              --context "$VAULT_DOCKER_CONTEXT" --project "$VAULT_SYNTHETIC_PROJECT" \
+              --compose-file scripts/stage1/compose.native.synthetic.yml --service "$service" \
+              > "$RUNNER_TEMP/relay-$service-redacted.json"
           done
-          export VAULT_RUNTIME_SYNTHETIC_CONFIRM=YES
-          export VAULT_SURREAL_WS_URL=ws://127.0.0.1:8000/rpc
-          export VAULT_SURREAL_USER="$SURREAL_USER"
-          export VAULT_SURREAL_PASSWORD="$SURREAL_PASSWORD"
-          export VAULT_SURREAL_NAMESPACE="sunrise_stage1_a"
-          export VAULT_SURREAL_DATABASE="journal_wp03_${GITHUB_RUN_ID}"
-          export VAULT_JOURNAL_EVIDENCE="$RUNNER_TEMP/wp03-journal-redacted.json"
-          echo "WP03_JOURNAL_START_UTC=$(date -u +%FT%TZ) TESTED_SHA=$TARGET_REF"
-          python scripts/stage1/surreal_journal_smoke.py
-          python - "$VAULT_JOURNAL_EVIDENCE" <<'PY_WP03'
+          NATIVE_PORT="$(python -c 'import json,sys;print(json.load(open(sys.argv[1]))["port"])' "$RUNNER_TEMP/relay-native-redacted.json")"
+          [[ "$NATIVE_PORT" =~ ^[0-9]{4,5}$ ]] || exit 2
+          READY=NO
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --max-time 3 "http://127.0.0.1:$NATIVE_PORT/health" >/dev/null; then
+              READY=YES; break
+            fi
+            sleep 2
+          done
+          [[ "$READY" == YES ]] || { echo 'Pinned Native API did not become healthy'; exit 1; }
+          python scripts/stage1/native_runtime_smoke.py \
+            --host "http://127.0.0.1:$NATIVE_PORT" \
+            --out "$RUNNER_TEMP/native-runtime-redacted.json"
+          python - "$RUNNER_TEMP/native-runtime-redacted.json" <<'PY_REPORT'
           import json,sys
-          with open(sys.argv[1],encoding='utf-8') as f: result=json.load(f)
-          required={
-              'real_surrealdb_unique_operation_reservation',
-              'different_body_conflict',
-              'same_key_concurrent_no_second_reservation',
-              'real_native_crash_after_create_before_journal_commit',
-              'marker_reconciliation_unique_mapping',
-              'same_key_replay_original_notebook',
-              'cross_school_shell_negative',
-          }
-          observed=result.get('results',{})
-          if result.get('status')!='PASS' or any(observed.get(k)!='PASS' for k in required):
-              raise SystemExit('WP03 real DB and Native smoke incomplete or FAIL')
-          # The original seven flat PASS flags are necessary, not sufficient.
-          # Reject absent/malformed nested race and real lost-ACK evidence.
-          import re
-          modes={'same_key_same_body','different_key_same_scope','same_key_different_body'}
-          races=observed.get('fresh_first_reservation_races')
-          if not isinstance(races,dict) or set(races)!=modes:
-              raise SystemExit('WP03 missing three fresh first-reservation race modes')
-          for mode in sorted(modes):
-              item=races[mode]
-              if not isinstance(item,dict):
-                  raise SystemExit('WP03 malformed race mode: '+mode)
-              counts=item.get('outcomes')
-              if (not isinstance(counts,dict) or
-                  set(counts)-{'FRESH','REPLAY','CONFLICT','INDETERMINATE'} or
-                  any(type(v) is not int or v<0 for v in counts.values()) or
-                  counts.get('FRESH')!=1 or counts.get('REPLAY',0)!=0 or
-                  sum(counts.values())!=8):
-                  raise SystemExit('WP03 first-claim count/race violated: '+mode)
-              for key in ('durable_operations','durable_scope_claims',
-                          'durable_shells','native_create_posts'):
-                  if type(item.get(key)) is not int or item[key]!=1:
-                      raise SystemExit('WP03 native durable race result incomplete: '+mode+'.'+key)
-          ack=observed.get('real_native_lost_ack_tcp')
-          if (not isinstance(ack,dict) or
-              type(ack.get('native_create_posts')) is not int or
-              ack['native_create_posts']!=1 or
-              ack.get('client_received_post_ack') is not False or
-              type(ack.get('persisted_mapping_count')) is not int or
-              ack['persisted_mapping_count']!=1 or
-              not isinstance(ack.get('original_notebook_sha256'),str) or
-              not re.fullmatch('[a-f0-9]{64}',ack['original_notebook_sha256'])):
-              raise SystemExit('WP03 genuine TCP lost-ACK recovery not proven')
-          print('WP03_FRESH_RACES_VALIDATED='+','.join(sorted(modes)))
-          print('WP03_TCP_LOST_ACK_VALIDATED=TRUE')
-          print('WP03_REAL_RUNTIME_RESULTS='+json.dumps({k:observed[k] for k in sorted(required)}))
-          print('WP03_START_UTC='+result.get('start_utc','')+
-                ' END_UTC='+result.get('end_utc',''))
-          print('WP03_NATIVE_ID_SHA256='+result.get('notebook_id_sha256',''))
-          PY_WP03
-          sha256sum "$VAULT_JOURNAL_EVIDENCE"
-          echo "WP03_JOURNAL_END_UTC=$(date -u +%FT%TZ)"
-          python scripts/stage1/native_runtime_smoke.py --host http://127.0.0.1:5055 --out "$RUNNER_TEMP/native-runtime-redacted.json"
-          python - "$RUNNER_TEMP/native-runtime-redacted.json" <<'PY'
-          import json,sys
-          x=json.load(open(sys.argv[1],encoding='utf-8'))
-          if x['status']!='PASS':raise SystemExit('Native smoke reported FAIL')
-          # Source readback is not a Graph Link/Unlink or School IDOR negative test.
-          tests=dict(x['runtime_tests'])
-          if tests.pop('graph_owner_readback',None)=='PASS':tests['owner_readback_partial']='PASS (partial only)'
-          for name in ['actual_link_unlink_negative','ack_loss_crash_injection','worker_retry_fault_injection','independent_restore','owner_uat']:
-              tests[name]='NOT_RUN'
-          print('RUNTIME_PROBE_RESULTS='+json.dumps(tests,ensure_ascii=False,sort_keys=True))
-          print('START_UTC='+x.get('start_utc','')+' END_UTC='+x.get('end_utc',''))
-          print('PDF_SHA256='+x.get('pdf_sha256','')+' SOURCE_PIN='+x.get('source_pin',''))
-          PY
+          report=json.load(open(sys.argv[1],encoding='utf-8'))
+          required={'notebook_create','pdf_submit_embed_off','native_worker_pdf_extraction',
+                    'original_hash','scoped_bm25','traditional_chinese_scoped_text_search',
+                    'traditional_chinese_foreign_notebook_denial'}
+          checks=report.get('runtime_tests',{})
+          if report.get('status')!='PASS' or any(checks.get(k)!='PASS' for k in required):
+              raise SystemExit('Real pinned Native PDF/Worker/Search smoke failed')
+          print('DUAL_DB_BOOTSTRAP_AND_NATIVE_SMOKE=PASS')
+          print('FORMAL_S1_AT01_15=NOT_RUN')
+          print('GATEWAY_TLS_AND_EXTERNAL_OBSERVER=NOT_RUN')
+          print('WP03_AT06_JOURNAL_ACK_LOSS=NOT_RUN')
+          print('COLD_RESTORE_AND_OWNER_UAT=NOT_RUN')
+          PY_REPORT
+          sha256sum "$RUNNER_TEMP/native-runtime-redacted.json" "$RUNNER_TEMP"/relay-*-redacted.json
+          # No automated volume deletion/prune: this is an ephemeral hosted runner.
