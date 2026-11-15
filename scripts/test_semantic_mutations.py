@@ -21,7 +21,7 @@ for label,path,fn,needle in M:
   dst=Path(td);shutil.copytree(src,dst,dirs_exist_ok=True)
   p=dst/('{}.github/CODEOWNERS'.format('') if path.startswith('/') else path)
   if path.startswith('/'):
-   old=p.read_text();new=old.replace('@Enochan222','@WrongUser');needle='new repo CODEOWNERS owner matches'
+   old=p.read_text();new=old.replace('@IssacSitHk','@WrongUser');needle='new repo CODEOWNERS owner matches'
   else:
    old=p.read_text();new=fn(old)
   assert old!=new, f'{label}: mutation did not alter file'
