@@ -8,10 +8,14 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
 import re
+import time
 from urllib.parse import urlsplit
 
 import httpx
+
+_LOG = logging.getLogger(__name__)
 
 
 class NativeUnavailable(Exception):
@@ -62,12 +66,20 @@ class Native:
         r.raise_for_status()
 
     async def _request(self, method: str, path: str, **kwargs) -> httpx.Response:
+        started = time.monotonic()
+        # Only a fixed route category may appear in diagnostic logs. Source IDs,
+        # query terms, credentials and request/response payloads stay private.
+        endpoint = ('search' if path == '/api/search' else
+                    'patch_attestation' if path == '/api/sunrise-patch-status' else
+                    'source' if path.startswith('/api/sources/') else 'other')
         async with self._client() as client:
             try:
                 r = await client.request(method, path, **kwargs)
                 self._checked_response(r)
                 return r
             except (httpx.RequestError, httpx.HTTPStatusError) as e:
+                _LOG.warning('Native request unavailable endpoint=%s elapsed_ms=%.1f error_type=%s',
+                             endpoint, (time.monotonic()-started)*1000, type(e).__name__)
                 raise NativeUnavailable('Native Open Notebook request unavailable or rejected') from e
 
     async def create_notebook(self, name: str, marker: str | None = None) -> str:

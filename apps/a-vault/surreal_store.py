@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 import time
 import uuid
@@ -25,6 +26,7 @@ from native import checked_id
 
 _SAFE = re.compile(r'^[A-Za-z0-9_-]{1,100}$')
 _COLUMNS = ('academic_year', 'grade', 'subject', 'curriculum_stream')
+_LOG = logging.getLogger(__name__)
 
 # Require explicit existence of indexes. Do not silently accept an unindexed DB.
 SCHEMA = '''
@@ -170,12 +172,15 @@ class RPC:
     def query(self, sql:str, variables:dict|None=None):
         sql, variables = prepare_surreal_v2(sql, variables)
         # Close on transport ambiguity: one request contains the *entire* transaction.
+        phase = 'connect'
+        phase_started = time.monotonic()
         try:
             with connect(self.cfg.ws_url, subprotocols=["json"], open_timeout=self.cfg.timeout,
                          close_timeout=2, max_size=4*1024*1024) as ws:
                 counter=0
                 def call(method, params):
-                    nonlocal counter
+                    nonlocal counter, phase, phase_started
+                    phase, phase_started = method, time.monotonic()
                     counter+=1
                     ws.send(json.dumps({'id':counter,'method':method,'params':params},
                         separators=(',',':'),ensure_ascii=False))
@@ -187,6 +192,11 @@ class RPC:
                 call('use',[self.cfg.namespace,self.cfg.database])
                 response=call('query',[sql,variables])
         except (OSError,TimeoutError,WebSocketException,ValueError,KeyError) as exc:
+            # Fixed phase/type labels only: never log URL, SQL, bound values,
+            # credentials, response bodies or the underlying exception message.
+            # Do not retry: the server may have committed an unacknowledged write.
+            _LOG.warning('A database RPC unavailable phase=%s elapsed_ms=%.1f error_type=%s',
+                         phase, (time.monotonic()-phase_started)*1000, type(exc).__name__)
             raise SurrealUnavailable('SurrealDB RPC connection/receipt uncertain') from exc
         if not isinstance(response,list):
             raise SurrealUnavailable('SurrealDB returned unexpected statement envelope')
