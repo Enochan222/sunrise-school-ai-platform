@@ -86,6 +86,16 @@ def build_app(cfg:Settings|None=None,native=None):
         cfg.maintenance_file.encode('utf-8')).hexdigest() if cfg.maintenance_file else None)
     app.state.store=store
     app.state.native=upstream
+
+    @app.exception_handler(SurrealUnavailable)
+    async def database_unavailable(req:Request, error:SurrealUnavailable):
+        # Includes authentication/session reads as well as material operations.
+        # An RPC timeout doesn't prove a write failed; don't suggest a retry or
+        # expose private transport/SQL details in a generic HTTP 500 traceback.
+        return JSONResponse(
+            {'detail':'A database unavailable; operation outcome unconfirmed'},
+            status_code=503, headers={'Cache-Control':'no-store'})
+
     # WP07: trusted local templates are served ONLY through existing Gateway routes.
     # Load once on startup, fail closed if deploy bundle omitted either HTML file.
     template_dir=Path(__file__).parent/'templates'
