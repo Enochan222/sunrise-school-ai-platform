@@ -1,4 +1,4 @@
-/* SUNRISE WP07 · Candidate UI Port · IMPLEMENTED_UNTESTED */
+/* Sunrise A-only teaching library. Auth and scope remain Gateway-owned. */
 'use strict';
 
 const $ = (id) => document.getElementById(id);
@@ -211,7 +211,11 @@ function setupAdmin() {
       .map(([, key]) => shell[key]).join(' ').toLocaleLowerCase('zh-HK').includes(filter));
     for (const shell of matches) {
       const title = [shell.subject, shell.grade, shell.academic_year, shell.curriculum_stream].join(' · ');
-      const button = element('button', title + (shell.archived ? '（已封存）' : ''), 'secondary');
+      const button = element('button', undefined, 'secondary');
+      button.setAttribute('aria-label', title + (shell.archived ? '（已封存）' : ''));
+      button.append(element('span', shell.subject + ' · ' + shell.grade, 'shell-title'),
+        element('span', shell.academic_year + ' · ' + shell.curriculum_stream
+          + (shell.archived ? ' · 已封存' : ''), 'shell-subtitle'));
       button.type = 'button';
       button.setAttribute('aria-pressed', String(shell.shell_id === state.selectedId));
       button.addEventListener('click', () => openShell(shell.shell_id, true));
@@ -364,10 +368,10 @@ function setupAdmin() {
         // Normalized by the authenticated A Gateway after live Native ownership
         // re-check; incomplete/ambiguous Worker states must never appear READY.
         const status = ({
-          READY: '已確認 Native 文字抽取完成。',
-          PROCESSING: 'Native Worker 已排隊或正在處理，請稍後手動更新。',
-          FAILED: 'Native 處理失敗；請交管理員核對，系統不會自動重送。',
-          UNKNOWN: 'Native 處理狀態未能確認，請稍後手動更新。',
+          READY: '文字處理完成，可搜尋及下載。',
+          PROCESSING: '已排隊或正在處理文字，請稍後更新列表。',
+          FAILED: '教材處理失敗，請交管理員核對；系統不會自動重送。',
+          UNKNOWN: '教材處理狀態未能確認，請稍後更新列表。',
           PENDING: '已提交處理，尚未確認 Worker 結果。',
           SUBMITTED_NATIVE_PROCESSING: '已提交處理，尚未確認 Worker 結果。'
         })[material.state] || '處理狀態未能確認。';
@@ -376,7 +380,9 @@ function setupAdmin() {
           ['版本', material.version], ['SHA-256', material.sha256], ['授權', material.license], ['保留資料', material.retention]]) {
           if (value !== undefined && value !== null) meta.append(element('dt', label), element('dd', String(value)));
         }
-        item.append(element('strong', title), meta, element('p', status),
+        const provenance = element('details', undefined, 'technical-details');
+        provenance.append(element('summary', '版本、授權與原檔校驗資料'), meta);
+        item.append(element('strong', title), element('p', status), provenance,
           downloadButton(id, material.source_id, title));
         $('materials').append(item);
       }
@@ -618,7 +624,7 @@ function setupAdmin() {
       $('sign-in-again').hidden = true;
       $('retry-session').hidden = true;
       notice('notice', '');
-      if (!state.selectedId) notice('detail-status', '請先選擇教材容器。');
+      if (!state.selectedId) notice('detail-status', '選擇教材容器，開始查閱、搜尋或下載。');
       await refreshShells();
       if (state.selectedId) await openShell(state.selectedId);
     } catch (error) {

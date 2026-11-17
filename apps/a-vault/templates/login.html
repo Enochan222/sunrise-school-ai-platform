@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Sunrise Stage 1 A-only: candidate WP07 port / IMPLEMENTED_UNTESTED -->
+<!-- Sunrise protected administrator login. -->
 <html lang="zh-Hant-HK">
 <head>
   <meta charset="utf-8">
@@ -9,20 +9,20 @@
   <script src="/assets/app.js" defer></script>
 </head>
 <body data-page="login">
-  <header class="masthead"><div class="wrap masthead-inner"><p class="brand">Sunrise <span>教材庫</span></p></div></header>
-  <main class="wrap login">
+  <header class="masthead"><div class="wrap masthead-inner"><a class="brand" href="/auth/login"><span class="brand-mark" aria-hidden="true"></span>Sunrise<span class="brand-divider">/</span><span class="brand-product">教材庫</span></a><span class="environment">本機合成測試</span></div></header>
+  <main class="wrap login"><div class="login-story"><p class="eyebrow">A HOME FOR GOOD TEACHING</p><h1>整理好教材，輕鬆備好下一課。</h1><p class="intro-copy">從整理到找到，讓每一份教材更容易派上用場。</p><div class="library-illustration" aria-hidden="true"><div class="illustration-label">SUNRISE / TEACHING LIBRARY</div><div class="illustration-book book-one"><span>01 / 整理</span><strong>一科一容器</strong><span>學年 · 年級 · 課程</span></div><div class="illustration-book book-two"><span>02 / 尋找</span><strong>用文字找教材</strong><span>在所選容器內搜尋</span></div><div class="illustration-book book-three"><span>03 / 使用</span><strong>原始 PDF</strong><span>查閱 · 下載 · 備課</span></div></div></div>
     <section class="panel" aria-labelledby="login-title">
-      <h1 id="login-title">管理員登入</h1>
+      <p class="eyebrow">WELCOME BACK</p><h2 id="login-title">管理員登入</h2>
       <p>請使用管理員密碼登入所屬學校的教材庫。</p>
       <form id="login" method="post" action="/auth/login">
         <input type="hidden" name="csrf" value="__SUNRISE_LOGIN_CSRF__">
         <label for="password">管理員密碼</label>
         <input id="password" type="password" name="password" required autocomplete="current-password">
-        <button type="submit">登入</button>
+        <button type="submit">登入教材庫 <span aria-hidden="true">→</span></button>
       </form>
       <p id="login-status" class="notice" role="status" aria-atomic="true"></p>
       <a id="reload-login" href="/auth/login" hidden>重新載入登入頁</a>
-      <p class="help">Sunrise A Vault · 本地合成開發環境；未獲准公開部署。</p>
+      <p class="help">Sunrise A Vault · 本機合成測試環境。請使用管理員提供的密碼，勿上載真實學生資料。</p>
     </section>
   </main>
 </body>
