@@ -22,6 +22,9 @@ the external hostname in `X-Forwarded-Host`. This form is accepted only from
 the actual TCP loopback peer with exactly one approved forwarded hostname and
 HTTPS protocol. Uvicorn proxy-header processing must stay disabled; arbitrary
 forwarded headers, non-loopback peers and foreign browser origins are denied.
+The tunnel also rewrites same-origin POST Origin to `https://localhost:8000`;
+this exact form additionally requires `Sec-Fetch-Site: same-origin`. Login and
+session CSRF cookies/tokens remain enforced by the unchanged Gateway.
 
 Run with the pinned A product environment:
 

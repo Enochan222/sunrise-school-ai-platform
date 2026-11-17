@@ -43,7 +43,13 @@ def build_proxy(public_host: str, ca_file: str, *, transport=None):
         if len(request.headers.getlist("host")) != 1 or (host != public_host and not tunnel):
             return JSONResponse({"detail": "Unapproved trial hostname"}, status_code=403)
         origin = request.headers.get("origin")
-        if origin is not None and origin != public_origin:
+        # The measured private tunnel also rewrites same-origin browser POSTs
+        # to https://localhost:8000. Require its verified routing envelope AND
+        # an explicit same-origin Fetch Metadata signal for that narrow form.
+        rewritten_origin = (tunnel and origin == "https://localhost:8000"
+            and request.headers.getlist("sec-fetch-site") == ["same-origin"])
+        if len(request.headers.getlist("origin")) > 1 or (
+                origin is not None and origin != public_origin and not rewritten_origin):
             return JSONResponse({"detail": "Cross-origin trial request denied"}, status_code=403)
         if request.headers.get("sec-fetch-site") not in (None, "none", "same-origin"):
             return JSONResponse({"detail": "Cross-site trial request denied"}, status_code=403)

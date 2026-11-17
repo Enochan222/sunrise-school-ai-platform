@@ -130,3 +130,26 @@ def test_ambiguous_tunnel_headers_are_denied(setup, duplicate):
     with TestClient(app, client=("127.0.0.1", 50000)) as client:
         assert client.post("/auth/login", headers=headers).status_code == 403
     assert seen == []
+
+
+@pytest.mark.parametrize("peer,fetch_site,status", [
+    ("127.0.0.1", "same-origin", 200),
+    ("127.0.0.1", "cross-site", 403),
+    ("127.0.0.1", "same-site", 403),
+    ("127.0.0.1", "none", 403),
+    ("127.0.0.1", None, 403),
+    ("203.0.113.1", "same-origin", 403),
+])
+def test_rewritten_origin_requires_verified_tunnel_and_explicit_same_origin(setup, peer, fetch_site, status):
+    _, seen, ca = setup
+    app = proxy.build_proxy(HOST, str(ca), transport=httpx.MockTransport(
+        lambda request: (seen.append(request) or httpx.Response(200))))
+    headers = {"host": "localhost:8000", "x-forwarded-host": HOST,
+        "x-forwarded-proto": "https", "origin": "https://localhost:8000"}
+    if fetch_site is not None:
+        headers["sec-fetch-site"] = fetch_site
+    with TestClient(app, client=(peer, 50000)) as client:
+        assert client.post("/auth/login", headers=headers).status_code == status
+    assert len(seen) == (1 if status == 200 else 0)
+    if seen:
+        assert seen[0].headers["origin"] == "https://127.0.0.1:18916"
