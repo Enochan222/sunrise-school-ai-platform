@@ -1,0 +1,151 @@
+[
+  {
+    "step": "unauthenticated_shells",
+    "http_status": 401,
+    "expected": 401,
+    "utc": "2026-11-17T10:54:13Z"
+  },
+  {
+    "step": "login_page",
+    "http_status": 200,
+    "expected": 200,
+    "utc": "2026-11-17T10:54:13Z"
+  },
+  {
+    "step": "real_password_login",
+    "http_status": 200,
+    "expected": 200,
+    "utc": "2026-11-17T10:54:15Z"
+  },
+  {
+    "step": "real_pending_mfa",
+    "http_status": 200,
+    "expected": 200,
+    "utc": "2026-11-17T10:54:17Z"
+  },
+  {
+    "step": "real_totp_verification",
+    "http_status": 200,
+    "expected": 200,
+    "utc": "2026-11-17T10:54:18Z"
+  },
+  {
+    "step": "real_admin_session",
+    "http_status": 200,
+    "expected": 200,
+    "utc": "2026-11-17T10:54:20Z"
+  },
+  {
+    "step": "shell_visibility",
+    "http_status": 200,
+    "expected": 200,
+    "utc": "2026-11-17T10:54:22Z"
+  },
+  {
+    "step": "create_synthetic_shell_notebook",
+    "http_status": 201,
+    "expected": 201,
+    "utc": "2026-11-17T10:54:23Z"
+  },
+  {
+    "step": "upload_real_encrypted_original",
+    "http_status": 201,
+    "expected": 201,
+    "utc": "2026-11-17T10:54:28Z"
+  },
+  {
+    "step": "existing_notebook_materials",
+    "http_status": 200,
+    "expected": 200,
+    "utc": "2026-11-17T10:54:31Z"
+  },
+  {
+    "step": "scoped_search",
+    "http_status": 200,
+    "expected": 200,
+    "utc": "2026-11-17T10:54:37Z"
+  },
+  {
+    "step": "original_pdf_download",
+    "http_status": 200,
+    "expected": 200,
+    "utc": "2026-11-17T10:54:41Z"
+  },
+  {
+    "step": "original_sha256",
+    "result": "PASS",
+    "sha256": "f9ebea1a5966b59e5b3cfe999411a625313f43d3121008034b504f6995645a7e",
+    "source_id": "source:017a7caa-0198-4f18-b88b-26c6edea326e",
+    "shell_id": "b2b1341c-dc49-4381-94e8-2b42915e35b1"
+  },
+  {
+    "step": "csrf_negative",
+    "http_status": 403,
+    "expected": 403,
+    "utc": "2026-11-17T10:54:42Z"
+  },
+  {
+    "step": "logout",
+    "http_status": 200,
+    "expected": 200,
+    "utc": "2026-11-17T10:54:43Z"
+  },
+  {
+    "step": "logged_out_denied",
+    "http_status": 401,
+    "expected": 401,
+    "utc": "2026-11-17T10:54:43Z"
+  },
+  {
+    "step": "revoked_cookie_replay",
+    "http_status": 403,
+    "result": "PASS"
+  },
+  {
+    "step": "login_again_page",
+    "http_status": 200,
+    "expected": 200,
+    "utc": "2026-11-17T10:54:43Z"
+  },
+  {
+    "step": "password_login_again",
+    "http_status": 200,
+    "expected": 200,
+    "utc": "2026-11-17T10:54:44Z"
+  },
+  {
+    "step": "mfa_still_required_after_relogin",
+    "http_status": 401,
+    "result": "PASS"
+  },
+  {
+    "step": "mfa_state_again",
+    "http_status": 200,
+    "expected": 200,
+    "utc": "2026-11-17T10:54:45Z"
+  },
+  {
+    "step": "mfa_login_again",
+    "http_status": 200,
+    "expected": 200,
+    "utc": "2026-11-17T10:55:04Z"
+  },
+  {
+    "step": "session_again",
+    "http_status": 200,
+    "expected": 200,
+    "utc": "2026-11-17T10:55:05Z"
+  },
+  {
+    "step": "existing_shell_after_relogin",
+    "http_status": 200,
+    "expected": 200,
+    "utc": "2026-11-17T10:55:07Z"
+  },
+  {
+    "step": "final_logout",
+    "http_status": 200,
+    "expected": 200,
+    "utc": "2026-11-17T10:55:09Z"
+  }
+]

@@ -1,0 +1,14 @@
+........................................................................ [ 14%]
+........................................................................ [ 29%]
+........................................................................ [ 43%]
+........................................................................ [ 58%]
+........................................................................ [ 72%]
+........................................................................ [ 87%]
+................................................................         [100%]
+=============================== warnings summary ===============================
+../../../../../private/tmp/sunrise-final-r01-repaired-20261115/product/lib/python3.11/site-packages/starlette/testclient.py:45
+  /private/tmp/sunrise-final-r01-repaired-20261115/product/lib/python3.11/site-packages/starlette/testclient.py:45: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+496 passed, 1 warning in 60.98s (0:01:00)

@@ -1,0 +1,18 @@
+{
+  "cloud_app.py": "1fe0076cb535631722a05866689ea2f96edace8f267a71abc09d619bb422633f",
+  "vercel.json": "cd41e48d5c215bec9195c19eebef58146e64ce83b1f848bf38d2103c55048239",
+  "requirements.txt": "cbdebd73013d23d0517015d8acad0d9862d5b70f40a13dd08b4f2f7072c5f0da",
+  "index.py": "3c1746a1aa7d0bc7274b0d6d4909939f6a3b0448aeee40178ab524b6eab0f46b",
+  "auth.js": "3187305030035c1f28a1cdf83ac662a401db5b022b7473f758ed044f13faf8f0",
+  "account.html": "da8de7bb6554e08c7c6abb9910a5373b56a2f79bc17a8767bd67a65e00d5fa30",
+  "README.md": "437eae3a9df2142517fa34fff90a8ad0ae0a1aa846b95ec6f2cd2573934a20da",
+  "pdf_worker.py": "b37ee0ebe2cd9beda10fd1c24805cccff9ade2c607bac868d6e56424edf2b3b2",
+  "requirements-dev.txt": "7bbce0046124eb2155b31fc71fe81f885360c50d74ae3cb1c295bdb354c1ea64",
+  ".gitignore": "631bbc57ecd8a514a3c91b4dcefbe51f1e9dc5f764ceb1f22b85ee087587b183",
+  ".python-version": "7b55f8e67b5623c4bef3fa691288da9437d79d3aba156de48d481db32ac7d16d",
+  "test_cloud.py": "7530ecaac0b4333eece91dd6b8a0f009574a4142dc9ee26677bb28e238c0ada3",
+  "prepare_bundle.py": "c8472eabe6ca9bb1a849a0bd728a213e00d5a5792f15f4764dc1200cb333fc1c",
+  "verify_restore.py": "4cd195eef74fa5f2eece2fadc6f7f74f9cdfb2a1fdb8d4ffc9d29c18480deba2",
+  "verify_hosted.py": "74e5d8df34453bf272be44ed4a99ede1a5d711d9ce58abeec5bb3390e5f693ed",
+  "supabase/migrations/20261117101415_stage1_cloud_vault.sql": "e3de6c86d85aa1eb1c839dff3337fcd120f21bf6d070635fef2d2dfe1846b0ef"
+}

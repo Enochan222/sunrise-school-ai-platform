@@ -1,0 +1,5 @@
+vault_assets/
+__pycache__/
+.vercel/
+.env*
+supabase/.temp/

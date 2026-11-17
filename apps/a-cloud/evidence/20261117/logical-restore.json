@@ -1,0 +1,13 @@
+{
+  "result": "PASS",
+  "scope": "real hosted A snapshot + encrypted original + key restored into independent local PostgreSQL; hosted Auth DR NOT_VERIFIED",
+  "shells": 1,
+  "sources": [
+    {
+      "source_id": "source:76894e31-1a9d-4563-9383-36d68d455990",
+      "original_sha256": "172d833c753276fdfa6d7163658cbad8f6175e4273277a17a5eadccfae0d1761",
+      "cipher_sha256": "c7d680c579a571df71a6466cd58f28f5327177d3178e0a147978d34ffb61a9e9"
+    }
+  ],
+  "database": "sunrise_cloud_real_restore_r3"
+}
