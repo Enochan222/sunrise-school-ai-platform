@@ -93,3 +93,40 @@ def test_non_codespaces_host_and_missing_ca_fail_closed(tmp_path):
         proxy.build_proxy("attacker.example", str(ca))
     with pytest.raises(ValueError):
         proxy.build_proxy(HOST, str(tmp_path / "missing.pem"))
+
+
+@pytest.mark.parametrize("peer,host,forwarded,proto,origin,status", [
+    ("127.0.0.1", "localhost:8000", HOST, "https", "https://" + HOST, 200),
+    ("203.0.113.1", "localhost:8000", HOST, "https", "https://" + HOST, 403),
+    ("127.0.0.1", "attacker.example", HOST, "https", "https://" + HOST, 403),
+    ("127.0.0.1", "localhost:8000", "attacker.example", "https", "https://" + HOST, 403),
+    ("127.0.0.1", "localhost:8000", HOST + ", attacker.example", "https", "https://" + HOST, 403),
+    ("127.0.0.1", "localhost:8000", HOST, "http", "https://" + HOST, 403),
+    ("127.0.0.1", "localhost:8000", HOST, "https", "https://attacker.example", 403),
+])
+def test_codespaces_rewritten_host_requires_loopback_exact_forwarding_and_origin(
+        setup, peer, host, forwarded, proto, origin, status):
+    _, seen, ca = setup
+    app = proxy.build_proxy(HOST, str(ca), transport=httpx.MockTransport(
+        lambda request: (seen.append(request) or httpx.Response(200, content=b"ok"))))
+    with TestClient(app, client=(peer, 50000)) as client:
+        response = client.post("/auth/login", headers={"host": host,
+            "x-forwarded-host": forwarded, "x-forwarded-proto": proto, "origin": origin})
+    assert response.status_code == status
+    assert len(seen) == (1 if status == 200 else 0)
+    if seen:
+        assert seen[0].headers["origin"] == "https://127.0.0.1:18916"
+        assert "x-forwarded-host" not in seen[0].headers
+
+
+@pytest.mark.parametrize("duplicate", ["host", "x-forwarded-host", "x-forwarded-proto"])
+def test_ambiguous_tunnel_headers_are_denied(setup, duplicate):
+    _, seen, ca = setup
+    app = proxy.build_proxy(HOST, str(ca), transport=httpx.MockTransport(
+        lambda request: (seen.append(request) or httpx.Response(200))))
+    headers = [("host", "localhost:8000"), ("x-forwarded-host", HOST),
+        ("x-forwarded-proto", "https")]
+    headers.append(next(item for item in headers if item[0] == duplicate))
+    with TestClient(app, client=("127.0.0.1", 50000)) as client:
+        assert client.post("/auth/login", headers=headers).status_code == 403
+    assert seen == []

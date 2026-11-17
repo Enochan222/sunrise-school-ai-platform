@@ -17,10 +17,16 @@ or original PDF bytes are changed. No GitHub/tunnel credential is forwarded to A
 Authorization headers are stripped; this Owner-only trial exposes Admin session
 flows, not A ServiceToken integrations through the Cloud adapter.
 
+The verified Codespaces tunnel rewrites Host to `localhost:8000` and supplies
+the external hostname in `X-Forwarded-Host`. This form is accepted only from
+the actual TCP loopback peer with exactly one approved forwarded hostname and
+HTTPS protocol. Uvicorn proxy-header processing must stay disabled; arbitrary
+forwarded headers, non-loopback peers and foreign browser origins are denied.
+
 Run with the pinned A product environment:
 
 ```sh
-python -m uvicorn codespaces_gateway:application --factory --host 127.0.0.1 --port 8000 --no-access-log
+python -m uvicorn codespaces_gateway:application --factory --host 127.0.0.1 --port 8000 --no-proxy-headers --no-access-log
 ```
 
 Use the existing pinned-source A bootstrap only in a new, exclusive synthetic

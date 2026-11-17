@@ -29,9 +29,18 @@ def build_proxy(public_host: str, ca_file: str, *, transport=None):
     backend = "https://127.0.0.1:18916"
 
     async def forward(request: Request):
-        # Validate the external origin BEFORE translating it for the loopback
-        # Gateway. Never trust Forwarded/X-Forwarded-* as authority.
-        if request.headers.get("host", "").lower() != public_host:
+        # Codespaces rewrites Host to localhost:8000. Trust its exact external
+        # hostname only from the loopback tunnel, with Uvicorn proxy headers
+        # disabled so client.host remains the actual TCP peer.
+        host = request.headers.get("host", "").lower()
+        tunnel = (
+            host == "localhost:8000"
+            and request.client is not None
+            and request.client.host == "127.0.0.1"
+            and request.headers.getlist("x-forwarded-host") == [public_host]
+            and request.headers.getlist("x-forwarded-proto") == ["https"]
+        )
+        if len(request.headers.getlist("host")) != 1 or (host != public_host and not tunnel):
             return JSONResponse({"detail": "Unapproved trial hostname"}, status_code=403)
         origin = request.headers.get("origin")
         if origin is not None and origin != public_origin:
