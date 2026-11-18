@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-Hant-HK">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>帳戶安全 | Sunrise 教材庫 · 測試版 v1.0</title><link rel="stylesheet" href="/assets/style.css">
+<script src="/assets/cloud-auth.js" defer></script></head>
+<body data-page="__PAGE__">
+<header class="masthead"><div class="wrap masthead-inner"><a class="brand" href="/admin"><span class="brand-mark" aria-hidden="true"></span>Sunrise<span class="brand-divider">/</span><span class="brand-product">教材庫 · 測試版 v1.0</span></a><span class="environment">Cloud 合成試用</span></div></header>
+<main class="wrap login"><div class="login-story"><p class="eyebrow">YOUR PRIVATE TEACHING LIBRARY</p><h1>安心登入，專心備課。</h1><p class="intro-copy">用自己記得住的長句密碼，再以驗證器保護教材庫。</p></div>
+<section class="panel" aria-labelledby="account-title">
+<h2 id="account-title">帳戶安全</h2>
+<section id="mfa-panel" hidden>
+<p>輸入驗證器 App 的六位數字，完成兩步驗證。</p>
+<div id="enroll-panel" hidden><p>首次使用：先按「設定驗證器」，再用你自己的驗證器 App 掃描 QR Code。</p><button id="enroll" type="button">設定驗證器</button>
+<img id="qr" alt="驗證器設定 QR Code" width="240" height="240" hidden>
+<details id="manual-key" hidden><summary>無法掃描？手動輸入設定密鑰</summary><code id="totp-secret"></code></details></div>
+<form id="mfa-form" hidden><input name="factor_id" id="factor-id" type="hidden"><label for="code">六位驗證碼</label><input name="code" id="code" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="one-time-code" required><button type="submit">驗證並進入教材庫</button></form>
+</section>
+<section id="password-panel" hidden><p>新密碼可用容易記住的長句，12至128個字元。</p>
+<form id="password-form"><label for="current-password">目前密碼</label><input id="current-password" name="current_password" type="password" autocomplete="current-password" required>
+<label for="new-password">新密碼</label><input id="new-password" name="new_password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+<label for="confirm-password">確認新密碼</label><input id="confirm-password" name="confirm_password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required><button type="submit">儲存新密碼</button></form></section>
+<section id="activate-panel" hidden><p>只有持有 Owner 私人啟用碼的人可以設定此管理員帳戶。沒有啟用碼，請向 Owner 索取；這裡不接受公開註冊。</p>
+<form id="activate-form"><label for="activation-code">Owner 啟用碼</label><input id="activation-code" name="activation_code" type="password" autocomplete="off" required>
+<p>下一步先完成兩步驗證，再設定你自己記得住的密碼。</p><button type="submit">繼續兩步驗證</button></form></section>
+<p id="account-status" class="notice" role="status" aria-atomic="true"></p><p><a href="/auth/login">返回登入</a> · <a href="/admin">返回教材庫</a></p>
+<p class="help">Cloud 合成試用 · 請勿上載真實學生資料。免費試用受服務休眠及配額限制，未提供全天候可用保證。</p>
+</section></main></body></html>

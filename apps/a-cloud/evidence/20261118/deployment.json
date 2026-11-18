@@ -1,0 +1,8 @@
+{
+  "source_sha": "1355d31a74d15c39a323bcfd9796c901d6d005f7",
+  "deployment_id": "dpl_48uJ1UbuNtct3VKLNwVpANnLF1zi",
+  "url": "https://sunrise-stage1-trial.vercel.app",
+  "authentication": "PASSWORD_ONLY_SYNTHETIC_TRIAL",
+  "result": "CURRENTLY_USABLE_SYNTHETIC_TRIAL",
+  "formal_native_R01": "UNCHANGED_LOCAL_ACCEPTANCE"
+}

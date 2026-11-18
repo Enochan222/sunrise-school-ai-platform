@@ -1,0 +1,86 @@
+=== validate_docs.py: PASS ===
+=== validate_stage_controls.py: PASS ===
+=== validate_openapi_contracts.py: PASS ===
+=== validate_review_contracts.py: PASS ===
+=== validate_reuse_stage_logic.py: PASS ===
+=== test_design_invariants.py: PASS ===
+=== test_review_invariants.py: PASS ===
+=== test_typed_contract_fixtures.py: PASS ===
+=== test_reuse_stage_mutations.py: PASS ===
+=== test_semantic_mutations.py: PASS ===
+=== test_openapi_mutations.py: PASS ===
+=== test_stage_control_mutations.py: PASS ===
+=== test_review_mutations.py: PASS ===
+=== validate_contract_fixtures.py: PASS ===
+=== validate_stage0.py: PASS ===
+=== unittest: PASS ===
+{
+  "result": "PASS",
+  "scope": "STATIC DOCUMENT/CONTRACT/MUTATION ONLY, GITHUB DOES NOT ENFORCE",
+  "results": [
+    {
+      "script": "validate_docs.py",
+      "exit_code": 0
+    },
+    {
+      "script": "validate_stage_controls.py",
+      "exit_code": 0
+    },
+    {
+      "script": "validate_openapi_contracts.py",
+      "exit_code": 0
+    },
+    {
+      "script": "validate_review_contracts.py",
+      "exit_code": 0
+    },
+    {
+      "script": "validate_reuse_stage_logic.py",
+      "exit_code": 0
+    },
+    {
+      "script": "test_design_invariants.py",
+      "exit_code": 0
+    },
+    {
+      "script": "test_review_invariants.py",
+      "exit_code": 0
+    },
+    {
+      "script": "test_typed_contract_fixtures.py",
+      "exit_code": 0
+    },
+    {
+      "script": "test_reuse_stage_mutations.py",
+      "exit_code": 0
+    },
+    {
+      "script": "test_semantic_mutations.py",
+      "exit_code": 0
+    },
+    {
+      "script": "test_openapi_mutations.py",
+      "exit_code": 0
+    },
+    {
+      "script": "test_stage_control_mutations.py",
+      "exit_code": 0
+    },
+    {
+      "script": "test_review_mutations.py",
+      "exit_code": 0
+    },
+    {
+      "script": "validate_contract_fixtures.py",
+      "exit_code": 0
+    },
+    {
+      "script": "validate_stage0.py",
+      "exit_code": 0
+    },
+    {
+      "script": "unittest",
+      "exit_code": 0
+    }
+  ]
+}

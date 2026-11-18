@@ -1,0 +1,22 @@
+[
+  {
+    "step": "anonymous_private_tables",
+    "status": 404,
+    "result": "PASS"
+  },
+  {
+    "step": "anonymous_rpc",
+    "status": 401,
+    "result": "PASS"
+  },
+  {
+    "step": "anonymous_storage",
+    "status": 400,
+    "result": "PASS"
+  },
+  {
+    "step": "public_original_url",
+    "status": 400,
+    "result": "PASS"
+  }
+]
