@@ -10,6 +10,7 @@ import sys
 import time
 from pathlib import Path
 
+import httpx
 from fastapi.testclient import TestClient
 from reportlab.pdfgen.canvas import Canvas
 from cloud_app import Config, build_app, COOKIE
@@ -23,7 +24,9 @@ def totp(secret):
 def main():
     private=Path(sys.argv[1]); runtime=json.loads((private/'runtime.json').read_text())
     cfg=Config(**{k:v for k,v in runtime.items() if k!='origin'},origins=(runtime['origin'],))
-    client=TestClient(build_app(cfg),base_url=runtime['origin'])
+    deployed=len(sys.argv)>2 and sys.argv[2]=='--deployed'
+    client=(httpx.Client(base_url=runtime['origin'],trust_env=False,timeout=60,follow_redirects=False)
+        if deployed else TestClient(build_app(cfg),base_url=runtime['origin']))
     log=[]
     def check(label,response,status):
         log.append({'step':label,'http_status':response.status_code,'expected':status,
@@ -91,7 +94,7 @@ def main():
         check('existing_shell_after_relogin',client.get(root),200)
         check('final_logout',client.post('/auth/logout',headers=headers),200)
     finally:
-        (private.parent/'hosted-provider-smoke.json').write_text(json.dumps(log,indent=2))
+        (private.parent/('deployed-smoke.json' if deployed else 'hosted-provider-smoke.json')).write_text(json.dumps(log,indent=2))
         print(json.dumps(log,indent=2))
 
 if __name__=='__main__':main()

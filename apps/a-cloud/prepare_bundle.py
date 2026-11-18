@@ -18,6 +18,8 @@ for name in ("ui.js", "style.css", "templates/login.html", "templates/admin.html
         # This Cloud variant completes bounded extraction synchronously. Keep
         # the Native UI untouched and make the deployed receipt truthful.
         replacements = {
+            "mode: 'same-origin', credentials: 'same-origin',":
+                "mode: 'same-origin', credentials: 'same-origin', referrerPolicy: 'same-origin',",
             "result.state !== 'SUBMITTED_NATIVE_PROCESSING'": "result.state !== 'READY'",
             "'已提交處理。來源 '": "'文字處理完成。來源 '",
             "'。目前未有處理完成確認。'": "'。可搜尋及下載。'",

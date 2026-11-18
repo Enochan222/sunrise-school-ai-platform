@@ -43,6 +43,15 @@ def test_actual_pdf_parser_reads_text_and_rejects_empty_and_malformed():
     with pytest.raises(HTTPException): extract_pdf(empty.getvalue())
 
 
+def test_isolated_pdf_worker_recovers_vendor_dependencies_without_site_initialization(monkeypatch):
+    import cloud_app
+    run=cloud_app.subprocess.run
+    def without_site(command,**kwargs):
+        return run([*command[:2],'-S',*command[2:]],**kwargs)
+    monkeypatch.setattr(cloud_app.subprocess,'run',without_site)
+    assert 'fractions' in extract_pdf(pdf())
+
+
 @pytest.mark.parametrize("field,value",[("url","https://attacker.example"),("admin_id","not-a-uuid"),
  ("master_key","short"),("origins",("http://public.example",)),("service_key","short")])
 def test_missing_or_unsafe_configuration_fails_closed(cfg,field,value):
@@ -117,7 +126,7 @@ def test_unauthed_html_redirects_and_api_denies_without_leaking_content(cfg):
         assert "no-store" in response.headers["cache-control"]
 
 
-@pytest.mark.parametrize("headers",[{"host":"attacker.example"},{"origin":"https://attacker.example"},
+@pytest.mark.parametrize("headers",[{"host":"attacker.example"},{"origin":"https://attacker.example"},{"origin":"null"},
  {"origin":"http://sunrise-cloud-test.vercel.app"},{"sec-fetch-site":"cross-site"}])
 def test_host_origin_fetch_site_denied(cfg,headers):
     provider=FakeProvider();client=authenticated_client(cfg,provider)
@@ -132,6 +141,29 @@ def test_csrf_forged_cookie_and_revocation_denied(cfg):
     assert client.get("/vault/v1/shells").status_code==403
     client.cookies.clear();client.cookies.set(COOKIE,"forged")
     assert client.get("/vault/v1/shells").status_code==401
+
+
+def test_login_refreshes_overwritten_tab_challenge_without_weakening_csrf(cfg):
+    import re
+    class LoginProvider(FakeProvider):
+        def __init__(self):super().__init__();self.logins=0
+        async def auth(self,method,path,token=None,body=None):
+            assert method=='POST' and path=='token?grant_type=password'
+            self.logins+=1;return {'access_token':'unit-token'}
+        async def rpc(self,name,state=None,**args):
+            if name=='vault_open_session':return {'school_id':cfg.schools[0],'csrf_token':'session-csrf'}
+            return await super().rpc(name,state,**args)
+    provider=LoginProvider();client=TestClient(build_app(cfg,provider),base_url=HOST)
+    first=client.get('/auth/login');old=re.search(r'name="csrf" value="([^"]+)"',first.text).group(1)
+    client.get('/auth/login')
+    assert client.post('/auth/login',headers={'Origin':HOST},data={'password':'unit','csrf':old}).status_code==403
+    assert provider.logins==0
+    assert client.get('/auth/login-csrf',headers={'Origin':'https://attacker.example'}).status_code==403
+    challenge=client.get('/auth/login-csrf',headers={'Sec-Fetch-Site':'same-origin'})
+    assert challenge.status_code==200 and 'HttpOnly' in challenge.headers['set-cookie']
+    response=client.post('/auth/login',headers={'Origin':HOST},data={'password':'unit','csrf':challenge.json()['csrf_token']})
+    assert response.status_code==200 and response.json()['next']=='/admin'
+    assert provider.logins==1
 
 
 def test_body_limit_including_chunked_request(cfg):
@@ -152,6 +184,47 @@ def test_account_page_and_canonical_ui_have_no_public_credentials(cfg):
     assert "localStorage" not in text and "sessionStorage" not in text
 
 
+def test_owner_recovery_requires_token_then_mfa_before_password_mutation(cfg):
+    class RecoveryProvider(FakeProvider):
+        def __init__(self):super().__init__();self.auth_calls=[]
+        async def claims(self,token,mfa=True):
+            if mfa and token!='mfa-token':raise HTTPException(401,'MFA required')
+            return {'sub':ACTOR,'session_id':SESSION,'aal':'aal2' if token=='mfa-token' else 'aal1'}
+        async def auth(self,method,path,token=None,body=None):
+            self.auth_calls.append((method,path,token,body))
+            if path=='verify':return {'access_token':'recovery-token'}
+            if path=='user' and method=='GET':return {'id':ACTOR,'factors':[{'id':SESSION,'factor_type':'totp','status':'verified'}]}
+            if path.endswith('/challenge'):return {'id':'challenge'}
+            if path.endswith('/verify'):return {'access_token':'mfa-token'}
+            if path=='user' and method=='PUT':
+                assert token=='mfa-token';return {}
+            if path.startswith('logout'):return {}
+            raise AssertionError((method,path))
+        async def rpc(self,name,state=None,**args):
+            if name=='vault_open_session':return {'school_id':cfg.schools[0],'csrf_token':'post-mfa-csrf'}
+            return await super().rpc(name,state,**args)
+    provider=RecoveryProvider();client=TestClient(build_app(cfg,provider),base_url=HOST)
+    normal=authenticated_client(cfg,FakeProvider())
+    assert normal.get('/account/recovery-password').status_code==403
+    assert normal.post('/account/recovery-password',headers={'Origin':HOST,'X-CSRF-Token':'synthetic-csrf'},
+        data={'new_password':'long synthetic password','confirm_password':'long synthetic password'}).status_code==403
+    client.get('/auth/activate');csrf=client.get('/auth/activation-csrf').json()['csrf_token']
+    response=client.post('/auth/activate',headers={'Origin':HOST,'X-CSRF-Token':csrf},data={'activation_code':'a'*64})
+    assert response.status_code==200 and response.json()['next']=='/auth/mfa'
+    assert client.get('/account/recovery-password').status_code==401
+    assert not any(method=='PUT' for method,_,_,_ in provider.auth_calls)
+    state=client.get('/auth/mfa/state').json()
+    response=client.post('/auth/mfa/verify',headers={'Origin':HOST,'X-CSRF-Token':state['csrf_token']},data={'factor_id':SESSION,'code':'123456'})
+    assert response.status_code==200 and response.json()['next']=='/account/recovery-password'
+    assert client.get('/account/recovery-password').status_code==200
+    body={'new_password':'long synthetic password','confirm_password':'long synthetic password'}
+    assert client.post('/account/recovery-password',headers={'Origin':HOST},data=body).status_code==403
+    response=client.post('/account/recovery-password',headers={'Origin':HOST,'X-CSRF-Token':'post-mfa-csrf'},data=body)
+    assert response.status_code==200 and response.json()['next']=='/auth/login'
+    assert client.get('/vault/v1/shells').status_code==401
+    assert sum(method=='PUT' for method,_,_,_ in provider.auth_calls)==1
+
+
 @pytest.fixture(scope="module")
 def pg():
     dsn=os.environ.get("CLOUD_TEST_DSN")
@@ -167,15 +240,15 @@ end $$;
 create schema auth;create schema storage;create schema extensions;
 create extension pgcrypto with schema extensions;
 create function auth.role() returns text language sql as $$select current_setting('request.jwt.claim.role',true)$$;
-create table auth.users(id uuid primary key);
+create table auth.users(id uuid primary key,email text);
 create table auth.sessions(id uuid primary key,user_id uuid references auth.users(id),aal text,not_after timestamptz);
 create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
 create table storage.objects(bucket_id text references storage.buckets(id),name text);
 """
     conn.execute(bootstrap)
-    migration=next((Path(__file__).parent/"supabase/migrations").glob("*.sql")).read_text()
+    migration=(Path(__file__).parent/"supabase/migrations/20261117101415_stage1_cloud_vault.sql").read_text()
     conn.execute(migration)
-    conn.execute("insert into auth.users values(%s)",(ACTOR,))
+    conn.execute("insert into auth.users(id) values(%s)",(ACTOR,))
     conn.execute("insert into auth.sessions values(%s,%s,'aal2',null)",(SESSION,ACTOR))
     conn.execute("insert into vault_private.admins(user_id,schools) values(%s,%s)",(ACTOR,["synthetic-cloud-stage1","synthetic-cloud-negative"]))
     conn.execute("set request.jwt.claim.role='service_role'")
@@ -356,3 +429,43 @@ def test_real_pg_http_pdf_flow_lost_storage_ack_integrity_and_revocation(pg,cfg)
     provider.on_read=lambda:pg.execute('update vault_private.sources set shell_id=%s,notebook_id=%s where source_id=%s',
         (other['shell_id'],other['notebook_id'],source['source_id']))
     denied=client.get(download);assert denied.status_code in (403,404) and content not in denied.content
+
+
+def test_password_only_trial_requires_both_explicit_app_and_synthetic_db_opt_in(pg,cfg):
+    import re
+    import psycopg
+    from dataclasses import replace
+    with pytest.raises(ValueError):replace(cfg,password_only_trial=True).validate()
+    trial=replace(cfg,url='https://bnepekozzgymbvbjtltb.supabase.co',password_only_trial=True).validate()
+    pg.execute("update auth.sessions set aal='aal1' where id=%s",(SESSION,))
+    with pytest.raises(psycopg.Error):rpc_db(pg,'vault_open_session',p_school=cfg.schools[0])
+    migration=(Path(__file__).parent/'supabase/migrations/20261118024322_password_only_synthetic_trial.sql').read_text()
+    pg.execute("update auth.users set email='real@school.example' where id=%s",(ACTOR,))
+    with pytest.raises(psycopg.Error):pg.execute(migration)
+    pg.execute('rollback')
+    pg.execute("update auth.users set email='synthetic@sunrise.invalid' where id=%s",(ACTOR,))
+    pg.execute(migration)
+    class PasswordTrialProvider(SQLPolicyProvider):
+        async def claims(self,token,mfa=True):
+            if mfa:raise HTTPException(401,'MFA required outside approved trial')
+            return {'sub':ACTOR,'session_id':SESSION,'aal':'aal1'}
+        async def auth(self,method,path,token=None,body=None):
+            assert method=='POST' and path=='token?grant_type=password'
+            return {'access_token':'synthetic-password-session'}
+    provider=PasswordTrialProvider(pg)
+    client=TestClient(build_app(trial,provider),base_url=HOST)
+    assert client.get('/vault/v1/shells').status_code==401
+    page=client.get('/auth/login');assert 'data-password-only-trial' in page.text
+    csrf=re.search(r'name="csrf" value="([^"]+)"',page.text).group(1)
+    response=client.post('/auth/login',headers={'Origin':HOST},data={'password':'fixed synthetic password','csrf':csrf})
+    assert response.status_code==200 and response.json()=={'authenticated':True,'next':'/admin'}
+    assert client.get('/vault/v1/shells').status_code==200
+    assert '更改密碼' not in client.get('/admin').text
+    assert client.get('/account/password').status_code==403
+    csrf=client.get('/auth/me').json()['csrf_token']
+    assert client.post('/vault/v1/shells',headers={'Origin':HOST},json={'academic_year':'2026','grade':'S1','subject':'test','curriculum_stream':'synthetic'}).status_code==403
+    strict=TestClient(build_app(replace(trial,password_only_trial=False),provider),base_url=HOST)
+    strict.cookies.update(client.cookies)
+    assert strict.get('/vault/v1/shells').status_code==401
+    pg.execute('update vault_private.admins set password_only_trial=false')
+    assert client.get('/vault/v1/shells').status_code==403

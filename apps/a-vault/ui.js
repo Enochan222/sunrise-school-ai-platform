@@ -223,8 +223,8 @@ function setupAdmin() {
       item.append(button);
       list.append(item);
     }
-    notice('shell-summary', matches.length ? '顯示 ' + matches.length + ' 個容器。'
-      : state.shells.length ? '沒有符合條件的容器。' : '目前未有教材容器。');
+    notice('shell-summary', matches.length ? '顯示 ' + matches.length + ' 個教材庫。'
+      : state.shells.length ? '沒有符合條件的教材庫。' : '目前未有教材庫。');
   }
 
   async function refreshShells() {
@@ -233,7 +233,7 @@ function setupAdmin() {
     const epoch = state.sessionEpoch;
     const current = () => epoch === state.sessionEpoch && version === state.listVersion;
     $('refresh-shells').disabled = true;
-    notice('shell-summary', '正在載入容器…');
+    notice('shell-summary', '正在載入教材庫…');
     try {
       const data = await api.listShells();
       if (!current()) return;
@@ -256,7 +256,7 @@ function setupAdmin() {
     const meta = $('shell-meta');
     meta.replaceChildren();
     const rows = [['學校', shell.school_id], ...fields.map(([label, key]) => [label, shell[key]]),
-      ['容器編號', shell.shell_id], ['Notebook 編號', shell.notebook_id || '未提供'],
+      ['教材庫編號', shell.shell_id], ['Notebook 編號', shell.notebook_id || '未提供'],
       ['狀態', shell.archived ? '已封存' : '使用中']];
     for (const [label, value] of rows) meta.append(element('dt', label), element('dd', value));
     $('archive').hidden = Boolean(shell.archived);
@@ -293,7 +293,7 @@ function setupAdmin() {
     notice('materials-status', '');
     renderList();
     syncControls();
-    notice('detail-status', '正在載入容器詳情…');
+    notice('detail-status', '正在載入教材庫詳情…');
     try {
       const shell = await api.getShell(id);
       if (!current()) return;
@@ -387,7 +387,7 @@ function setupAdmin() {
         $('materials').append(item);
       }
       notice('materials-status', data.materials.length ? '共 ' + data.materials.length + ' 份材料。'
-        : '此容器未有可查閱的材料。');
+        : '此教材庫未有可查閱的材料。');
     } catch (error) {
       if (current()) {
         $('materials').replaceChildren();
@@ -414,7 +414,7 @@ function setupAdmin() {
     state.searching = true;
     syncControls();
     $('search-results').replaceChildren();
-    notice('search-status', '正在搜尋此容器…');
+    notice('search-status', '正在搜尋此教材庫…');
     try {
       const data = await api.search(id, query);
       if (!current()) return;
@@ -428,7 +428,7 @@ function setupAdmin() {
         $('search-results').append(item);
       }
       notice('search-status', data.results.length ? '找到 ' + data.results.length + ' 項結果。'
-        : '此容器沒有符合條件的材料。');
+        : '此教材庫沒有符合條件的材料。');
     } catch (error) {
       if (current()) {
         $('search-results').replaceChildren();
@@ -494,7 +494,7 @@ function setupAdmin() {
         }
       } else {
         notice('pending-message', operation.kind === 'archive'
-          ? '封存結果未獲確認。請先查閱容器狀態。'
+          ? '封存結果未獲確認。請先查閱教材庫狀態。'
           : '結果未獲確認。請以相同資料及識別鍵核對原有請求。若仍未能確認，請交由管理員跟進。');
       }
       return;
@@ -509,7 +509,7 @@ function setupAdmin() {
     if (operation.kind === 'create') {
       $('create').reset();
       $('filter').value = '';
-      notice('notice', '教材容器已建立，並已配對 Notebook。');
+      notice('notice', '教材庫已建立，可以開始加入教材。');
       await refreshShells();
       if (current()) await openShell(result.shell_id, true);
     } else if (operation.kind === 'upload') {
@@ -521,7 +521,7 @@ function setupAdmin() {
         await refreshMaterials();
       }
     } else {
-      notice('notice', result.archived ? '教材容器已封存。' : '容器目前未封存。請核對後再決定是否封存。');
+      notice('notice', result.archived ? '教材庫已封存。' : '教材庫目前未封存。請核對後再決定是否封存。');
       await refreshShells();
       if (current() && state.selectedId === operation.shellId) await openShell(operation.shellId, true);
     }
@@ -572,7 +572,7 @@ function setupAdmin() {
 
   $('archive').addEventListener('click', () => {
     if (!canWrite() || !state.shell || state.shell.archived) return;
-    if (!window.confirm('封存後將不能再向此容器上載材料。確定封存？')) return;
+    if (!window.confirm('封存後將不能再向此教材庫上載材料。確定封存？')) return;
     state.mutation = { kind: 'archive', shellId: state.shell.shell_id };
     void sendMutation(state.mutation);
   });
@@ -624,7 +624,7 @@ function setupAdmin() {
       $('sign-in-again').hidden = true;
       $('retry-session').hidden = true;
       notice('notice', '');
-      if (!state.selectedId) notice('detail-status', '選擇教材容器，開始查閱、搜尋或下載。');
+      if (!state.selectedId) notice('detail-status', '選擇教材庫，開始查閱、搜尋或下載。');
       await refreshShells();
       if (state.selectedId) await openShell(state.selectedId);
     } catch (error) {

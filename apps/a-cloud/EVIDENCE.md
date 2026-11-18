@@ -1,3 +1,26 @@
+# Current fixed-password Cloud trial — 2026-11-18
+
+Owner explicitly approved password-only login for this dedicated synthetic
+trial. Owner reported applying the scoped SQL opt-in. Runtime source:
+`1355d31a74d15c39a323bcfd9796c901d6d005f7`; Vercel deployment:
+`dpl_48uJ1UbuNtct3VKLNwVpANnLF1zi`.
+
+URL: https://sunrise-stage1-trial.vercel.app
+
+Live HTTPS checks PASS: fixed password directly opens the library without MFA
+or forced password change, existing Shell/Notebook visibility, Chinese scoped
+search, original PDF SHA256, wrong-password/anonymous/CSRF rejection, logout
+and stale-cookie rejection. See [live evidence](evidence/20261118/fixed-password-live.json)
+and [28-test local result](evidence/20261118/fixed-password-tests.log).
+No credential values are included. The access handoff file is private, outside
+Git. This is synthetic single-Admin trial usability, not a formal Native R01
+rerun, hosted Auth DR or permission to use real school/student data.
+
+The following section is the historical preparation snapshot. Its earlier
+NOT_RUN/approval-pending statements do not describe this deployed trial.
+
+---
+
 # Cloud trial preparation — 2026-11-17
 
 Tested implementation revision: `10c0e69a8329953aa6d2763228b791da97934445`.

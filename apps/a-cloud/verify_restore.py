@@ -53,7 +53,15 @@ with psycopg.connect(dsn,autocommit=True) as conn:
     database_name=conn.info.dbname
     assert conn.execute("select count(*) from information_schema.tables where table_schema in ('auth','storage','vault_private')").fetchone()[0]==0
     conn.execute(bootstrap)
-    conn.execute(next((Path(__file__).parent/'supabase/migrations').glob('*.sql')).read_text())
+    migrations=Path(__file__).parent/'supabase/migrations'
+    conn.execute((migrations/'20261117101415_stage1_cloud_vault.sql').read_text())
+    if any('password_only_trial' in row for row in data['admins']):
+        # Restore the saved opt-in value; never enable a mode as a side effect
+        # of restoring a snapshot. The activation guard is operator-only.
+        source=(migrations/'20261118024322_password_only_synthetic_trial.sql').read_text()
+        marker='-- Fail closed on the wrong project/data:'
+        assert source.count(marker)==1
+        conn.execute(source.split(marker)[0]+'\ncommit;')
     for admin in data['admins']:
         conn.execute('insert into auth.users(id) values(%s)',(admin['user_id'],))
     for name in ('admins','shells','sources'):

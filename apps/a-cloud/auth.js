@@ -10,7 +10,7 @@ async function call(path, {method='GET', body}={}) {
   const headers = {Accept:'application/json'};
   if (method !== 'GET' && csrfToken) headers['X-CSRF-Token'] = csrfToken;
   const response = await fetch(path,{method,headers,body,credentials:'same-origin',
-    mode:'same-origin',cache:'no-store',redirect:'error'});
+    mode:'same-origin',referrerPolicy:'same-origin',cache:'no-store',redirect:'error'});
   if (!response.ok) {
     const messages = {400:'請核對輸入資料。',401:'登入資料不正確或已失效，請重新登入。',
       403:'請求驗證未通過，請重新登入後再試。',409:'設定狀態已改變，請重新載入。',
@@ -32,6 +32,12 @@ function bind(id, path, after) {
     for (const input of form.querySelectorAll('input[type="password"], input[autocomplete="one-time-code"]')) input.value='';
     notice('正在處理…');
     try {
+      if (page === 'login') {
+        // Another login tab or a restored page may have an older challenge.
+        // Refresh once before submitting; never retry a password request.
+        const challenge=await call('/auth/login-csrf');
+        body.set('csrf',challenge.csrf_token);
+      }
       const result = await call(path,{method:'POST',body});
       after(result);
     } catch(error) {
@@ -44,29 +50,35 @@ function bind(id, path, after) {
   });
 }
 const navigate = result => {
-  if (!['/admin','/auth/mfa','/auth/login'].includes(result.next)) throw new Error('未能確認下一步。');
+  if (!['/admin','/auth/mfa','/auth/login','/account/recovery-password'].includes(result.next)) throw new Error('未能確認下一步。');
   location.replace(result.next);
 };
 async function initialize() {
   if (page === 'login') {
     bind('login','/auth/login',navigate);
-    const link=document.createElement('a');link.href='/auth/activate';link.textContent='首次使用／以 Owner 啟用碼重設密碼';
-    byId('login').after(link);
-  } else if (page === 'password') {
-    byId('account-title').textContent='更改密碼';
+    if (!document.body.hasAttribute('data-password-only-trial')) {
+      const link=document.createElement('a');link.href='/auth/activate';link.textContent='首次使用／以 Owner 啟用碼重設密碼';
+      byId('login').after(link);
+    }
+  } else if (page === 'password' || page === 'recovery-password') {
+    byId('account-title').textContent=page === 'password' ? '更改密碼' : '設定你的管理員密碼';
     const state=await call('/auth/me');csrfToken=state.csrf_token;
     byId('password-panel').hidden=false;
-    bind('password-form','/account/password',navigate);
+    if (page === 'recovery-password') {
+      byId('current-password').required=false;byId('current-password').disabled=true;byId('current-password').hidden=true;
+      document.querySelector('label[for="current-password"]').hidden=true;
+    }
+    bind('password-form',page === 'password' ? '/account/password' : '/account/recovery-password',navigate);
   } else if (page === 'activate') {
     byId('account-title').textContent='設定管理員密碼';
-    const state=await call('/auth/activation-csrf');csrfToken=state.csrf_token;
-    byId('activate-panel').hidden=false;
     // A private Owner fragment is removed before any network request. Never
     // persist activation secrets in browser storage or analytics.
     if (location.hash.startsWith('#code=')) {
       byId('activation-code').value=decodeURIComponent(location.hash.slice(6));
       history.replaceState(null,'','/auth/activate');
     }
+    const state=await call('/auth/activation-csrf');csrfToken=state.csrf_token;
+    byId('activate-panel').hidden=false;
     bind('activate-form','/auth/activate',navigate);
   } else if (page === 'mfa') {
     byId('account-title').textContent='兩步驗證';

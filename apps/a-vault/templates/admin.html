@@ -4,23 +4,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>教材庫管理 | Sunrise</title>
+  <title>教材庫管理 | Sunrise · 測試版 v1.0</title>
   <link rel="stylesheet" href="/assets/style.css">
   <script src="/assets/app.js" defer></script>
 </head>
 <body data-page="admin">
   <a class="skip" href="#main">跳至主要內容</a>
   <header class="masthead"><div class="wrap masthead-inner">
-    <a class="brand" href="/admin"><span class="brand-mark" aria-hidden="true"></span>Sunrise<span class="brand-divider">/</span><span class="brand-product">教材庫</span></a><span class="environment">本機合成測試</span>
+    <a class="brand" href="/admin"><span class="brand-mark" aria-hidden="true"></span>Sunrise<span class="brand-divider">/</span><span class="brand-product">教材庫 · 測試版 v1.0</span></a><span class="environment">本機合成測試</span>
     <button id="logout" class="secondary" type="button" hidden>登出</button>
   </div></header>
   <main class="wrap" id="main">
-    <div class="page-intro"><div><p class="eyebrow">YOUR TEACHING LIBRARY</p><h1>好教材，隨時找得到。</h1><p class="intro-copy">按學年與科目整理教材，在專屬容器內搜尋內容、下載原始 PDF。</p></div><a class="button intro-action" href="#create-title">＋ 新增教材容器</a></div>
+    <div class="page-intro"><div><p class="eyebrow">YOUR TEACHING LIBRARY</p><h1>好教材，隨時找得到。</h1><p class="intro-copy">按學年與科目整理教材，在專屬教材庫內搜尋內容、下載原始 PDF。</p></div><a class="button intro-action" href="#create-title">＋ 新增教材庫</a></div>
     <p id="notice" class="notice" role="status" aria-atomic="true">正在核對登入狀態…</p>
     <button id="retry-session" type="button" hidden>重新核對登入狀態</button>
     <a id="sign-in-again" class="button" href="/auth/login" hidden>前往登入</a>
     <div id="workspace" hidden>
-      <div class="scope-bar"><span>目前學校 <strong id="active-school"></strong></span><span class="scope-hint">教材搜尋僅限所選容器</span></div>
+      <div class="scope-bar"><span>目前學校 <strong id="active-school"></strong></span><span class="scope-hint">教材搜尋僅限所選教材庫</span></div>
       <form id="switch-school" class="school-switch" aria-labelledby="switch-school-label">
         <label id="switch-school-label" for="school-choice">切換獲授權的合成學校</label>
         <select id="school-choice" name="school_id" required></select>
@@ -34,38 +34,38 @@
         <div class="sidebar">
           <section class="panel" aria-labelledby="shell-list-title">
             <div class="section-heading">
-              <h2 id="shell-list-title">我的教材容器</h2>
+              <h2 id="shell-list-title">我的教材庫</h2>
               <button id="refresh-shells" class="secondary" type="button">重新整理</button>
             </div>
             <p id="shell-summary" role="status"></p>
-            <label for="filter">尋找教材容器</label>
+            <label for="filter">尋找教材庫</label>
             <input id="filter" type="search" placeholder="輸入科目、年級或學年…">
-            <ul id="shells" class="shells" aria-label="教材容器列表"></ul>
+            <ul id="shells" class="shells" aria-label="教材庫列表"></ul>
           </section>
           <section class="panel" aria-labelledby="create-title">
-            <p class="eyebrow">START A COLLECTION</p><h2 id="create-title" tabindex="-1">新增教材容器</h2>
-            <p class="help">按學年、年級與科目分類。每個容器會自動配對專用 Notebook。</p>
+            <p class="eyebrow">START A COLLECTION</p><h2 id="create-title" tabindex="-1">新增教材庫</h2>
+            <p class="help">按學年、年級與科目分類。每個教材庫獨立整理及搜尋教材。</p>
             <form id="create" class="compact-form">
               <label for="year">學年</label><input id="year" name="academic_year" required maxlength="32" placeholder="例如 2026-2027">
               <label for="grade">年級</label><input id="grade" name="grade" required maxlength="32" placeholder="例如 中一">
               <label for="subject">科目</label><input id="subject" name="subject" required maxlength="48" placeholder="例如 數學">
               <label for="stream">課程類別</label><input id="stream" name="curriculum_stream" required maxlength="48" placeholder="例如 本地課程">
-              <button id="create-submit" type="submit" disabled>建立教材容器</button>
+              <button id="create-submit" type="submit" disabled>建立教材庫</button>
             </form>
           </section>
         </div>
         <div class="content">
-          <p id="detail-status" class="notice" role="status">由左方選擇教材容器，開始查閱教材。</p>
-          <button id="retry-detail" class="secondary" type="button" hidden>重新載入容器詳情</button>
+          <p id="detail-status" class="notice" role="status">由左方選擇教材庫，開始查閱教材。</p>
+          <button id="retry-detail" class="secondary" type="button" hidden>重新載入教材庫詳情</button>
           <section id="detail" class="panel" aria-labelledby="detail-title" hidden>
             <div class="section-heading">
               <h2 id="detail-title" tabindex="-1"></h2>
-              <button id="archive" class="secondary" type="button">封存容器</button>
+              <button id="archive" class="secondary" type="button">封存教材庫</button>
             </div>
-            <p id="archive-note" hidden>此容器已封存。你仍可查閱、搜尋和下載獲授權的材料。</p>
-            <details class="technical-details"><summary>容器分類及 Notebook 資料</summary><dl id="shell-meta" class="metadata"></dl></details>
+            <p id="archive-note" hidden>此教材庫已封存。你仍可查閱、搜尋和下載獲授權的材料。</p>
+            <details class="technical-details"><summary>教材庫分類及 Notebook 資料</summary><dl id="shell-meta" class="metadata"></dl></details>
             <section aria-labelledby="search-title">
-              <p class="eyebrow">FIND WHAT YOU NEED</p><h3 id="search-title">在這個容器找教材</h3><p class="help">輸入教材內的文字，搜尋結果只會來自目前容器。</p>
+              <p class="eyebrow">FIND WHAT YOU NEED</p><h3 id="search-title">在這個教材庫找教材</h3><p class="help">輸入教材內的文字，搜尋結果只會來自目前教材庫。</p>
               <form id="search" class="search-form">
                 <div><label for="query">文字關鍵字</label><input id="query" name="query" type="search" required maxlength="300" placeholder="例如：分數、閱讀理解、光合作用…"></div>
                 <button id="search-submit" type="submit">搜尋</button>

@@ -3,7 +3,9 @@ import asyncio
 import base64
 import hashlib
 import hmac
+import importlib.util
 import json
+import logging
 import os
 import re
 import secrets
@@ -44,6 +46,7 @@ class Config:
     origins: tuple[str, ...]
     schools: tuple[str, ...] = ("synthetic-cloud-stage1", "synthetic-cloud-negative")
     secure: bool = True
+    password_only_trial: bool = False
 
     @classmethod
     def environment(cls):
@@ -53,12 +56,17 @@ class Config:
             origins.append("https://" + os.environ["VERCEL_URL"])
         return cls(os.environ["SUPABASE_URL"], os.environ["SUPABASE_PUBLISHABLE_KEY"],
             os.environ["SUPABASE_SERVICE_KEY"], os.environ["CLOUD_MASTER_KEY"],
-            os.environ["CLOUD_ADMIN_ID"], os.environ["CLOUD_ADMIN_EMAIL"], tuple(origins))
+            os.environ["CLOUD_ADMIN_ID"], os.environ["CLOUD_ADMIN_EMAIL"], tuple(origins),
+            password_only_trial=os.environ.get("CLOUD_PASSWORD_ONLY_TRIAL")=="1")
 
     def validate(self):
         if not re.fullmatch(r"https://[a-z]{20}\.supabase\.co", self.url):
             raise ValueError("Exact Supabase project URL required")
         UUID(self.admin_id)
+        if self.password_only_trial and (self.url!="https://bnepekozzgymbvbjtltb.supabase.co"
+                or self.schools!=("synthetic-cloud-stage1","synthetic-cloud-negative")
+                or not self.admin_email.endswith('.invalid')):
+            raise ValueError("Password-only mode is restricted to the approved synthetic trial")
         if "@" not in self.admin_email or len(self.service_key) < 40 or len(self.publishable_key) < 30:
             raise ValueError("Cloud auth secrets required")
         if self.service_key == self.publishable_key:
@@ -194,8 +202,20 @@ def extract_pdf(payload):
         path = Path(temporary) / "source.pdf"
         path.write_bytes(payload)
         try:
-            result = subprocess.run([sys.executable, "-I", str(ROOT / "pdf_worker.py"), str(path)],
-                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=18, check=False)
+            # Vercel supplies dependencies through its launcher; -I deliberately
+            # removes that path. Pass only the installed parser's trusted root,
+            # never PYTHONPATH, request values or a writable working directory.
+            parser = importlib.util.find_spec("pdfplumber")
+            if parser is None or not parser.origin:
+                raise ValueError("Parser dependency missing")
+            dependency_root = str(Path(parser.origin).resolve().parent.parent)
+            bootstrap = "import runpy,sys;sys.path.insert(0,sys.argv.pop(1));runpy.run_path(sys.argv.pop(1),run_name='__main__')"
+            result = subprocess.run([sys.executable, "-I", "-c", bootstrap, dependency_root,
+                str(ROOT / "pdf_worker.py"), str(path)],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=18, check=False)
+            if result.returncode:
+                reason = "missing_dependency" if b"ModuleNotFoundError" in result.stderr else "parser_rejected"
+                logging.getLogger(__name__).warning("PDF worker failed: returncode=%s reason=%s",result.returncode,reason)
             data = json.loads(result.stdout) if len(result.stdout) <= 8 * 1024 * 1024 else {}
             text = data.get("text", "")
             if result.returncode or not text.strip() or len(text.encode()) > 1048576:
@@ -231,6 +251,7 @@ def build_app(cfg=None, provider=None, extractor=extract_pdf):
             # TLS can terminate before ASGI. Only configured public origins
             # count; neither ASGI's internal scheme nor forwarded data is ACL.
             if origin not in cfg.origins or urlsplit(origin).netloc != request.headers.get("host"):
+                logging.getLogger(__name__).warning("Request rejected: origin_mismatch opaque_origin=%s",origin=="null")
                 raise HTTPException(403, "Origin denied")
         if request.headers.get("sec-fetch-site") not in (None, "none", "same-origin"):
             raise HTTPException(403, "Cross-site request denied")
@@ -242,7 +263,7 @@ def build_app(cfg=None, provider=None, extractor=extract_pdf):
 
     async def principal(request, *, write=False, pending=False):
         state = decode(request)
-        claims = await service.claims(state["token"], mfa=not pending)
+        claims = await service.claims(state["token"], mfa=not pending and not cfg.password_only_trial)
         if claims["session_id"] != state.get("session_id"):
             raise HTTPException(401, "Session identity mismatch")
         if write:
@@ -255,7 +276,7 @@ def build_app(cfg=None, provider=None, extractor=extract_pdf):
         return state
 
     async def start_session(token):
-        claims = await service.claims(token)
+        claims = await service.claims(token,mfa=not cfg.password_only_trial)
         result = await service.rpc("vault_open_session", p_actor=cfg.admin_id,
             p_session=claims["session_id"], p_school=cfg.schools[0])
         return {"token":token,"session_id":claims["session_id"],"school_id":result["school_id"],
@@ -280,7 +301,7 @@ def build_app(cfg=None, provider=None, extractor=extract_pdf):
         request._body = bytes(body)
         response = await call_next(request)
         response.headers.update({"Cache-Control":"no-store","X-Content-Type-Options":"nosniff",
-            "X-Frame-Options":"DENY","Referrer-Policy":"no-referrer","X-Robots-Tag":"noindex, nofollow",
+            "X-Frame-Options":"DENY","Referrer-Policy":"same-origin","X-Robots-Tag":"noindex, nofollow",
             "Content-Security-Policy":"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"})
         if cfg.secure:
             response.headers["Strict-Transport-Security"] = "max-age=31536000"
@@ -292,14 +313,25 @@ def build_app(cfg=None, provider=None, extractor=extract_pdf):
 
     @app.get("/health")
     async def health():
-        return {"website":"running","scope":"A_CLOUD_SYNTHETIC_TRIAL","formal_R01":"NOT_VERIFIED"}
+        return {"website":"running","scope":"A_CLOUD_SYNTHETIC_TRIAL","formal_R01":"NOT_VERIFIED",
+            "authentication":"PASSWORD_ONLY_SYNTHETIC_TRIAL" if cfg.password_only_trial else "PASSWORD_AND_MFA"}
 
     @app.get("/auth/login")
     async def login_page():
         challenge = secrets.token_urlsafe(32)
         html = (VAULT / "templates/login.html").read_text().replace("__SUNRISE_LOGIN_CSRF__", escape(challenge))
         html = cloud_labels(html).replace("/assets/app.js", "/assets/cloud-auth.js")
+        if cfg.password_only_trial:
+            html = html.replace('<body','<body data-password-only-trial="true"',1)
         response = HTMLResponse(html)
+        set_cookie(response,{"csrf":challenge},LOGIN_COOKIE,600)
+        return response
+
+    @app.get("/auth/login-csrf")
+    async def refresh_login_csrf(request:Request):
+        same_origin(request)
+        challenge = secrets.token_urlsafe(32)
+        response = JSONResponse({"csrf_token":challenge})
         set_cookie(response,{"csrf":challenge},LOGIN_COOKIE,600)
         return response
 
@@ -312,7 +344,7 @@ def build_app(cfg=None, provider=None, extractor=extract_pdf):
         result = await service.auth("POST","token?grant_type=password",body={"email":cfg.admin_email,"password":password})
         token = result["access_token"]
         claims = await service.claims(token,mfa=False)
-        state = await start_session(token) if claims["aal"] == "aal2" else pending_state(token,claims)
+        state = await start_session(token) if claims["aal"] == "aal2" or cfg.password_only_trial else pending_state(token,claims)
         response = JSONResponse({"authenticated":not state["pending"],"next":"/auth/mfa" if state["pending"] else "/admin"})
         set_cookie(response,state)
         response.delete_cookie(LOGIN_COOKIE,secure=cfg.secure,httponly=True,samesite="strict")
@@ -358,7 +390,9 @@ def build_app(cfg=None, provider=None, extractor=extract_pdf):
         verified = await service.auth("POST","factors/"+factor_id+"/verify",token=state["token"],
             body={"challenge_id":challenge["id"],"code":code})
         final = await start_session(verified["access_token"])
-        response = JSONResponse({"authenticated":True,"next":"/admin"})
+        if state.get("recovery"):
+            final["recovery"] = True
+        response = JSONResponse({"authenticated":True,"next":"/account/recovery-password" if final.get("recovery") else "/admin"})
         set_cookie(response,final)
         return response
 
@@ -387,6 +421,8 @@ def build_app(cfg=None, provider=None, extractor=extract_pdf):
 
     @app.get("/account/password")
     async def password_page(request:Request):
+        if cfg.password_only_trial:
+            raise HTTPException(403,"The fixed synthetic trial password is managed by Owner")
         try:
             await principal(request)
         except HTTPException:
@@ -395,6 +431,8 @@ def build_app(cfg=None, provider=None, extractor=extract_pdf):
 
     @app.post("/account/password")
     async def password_change(request:Request,current_password:str=Form(...),new_password:str=Form(...),confirm_password:str=Form(...)):
+        if cfg.password_only_trial:
+            raise HTTPException(403,"The fixed synthetic trial password is managed by Owner")
         state = await principal(request,write=True)
         check_password(new_password,confirm_password)
         check = await service.auth("POST","token?grant_type=password",body={"email":cfg.admin_email,"password":current_password})
@@ -419,19 +457,38 @@ def build_app(cfg=None, provider=None, extractor=extract_pdf):
         return {"csrf_token":state["csrf"]}
 
     @app.post("/auth/activate")
-    async def activate(request:Request,activation_code:str=Form(...),new_password:str=Form(...),confirm_password:str=Form(...)):
+    async def activate(request:Request,activation_code:str=Form(...)):
         state = decode(request,LOGIN_COOKIE,600)
         csrf(request,state)
-        check_password(new_password,confirm_password)
         if not re.fullmatch(r"[a-f0-9]{40,128}",activation_code):
             raise HTTPException(422,"Owner activation code required")
         result = await service.auth("POST","verify",body={"token_hash":activation_code,"type":"recovery"})
         token = result["access_token"]
         claims = await service.claims(token,mfa=False)
-        await service.auth("PUT","user",token=token,body={"password":new_password})
         response = JSONResponse({"next":"/auth/mfa"})
-        set_cookie(response,pending_state(token,claims))
+        set_cookie(response,{**pending_state(token,claims),"recovery":True})
         response.delete_cookie(LOGIN_COOKIE,secure=cfg.secure,httponly=True,samesite="strict")
+        return response
+
+    @app.get("/account/recovery-password")
+    async def recovery_password_page(request:Request):
+        state = await principal(request)
+        await service.claims(state["token"],mfa=True)
+        if not state.get("recovery"):
+            raise HTTPException(403,"Owner recovery and MFA required")
+        return HTMLResponse(account_page("recovery-password"))
+
+    @app.post("/account/recovery-password")
+    async def recovery_password(request:Request,new_password:str=Form(...),confirm_password:str=Form(...)):
+        state = await principal(request,write=True)
+        await service.claims(state["token"],mfa=True)
+        if not state.get("recovery"):
+            raise HTTPException(403,"Owner recovery and MFA required")
+        check_password(new_password,confirm_password)
+        await service.auth("PUT","user",token=state["token"],body={"password":new_password})
+        await service.auth("POST","logout?scope=local",token=state["token"])
+        response = JSONResponse({"next":"/auth/login"})
+        response.delete_cookie(COOKIE,secure=cfg.secure,httponly=True,samesite="strict")
         return response
 
     @app.get("/admin")
@@ -443,8 +500,9 @@ def build_app(cfg=None, provider=None, extractor=extract_pdf):
                 return RedirectResponse("/auth/login",status_code=303)
             raise
         html = cloud_labels((VAULT/"templates/admin.html").read_text())
-        html = html.replace('<button id="logout"', '<a href="/account/password" class="button secondary">更改密碼</a><button id="logout"')
-        html = html.replace("上載包含文字的合成測試 PDF", "上載不超過3MiB、100頁且包含文字的合成測試 PDF")
+        if not cfg.password_only_trial:
+            html = html.replace('<button id="logout"', '<a href="/account/password" class="button secondary">更改密碼</a><button id="logout"')
+        html = html.replace("上載包含文字的合成測試 PDF", "測試版可上載不超過 3 MiB、100 頁且包含文字的 PDF")
         return HTMLResponse(html)
 
     @app.get("/assets/app.js")
